@@ -2,57 +2,47 @@ from __future__ import annotations
 
 import numpy as np
 
+ENTROPY = "entropy"
+GINI = "gini"
+
+
+def impurity_rows(weights: np.ndarray, measure: str = ENTROPY) -> np.ndarray:
+    """Impurity of each row of an (m, k) matrix of class weights."""
+    totals = weights.sum(axis=1, keepdims=True)
+    p = np.divide(weights, totals, out=np.zeros_like(weights), where=totals > 0.0)
+    if measure == GINI:
+        return 1.0 - (p * p).sum(axis=1)
+    logp = np.where(p > 0.0, np.log2(np.where(p > 0.0, p, 1.0)), 0.0)
+    return -(p * logp).sum(axis=1)
+
+
+def impurity(class_weights, measure: str = ENTROPY) -> float:
+    w = np.asarray(class_weights, dtype=float)[None, :]
+    return float(impurity_rows(w, measure)[0])
+
 
 def entropy(class_weights) -> float:
     """H = -sum_c p_c log2 p_c over a weighted class distribution."""
-    w = np.asarray(class_weights, dtype=float)
-    total = float(w.sum())
-    if total <= 0.0:
-        return 0.0
-    p = w[w > 0.0] / total
-    return float(-(p * np.log2(p)).sum())
+    return impurity(class_weights, ENTROPY)
 
 
-def information_gain(parent_weights, child_weights) -> float:
-    parent = np.asarray(parent_weights, dtype=float)
-    children = [np.asarray(c, dtype=float) for c in child_weights]
-    parent_total = float(parent.sum())
-    known = float(sum(c.sum() for c in children))
-    if parent_total <= 0.0 or known <= 0.0:
-        return 0.0
-    h_after = 0.0
-    for c in children:
-        w = float(c.sum())
-        if w > 0.0:
-            h_after += (w / known) * entropy(c)
-    return (known / parent_total) * (entropy(parent) - h_after)
+def split_info_rows(shares: np.ndarray) -> np.ndarray:
+    """SplitInfo of each row of an (m, k) matrix of child weight shares."""
+    logs = np.where(shares > 0.0, np.log2(np.where(shares > 0.0, shares, 1.0)), 0.0)
+    return -(shares * logs).sum(axis=1)
 
 
-def split_info(child_weights) -> float:
-    """SplitInfo = -sum_i p_i log2 p_i over the children's weight shares."""
-    children = [np.asarray(c, dtype=float) for c in child_weights]
-    known = float(sum(c.sum() for c in children))
-    if known <= 0.0:
-        return 0.0
-    shares = np.array([float(c.sum()) / known for c in children if c.sum() > 0.0])
-    return float(-(shares * np.log2(shares)).sum())
+def select_split(candidates, use_ratio: bool = True):
+    """Choose among ``(gain, ratio, payload)`` candidates.
 
-
-def gain_ratio(gain: float, info: float) -> float:
-    """Ratio of a split; 0 when the split carries no information."""
-    return gain / info if info > 0.0 else 0.0
-
-
-def select_split(candidates):
-    """Highest gain-ratio candidate whose gain is at least the mean gain of
-    all candidates (Materi 10c p. 27). Ties go to the first candidate in
-    input order; returns the chosen (gain, ratio, payload) tuple or None."""
+    With ``use_ratio`` this is the C4.5 rule: the highest gain ratio among
+    candidates whose gain is at least the mean gain (Materi 10c p. 27).
+    Otherwise it is the highest gain. Ties go to the first candidate.
+    """
     if not candidates:
         return None
-    mean_gain = sum(g for g, _, _ in candidates) / len(candidates)
+    if not use_ratio:
+        return max(candidates, key=lambda c: c[0])
+    mean_gain = sum(c[0] for c in candidates) / len(candidates)
     pool = [c for c in candidates if c[0] >= mean_gain] or list(candidates)
-    best = pool[0]
-    for cand in pool[1:]:
-        if cand[1] > best[1]:
-            best = cand
-    return best
+    return max(pool, key=lambda c: c[1])

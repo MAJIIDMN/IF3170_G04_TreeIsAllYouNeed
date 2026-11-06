@@ -5,41 +5,50 @@ from dataclasses import dataclass
 import numpy as np
 
 from .criteria import select_split
-from .splitting import (best_split_categorical, best_split_continuous,
-                        known_mask)
+from .splitting import (best_split_continuous, best_split_multiway,
+                        best_split_subset, known_mask)
 
 CONTINUOUS = "continuous"
 CATEGORICAL = "categorical"
 MULTIWAY = "multiway"
 BINARY = "binary"
+SUBSET = "subset"
 
 
 @dataclass(frozen=True)
 class BuildConfig:
     n_classes: int
     max_depth: int | None
-    min_samples_leaf: int
+    min_samples_leaf: float
     min_gain: float
+    measure: str = "entropy"
+    use_ratio: bool = True
+    categorical_split: str = SUBSET
 
 
 class Node:
     __slots__ = ("leaf", "class_weights", "feature", "kind", "children",
                  "shares", "default", "threshold", "left", "right", "p_left",
-                 "leaf_id")
+                 "left_values", "right_values", "leaf_id")
 
     def __init__(self):
         self.leaf = True
         self.class_weights = None
+        self.leaf_id = None
+        self._clear_split()
+
+    def _clear_split(self):
         self.feature = None
         self.kind = None
-        self.children = None    # multiway: {value: Node}
-        self.shares = None      # multiway: {value: share of known weight}
-        self.default = None     # multiway: value; binary: side0/1
-        self.threshold = None
+        self.children = None      # multiway: {value: Node}
+        self.shares = None        # multiway: {value: share of known weight}
+        self.default = None       # multiway: value; binary, subset: side 0/1
+        self.threshold = None     # binary
         self.left = None
         self.right = None
         self.p_left = None
-        self.leaf_id = None
+        self.left_values = None   # subset
+        self.right_values = None  # subset
 
     def plurality(self) -> int:
         """Majority class of the training rows that reached this node."""
@@ -48,16 +57,8 @@ class Node:
     def become_leaf(self) -> None:
         """Drop the split, keeping class weights (used by pruning)."""
         self.leaf = True
-        self.feature = None
-        self.kind = None
-        self.children = None
-        self.shares = None
-        self.default = None
-        self.threshold = None
-        self.left = None
-        self.right = None
-        self.p_left = None
         self.leaf_id = None
+        self._clear_split()
 
 
 def children_of(node):
@@ -101,111 +102,151 @@ def assign_leaf_ids(root) -> int:
 
 
 def step(node, row):
-    """Child reached from ``node`` for one sample ``row``."""
+    """Child reached from ``node`` for one row; missing takes the common child."""
     v = row[node.feature]
     if node.kind == MULTIWAY:
-        if v is None:
-            return node.children[node.default]
-        child = node.children.get(v)
+        child = None if v is None else node.children.get(v)
         return node.children[node.default] if child is None else child
+    common = node.left if node.default == 0 else node.right
+    if node.kind == SUBSET:
+        if v in node.left_values:
+            return node.left
+        return node.right if v in node.right_values else common
     if v is None or (isinstance(v, (float, np.floating)) and np.isnan(v)):
-        return node.left if node.default == 0 else node.right
+        return common
     return node.left if v <= node.threshold else node.right
 
 
 def traverse(root, row) -> Node:
-    """Leaf reached by one row (missing value follows the common child)."""
     node = root
     while not node.leaf:
         node = step(node, row)
     return node
 
 
-def predict_row(root, row, n_classes: int) -> np.ndarray:
-    leaf = traverse(root, row)
-    total = float(leaf.class_weights.sum())
-    if total <= 0.0:
-        return np.full(n_classes, 1.0 / n_classes)
-    return leaf.class_weights / total
+def _member_mask(values, allowed) -> np.ndarray:
+    return np.fromiter((v in allowed for v in values), dtype=bool,
+                       count=len(values))
 
 
-def build_tree(columns, kinds, y_idx, w, idx, depth, cfg: BuildConfig) -> Node:
+def _routes(node, column):
+    """``(child, mask, share)`` per child and the mask of unroutable rows."""
+    if node.kind == MULTIWAY:
+        routes = [(child, _member_mask(column, {value}), node.shares[value])
+                  for value, child in node.children.items()]
+    else:
+        if node.kind == SUBSET:
+            left = _member_mask(column, node.left_values)
+            right = _member_mask(column, node.right_values)
+        else:
+            known = ~np.isnan(column)
+            left = known & (column <= node.threshold)
+            right = known & (column > node.threshold)
+        routes = [(node.left, left, node.p_left),
+                  (node.right, right, 1.0 - node.p_left)]
+    routed = np.zeros(len(column), dtype=bool)
+    for _, mask, _ in routes:
+        routed |= mask
+    return routes, ~routed
+
+
+def accumulate_proba(node, columns, idx, weight, out, fractional):
+    """Add each row's class distribution to ``out``.
+
+    With ``fractional`` a row with an unknown value is sent down every
+    branch in proportion to that branch's share of the training weight, and
+    the leaves are averaged (Quinlan, 1993, C4.5, chapter 3). Otherwise it
+    follows the most common branch.
+    """
+    if idx.size == 0:
+        return
+    if node.leaf:
+        out[idx] += weight[:, None] * (node.class_weights / node.class_weights.sum())
+        return
+    routes, unknown = _routes(node, columns[node.feature][idx])
+    for child, mask, share in routes:
+        rows, row_weight = idx[mask], weight[mask]
+        if unknown.any():
+            if fractional:
+                rows = np.concatenate([rows, idx[unknown]])
+                row_weight = np.concatenate([row_weight, weight[unknown] * share])
+            elif child is _common_child(node):
+                rows = np.concatenate([rows, idx[unknown]])
+                row_weight = np.concatenate([row_weight, weight[unknown]])
+        accumulate_proba(child, columns, rows, row_weight, out, fractional)
+
+
+def _common_child(node):
+    if node.kind == MULTIWAY:
+        return node.children[node.default]
+    return node.left if node.default == 0 else node.right
+
+
+def _candidates(columns, kinds, y_n, w_n, idx, cfg):
+    out = []
+    for f, kind in enumerate(kinds):
+        values = columns[f][idx]
+        if kind == CONTINUOUS:
+            split, split_kind = best_split_continuous(values, y_n, w_n, cfg), BINARY
+        elif cfg.categorical_split == SUBSET:
+            split, split_kind = best_split_subset(values, y_n, w_n, cfg), SUBSET
+        else:
+            split, split_kind = best_split_multiway(values, y_n, w_n, cfg), MULTIWAY
+        if split is not None and split[0] > cfg.min_gain:
+            out.append((split[0], split[1], (split_kind, f, split[2])))
+    return out
+
+
+def build_tree(columns, kinds, y_idx, idx, w, depth, cfg: BuildConfig) -> Node:
+    """Grow a node from rows ``idx`` with row weights ``w`` aligned to ``idx``.
+
+    A row with a missing split value enters every child with its weight scaled
+    by the child's share (Materi 10c p. 22), so sizes are compared by weight.
+    """
     node = Node()
-    node.class_weights = np.bincount(y_idx[idx], weights=w[idx],
-                                     minlength=cfg.n_classes).astype(float)
-    if (idx.size < 2 * cfg.min_samples_leaf
+    y_n = y_idx[idx]
+    node.class_weights = np.bincount(y_n, weights=w, minlength=cfg.n_classes).astype(float)
+    if (float(w.sum()) < 2 * cfg.min_samples_leaf
             or int((node.class_weights > 0).sum()) <= 1
             or (cfg.max_depth is not None and depth >= cfg.max_depth)):
         return node
 
-    y_n = y_idx[idx]
-    w_n = w[idx]
-    candidates = []
-    for f, kind in enumerate(kinds):
-        vals = columns[f][idx]
-        if kind == CONTINUOUS:
-            cands = best_split_continuous(vals, y_n, w_n, cfg.n_classes,
-                                          cfg.min_samples_leaf)
-            cands = [c for c in cands if c[0] > cfg.min_gain]
-            if cands:
-                # threshold by greatest gain (Materi 10c p. 19); the
-                # attribute-level choice below still runs on gain ratio
-                best = max(cands, key=lambda c: c[0])
-                candidates.append((best[0], best[1], (BINARY, f, best[2])))
-        else:
-            split = best_split_categorical(vals, y_n, w_n, cfg.n_classes,
-                                           cfg.min_samples_leaf)
-            if split is not None and split[0] > cfg.min_gain:
-                candidates.append((split[0], split[1],
-                                   (MULTIWAY, f, split[2])))
-    chosen = select_split(candidates)
+    chosen = select_split(_candidates(columns, kinds, y_n, w, idx, cfg), cfg.use_ratio)
     if chosen is None:
         return node
 
-    _, _, (kind, f, payload) = chosen
+    kind, f, payload = chosen[2]
     node.leaf = False
     node.feature = f
     node.kind = kind
-    vals = columns[f][idx]
-    known = known_mask(vals)
-    miss = ~known
-    known_w = float(w[idx][known].sum())
+    values = columns[f][idx]
+    known = known_mask(values)
+    missing = ~known
+
+    def grow(mask, share):
+        rows = np.concatenate([idx[mask], idx[missing]])
+        weights = np.concatenate([w[mask], w[missing] * share])
+        return build_tree(columns, kinds, y_idx, rows, weights, depth + 1, cfg)
 
     if kind == MULTIWAY:
-        node.children = {}
-        node.shares = {}
-        for u in payload:
-            child_known = idx[known & (vals == u)]
-            share = float(w[child_known].sum()) / known_w if known_w > 0 else 0.0
-            node.children[u] = _build_child(columns, kinds, y_idx, w, idx,
-                                            child_known, miss, share, depth,
-                                            cfg)
-            node.shares[u] = share
+        masks = {u: known & _member_mask(values, {u}) for u in payload}
+        known_weight = float(w[known].sum())
+        node.shares = {u: float(w[m].sum()) / known_weight for u, m in masks.items()}
+        node.children = {u: grow(m, node.shares[u]) for u, m in masks.items()}
         node.default = max(node.shares, key=node.shares.get)
+        return node
+
+    if kind == SUBSET:
+        node.left_values, node.right_values = payload
+        left = known & _member_mask(values, node.left_values)
+        right = known & _member_mask(values, node.right_values)
     else:
-        thr = payload
-        left_known = idx[known & (vals <= thr)]
-        right_known = idx[known & (vals > thr)]
-        wl = float(w[left_known].sum())
-        wr = float(w[right_known].sum())
-        node.threshold = float(thr)
-        node.p_left = wl / (wl + wr) if wl + wr > 0 else 0.5
-        node.left = _build_child(columns, kinds, y_idx, w, idx, left_known,
-                                 miss, node.p_left, depth, cfg)
-        node.right = _build_child(columns, kinds, y_idx, w, idx, right_known,
-                                  miss, 1.0 - node.p_left, depth, cfg)
-        node.default = 0 if node.p_left >= 0.5 else 1
+        node.threshold = float(payload)
+        left = known & (values <= node.threshold)
+        right = known & (values > node.threshold)
+    weight_left, weight_right = float(w[left].sum()), float(w[right].sum())
+    node.p_left = weight_left / (weight_left + weight_right)
+    node.default = 0 if node.p_left >= 0.5 else 1
+    node.left = grow(left, node.p_left)
+    node.right = grow(right, 1.0 - node.p_left)
     return node
-
-
-def _build_child(columns, kinds, y_idx, w, idx, child_known, miss, share,
-                 depth, cfg: BuildConfig) -> Node:
-    """Build one child, appending the node's missing rows with weight share
-    (Materi 10c p. 22: p_i added to each value for splitting)."""
-    if miss.any():
-        child_idx = np.concatenate([child_known, idx[miss]])
-        child_w = w.copy()
-        child_w[idx[miss]] = w[idx[miss]] * share
-    else:
-        child_idx, child_w = child_known, w
-    return build_tree(columns, kinds, y_idx, child_w, child_idx, depth + 1, cfg)

@@ -4,10 +4,10 @@ import json
 
 import numpy as np
 
-from .tree import BINARY, MULTIWAY, Node
+from .tree import BINARY, MULTIWAY, SUBSET, Node
 
 FORMAT = "if3170-dtl"
-VERSION = 1
+VERSION = 2
 
 
 def _json_value(v):
@@ -28,8 +28,12 @@ def node_to_dict(node: Node) -> dict:
                        for v, s in node.shares.items()]
         d["default"] = _json_value(node.default)
     else:
-        d["kind"] = BINARY
-        d["threshold"] = float(node.threshold)
+        d["kind"] = node.kind
+        if node.kind == SUBSET:
+            d["left_values"] = sorted(_json_value(v) for v in node.left_values)
+            d["right_values"] = sorted(_json_value(v) for v in node.right_values)
+        else:
+            d["threshold"] = float(node.threshold)
         d["p_left"] = float(node.p_left)
         d["default"] = int(node.default)
         d["left"] = node_to_dict(node.left)
@@ -50,7 +54,11 @@ def node_from_dict(d: dict) -> Node:
         node.shares = {v: float(s) for v, s in d["shares"]}
         node.default = d["default"]
     else:
-        node.threshold = float(d["threshold"])
+        if node.kind == SUBSET:
+            node.left_values = frozenset(d["left_values"])
+            node.right_values = frozenset(d["right_values"])
+        else:
+            node.threshold = float(d["threshold"])
         node.p_left = float(d["p_left"])
         node.default = int(d["default"])
         node.left = node_from_dict(d["left"])

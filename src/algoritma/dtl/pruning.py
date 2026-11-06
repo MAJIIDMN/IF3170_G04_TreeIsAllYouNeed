@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+from statistics import NormalDist
+
 import numpy as np
 
 from .tree import Node, children_of, iter_internal, iter_nodes, step
+
+
+# C4.5 also collapses a subtree that is at most this many errors better.
+PRUNE_MARGIN = 0.1
 
 
 def _node_error(node) -> float:
@@ -73,39 +79,77 @@ def reduced_error_prune(root, columns, y_idx, val_idx):
 
 
 def cost_complexity_prune(root, alpha: float):
+    """Minimize error + alpha * leaves, with alpha in units of row weight.
+
+    One bottom-up pass finds the optimal subtree, because the best cost of a
+    subtree only depends on the best costs of its children (Breiman et al.,
+    1984, chapter 10). A tie collapses the node, which keeps the smaller tree.
+    """
     if alpha < 0.0:
         raise ValueError(f"alpha must be non-negative, got {alpha}")
     pruned = 0
-    while True:
-        internal = list(iter_internal(root))
-        if not internal:
-            break
-        leaves_err: dict[Node, tuple[int, float]] = {}
 
-        def stats(n: Node) -> tuple[int, float]:
-            if n.leaf:
-                leaves_err[n] = (1, _node_error(n))
-                return leaves_err[n]
-            leaves = 0
-            err = 0.0
-            for child in children_of(n):
-                sub_leaves, sub_err = stats(child)
-                leaves += sub_leaves
-                err += sub_err
-            leaves_err[n] = (leaves, err)
-            return leaves, err
+    def best_cost(node) -> float:
+        nonlocal pruned
+        as_leaf = _node_error(node) + alpha
+        if node.leaf:
+            return as_leaf
+        as_subtree = sum(best_cost(child) for child in children_of(node))
+        if as_leaf <= as_subtree:
+            node.become_leaf()
+            pruned += 1
+            return as_leaf
+        return as_subtree
 
-        stats(root)
-        best_t, best_alpha = None, None
-        for n in internal:  # preorder: ties collapse the earliest node
-            leaves, sub_err = leaves_err[n]
-            if leaves <= 1:
-                continue
-            a = (_node_error(n) - sub_err) / (leaves - 1)
-            if best_alpha is None or a < best_alpha:
-                best_t, best_alpha = n, a
-        if best_t is None or best_alpha > alpha:
-            break
-        best_t.become_leaf()
-        pruned += 1
+    best_cost(root)
+    return root, {"pruned_nodes": pruned}
+
+
+def _extra_errors(weight: float, errors: float, confidence: float, z: float) -> float:
+    """Errors to add for the upper confidence limit, as in C4.5 release 8.
+
+    Zero errors use the exact binomial limit 1 - CF^(1/N), under one error the
+    value is interpolated, and above that a corrected normal limit is used.
+    """
+    if errors < 1e-6:
+        return weight * (1.0 - confidence ** (1.0 / weight))
+    if errors < 0.9999:
+        none = weight * (1.0 - confidence ** (1.0 / weight))
+        return none + errors * (_extra_errors(weight, 1.0, confidence, z) - none)
+    if errors + 0.5 >= weight:
+        return z * (weight - errors)
+    corrected = errors + 0.5
+    coefficient = z * z
+    limit = (corrected + coefficient / 2.0 + z * np.sqrt(
+        corrected * (1.0 - corrected / weight) + coefficient / 4.0)) / (weight + coefficient)
+    return weight * limit - errors
+
+
+def pessimistic_prune(root, confidence: float):
+    """C4.5 error-based pruning (Quinlan, 1993, chapter 4).
+
+    A subtree is replaced by a leaf when the leaf's estimated errors are no
+    worse than the sum over the subtree, within ``PRUNE_MARGIN``. Lower
+    ``confidence`` prunes more.
+    Subtree raising from the original C4.5 is not implemented.
+    """
+    if not 0.0 < confidence < 1.0:
+        raise ValueError(f"confidence must be in (0, 1), got {confidence}")
+    z = NormalDist().inv_cdf(1.0 - confidence)
+    pruned = 0
+
+    def estimate(node) -> float:
+        nonlocal pruned
+        weight, errors = float(node.class_weights.sum()), _node_error(node)
+        as_leaf = errors + _extra_errors(weight, errors, confidence, z)
+        if node.leaf:
+            return as_leaf
+        as_subtree = sum(estimate(child) for child in children_of(node))
+        if as_leaf <= as_subtree + PRUNE_MARGIN:
+            node.become_leaf()
+            pruned += 1
+            return as_leaf
+        return as_subtree
+
+    estimate(root)
     return root, {"pruned_nodes": pruned}
