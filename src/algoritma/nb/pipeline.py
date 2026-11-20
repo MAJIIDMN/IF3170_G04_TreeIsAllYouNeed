@@ -54,6 +54,15 @@ FINAL_FEATURES = ["x_lead5_period", "x_sr_channel", "rate_mdl", "weekend_nights"
 FINAL_ALPHA = 1.0
 FINAL_THRESHOLD = -0.2
 
+COST_FP = 2.0
+COST_FN = 1.0
+COST_THRESHOLD = float(np.log(COST_FP / COST_FN))
+
+def expected_cost(y_true, y_pred, c_fp=COST_FP, c_fn=COST_FN):
+    false_positive = np.sum((y_pred == 1) & (y_true == 0))
+    false_negative = np.sum((y_pred == 0) & (y_true == 1))
+    return float((c_fp * false_positive + c_fn * false_negative) / len(y_true))
+
 def final_spec():
     pool = build_pool()
     return {name: pool[name] for name in FINAL_FEATURES}
@@ -72,7 +81,7 @@ def pca_fit(X, n_components=None):
 def pca_transform(X, mean, scale, components):
     return ((X - mean) / scale) @ components.T
 
-def submit():
+def write_submission(threshold, filename, save_model=False):
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     train = load_train()
     test_raw = load_test()
@@ -80,13 +89,20 @@ def submit():
 
     prep = Preprocessor(final_spec()).fit(train, y)
     model = NaiveBayes(alpha=FINAL_ALPHA).fit(prep.transform(train), y, prep.feature_types_)
-    model.save(OUTPUT_DIR / "nb_model.json")
+    if save_model:
+        model.save(OUTPUT_DIR / "nb_model.json")
 
-    labels = model.predict(prep.transform(test_raw), threshold=FINAL_THRESHOLD).astype(int)
+    labels = model.predict(prep.transform(test_raw), threshold=threshold).astype(int)
     submission = pd.DataFrame({ID_COL: test_raw[ID_COL], TARGET: labels})
-    submission.to_csv(OUTPUT_DIR / "submission.csv", index=False)
-    print(f"features={len(FINAL_FEATURES)} canceled_share={labels.mean():.4f} rows={len(submission)}")
+    submission.to_csv(OUTPUT_DIR / filename, index=False)
+    print(f"{filename} threshold={threshold:.3f} canceled_share={labels.mean():.4f} rows={len(submission)}")
+
+def submit():
+    write_submission(FINAL_THRESHOLD, "submission.csv", save_model=True)
+
+def submit_cost():
+    write_submission(COST_THRESHOLD, "submission_cost_sensitive.csv")
 
 
 if __name__ == "__main__":
-    {"submit": submit}[sys.argv[1]]()
+    {"submit": submit, "submit-cost": submit_cost}[sys.argv[1]]()
