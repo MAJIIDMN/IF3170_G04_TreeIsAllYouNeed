@@ -4,7 +4,6 @@ import numpy as np
 
 
 def entropy(class_weights) -> float:
-    """H = -sum_c p_c log2 p_c over a weighted class distribution."""
     w = np.asarray(class_weights, dtype=float)
     total = float(w.sum())
     if total <= 0.0:
@@ -29,7 +28,6 @@ def information_gain(parent_weights, child_weights) -> float:
 
 
 def split_info(child_weights) -> float:
-    """SplitInfo = -sum_i p_i log2 p_i over the children's weight shares."""
     children = [np.asarray(c, dtype=float) for c in child_weights]
     known = float(sum(c.sum() for c in children))
     if known <= 0.0:
@@ -39,14 +37,10 @@ def split_info(child_weights) -> float:
 
 
 def gain_ratio(gain: float, info: float) -> float:
-    """Ratio of a split; 0 when the split carries no information."""
     return gain / info if info > 0.0 else 0.0
 
 
 def select_split(candidates):
-    """Highest gain-ratio candidate whose gain is at least the mean gain of
-    all candidates (Materi 10c p. 27). Ties go to the first candidate in
-    input order; returns the chosen (gain, ratio, payload) tuple or None."""
     if not candidates:
         return None
     mean_gain = sum(g for g, _, _ in candidates) / len(candidates)

@@ -6,7 +6,6 @@ from .criteria import entropy, gain_ratio, information_gain, split_info
 
 
 def known_mask(values) -> np.ndarray:
-    """Boolean mask of rows whose attribute value is present."""
     if values.dtype == object:
         return np.fromiter((v is not None for v in values), dtype=bool,
                            count=len(values))
@@ -14,7 +13,6 @@ def known_mask(values) -> np.ndarray:
 
 
 def _entropy_rows(m: np.ndarray) -> np.ndarray:
-    """Entropy of each row of an (m, k) matrix of class weights."""
     totals = m.sum(axis=1, keepdims=True)
     p = np.divide(m, totals, out=np.zeros_like(m), where=totals > 0.0)
     logp = np.where(p > 0.0, np.log2(np.where(p > 0.0, p, 1.0)), 0.0)
@@ -22,12 +20,6 @@ def _entropy_rows(m: np.ndarray) -> np.ndarray:
 
 
 def best_split_continuous(values, y_idx, w, n_classes, min_samples_leaf):
-    """Candidate ``(gain, ratio, threshold)`` splits for a float column.
-
-    ``values`` is a float64 array of one node's rows with np.nan for missing.
-    Candidates are midpoints between adjacent known values whose value
-    differs; each side must keep at least ``min_samples_leaf`` known rows.
-    """
     known = known_mask(values)
     if int(known.sum()) < 2 * min_samples_leaf:
         return []
@@ -66,12 +58,6 @@ def best_split_continuous(values, y_idx, w, n_classes, min_samples_leaf):
 
 
 def best_split_categorical(values, y_idx, w, n_classes, min_samples_leaf):
-    """Multiway split over the values observed in an object column.
-
-    ``values`` is an object array with None for missing rows. Returns
-    ``(gain, ratio, observed_values)`` or None; every observed value needs at
-    least ``min_samples_leaf`` known rows or the whole split is rejected.
-    """
     known = known_mask(values)
     n_known = int(known.sum())
     if n_known < 2 * min_samples_leaf:
@@ -91,3 +77,44 @@ def best_split_categorical(values, y_idx, w, n_classes, min_samples_leaf):
         return None
     gain = information_gain(parent, children)
     return gain, gain_ratio(gain, split_info(children)), uniques
+
+
+# Sumber: L. Breiman et al., Classification and Regression Trees, 1984, Thm. 4.5.
+def best_split_categorical_binary(values, y_idx, w, n_classes,
+                                  min_samples_leaf):
+    known = known_mask(values)
+    if int(known.sum()) < 2 * min_samples_leaf:
+        return None
+    uniques = np.unique(values[known])
+    if uniques.size < 2:
+        return None
+    parent = np.bincount(y_idx, weights=w, minlength=n_classes)
+    per = []
+    counts = []
+    for u in uniques:
+        m = known & (values == u)
+        per.append(np.bincount(y_idx[m], weights=w[m], minlength=n_classes))
+        counts.append(int(m.sum()))
+    per = np.asarray(per)
+    counts = np.asarray(counts)
+    tot = per.sum(axis=1)
+    key = np.divide(per[:, -1], tot, out=np.zeros_like(tot), where=tot > 0)
+    order = np.argsort(key, kind="stable")
+    best = None
+    left = np.zeros(n_classes)
+    n_left = 0
+    for j in range(len(order) - 1):
+        left = left + per[order[j]]
+        n_left += counts[order[j]]
+        n_right = int(counts.sum()) - n_left
+        if n_left < min_samples_leaf or n_right < min_samples_leaf:
+            continue
+        right = per.sum(axis=0) - left
+        gain = information_gain(parent, [left, right])
+        ratio = gain_ratio(gain, split_info([left, right]))
+        if best is None or gain > best[0]:
+            best = (gain, ratio, j)
+    if best is None:
+        return None
+    gain, ratio, j = best
+    return gain, ratio, uniques[order[:j + 1]], uniques

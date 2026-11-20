@@ -6,17 +6,11 @@ from .tree import Node, children_of, iter_internal, iter_nodes, step
 
 
 def _node_error(node) -> float:
-    """Misclassification weight if the node were a leaf."""
     w = node.class_weights
     return float(w.sum() - w.max())
 
 
 def reduced_error_prune(root, columns, y_idx, val_idx):
-    """Greedy reduced error pruning on a validation slice.
-
-    Returns ``(root, report)``; ``report`` holds validation accuracy before
-    and after plus the number of pruned nodes.
-    """
     val_idx = np.asarray(val_idx, dtype=int)
     y_val = y_idx[val_idx]
     n_val = len(val_idx)
@@ -72,6 +66,7 @@ def reduced_error_prune(root, columns, y_idx, val_idx):
     return root, report
 
 
+# Sumber: L. Breiman et al., Classification and Regression Trees, 1984, ch. 3 (cost-complexity pruning).
 def cost_complexity_prune(root, alpha: float):
     if alpha < 0.0:
         raise ValueError(f"alpha must be non-negative, got {alpha}")
@@ -97,7 +92,7 @@ def cost_complexity_prune(root, alpha: float):
 
         stats(root)
         best_t, best_alpha = None, None
-        for n in internal:  # preorder: ties collapse the earliest node
+        for n in internal:
             leaves, sub_err = leaves_err[n]
             if leaves <= 1:
                 continue
@@ -108,4 +103,49 @@ def cost_complexity_prune(root, alpha: float):
             break
         best_t.become_leaf()
         pruned += 1
+    return root, {"pruned_nodes": pruned}
+
+
+# Sumber: J. R. Quinlan, C4.5 Release 8 source, stats.c (AddErrs).
+def _add_errs(n: float, e: float, cf: float, coeff: float) -> float:
+    if n <= 0.0:
+        return 0.0
+    if e < 1e-6:
+        return n * (1.0 - np.exp(np.log(cf) / n))
+    if e < 0.9999:
+        v = n * (1.0 - np.exp(np.log(cf) / n))
+        return v + e * (_add_errs(n, 1.0, cf, coeff) - v)
+    if e + 0.5 >= n:
+        return 0.67 * (n - e)
+    pr = (e + 0.5 + coeff / 2.0
+          + np.sqrt(coeff * ((e + 0.5) * (1.0 - (e + 0.5) / n) + coeff / 4.0))
+          ) / (n + coeff)
+    return n * pr - e
+
+
+# Sumber: J. R. Quinlan, C4.5: Programs for Machine Learning, 1993, ch. 4.
+def pessimistic_prune(root, confidence: float = 0.25):
+    if not 0.0 < confidence < 0.5:
+        raise ValueError(f"confidence must be in (0, 0.5), got {confidence}")
+    from statistics import NormalDist
+    coeff = NormalDist().inv_cdf(1.0 - confidence) ** 2
+    pruned = 0
+
+    def leaf_estimate(n: Node) -> float:
+        e = _node_error(n)
+        return e + _add_errs(float(n.class_weights.sum()), e, confidence, coeff)
+
+    def walk(n: Node) -> float:
+        nonlocal pruned
+        if n.leaf:
+            return leaf_estimate(n)
+        subtree = sum(walk(child) for child in children_of(n))
+        as_leaf = leaf_estimate(n)
+        if as_leaf <= subtree + 0.1:
+            n.become_leaf()
+            pruned += 1
+            return as_leaf
+        return subtree
+
+    walk(root)
     return root, {"pruned_nodes": pruned}

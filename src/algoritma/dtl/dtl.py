@@ -2,14 +2,19 @@ from __future__ import annotations
 
 import numpy as np
 
-from .pruning import cost_complexity_prune, reduced_error_prune
+from .pruning import (cost_complexity_prune, pessimistic_prune,
+                      reduced_error_prune)
 from .serialization import load_model, save_model
 from .tree import (CATEGORICAL, CONTINUOUS, BuildConfig, assign_leaf_ids,
-                   build_tree, predict_row, tree_depth, traverse)
+                   build_tree, predict_row, predict_row_distributed,
+                   predict_row_shrunk,
+                   tree_depth, traverse)
 
 __all__ = ["DTL"]
 
-_PRUNING = ("none", "reduced_error", "cost_complexity")
+_PRUNING = ("none", "reduced_error", "cost_complexity", "pessimistic")
+_MISSING_PREDICT = ("majority", "distribute")
+_SPLIT_CRITERIA = ("gain_ratio", "gain")
 
 
 def _is_missing(v) -> bool:
@@ -57,8 +62,6 @@ def _pandas_column(series, kind) -> np.ndarray:
 
 
 def _pandas_fit_series(series):
-    """pandas 3 labels strings as dtype \"str\", so kind is decided by
-    probing float conversion instead of matching the dtype name."""
     if str(series.dtype) == "category":
         return _pandas_column(series, CATEGORICAL), CATEGORICAL
     try:
@@ -80,10 +83,25 @@ def _stack(columns) -> np.ndarray:
 
 
 class DTL:
-    
     def __init__(self, max_depth=12, min_samples_leaf=5, min_gain=1e-7,
                  pruning="none", ccp_alpha=0.0, val_fraction=0.3,
-                 random_state=42):
+                 random_state=42, mdl_penalty=False,
+                 missing_predict="majority", split_criterion="gain_ratio",
+                 confidence=0.25, class_weight=None, shrinkage=0.0,
+                 laplace=False, categorical_split="multiway"):
+        if categorical_split not in ("multiway", "binary"):
+            raise ValueError("categorical_split must be 'multiway' or 'binary'")
+        if shrinkage < 0.0:
+            raise ValueError(f"shrinkage must be >= 0, got {shrinkage}")
+        if not (class_weight is None or class_weight == "balanced"
+                or isinstance(class_weight, dict)):
+            raise ValueError("class_weight must be None, 'balanced' or a dict")
+        if split_criterion not in _SPLIT_CRITERIA:
+            raise ValueError(f"split_criterion must be one of "
+                             f"{_SPLIT_CRITERIA}, got {split_criterion!r}")
+        if missing_predict not in _MISSING_PREDICT:
+            raise ValueError(f"missing_predict must be one of "
+                             f"{_MISSING_PREDICT}, got {missing_predict!r}")
         if pruning not in _PRUNING:
             raise ValueError(f"pruning must be one of {_PRUNING}, "
                              f"got {pruning!r}")
@@ -106,6 +124,14 @@ class DTL:
         self.ccp_alpha = ccp_alpha
         self.val_fraction = val_fraction
         self.random_state = random_state
+        self.mdl_penalty = bool(mdl_penalty)
+        self.missing_predict = missing_predict
+        self.split_criterion = split_criterion
+        self.confidence = confidence
+        self.class_weight = class_weight
+        self.shrinkage = float(shrinkage)
+        self.laplace = bool(laplace)
+        self.categorical_split = categorical_split
 
     
     def fit(self, X, y):
@@ -120,10 +146,21 @@ class DTL:
         self.classes_ = np.unique(y_arr)
         y_idx = np.searchsorted(self.classes_, y_arr)
         w = np.ones(len(y_arr), dtype=float)
+        if self.class_weight == "balanced":
+            counts = np.bincount(y_idx, minlength=len(self.classes_))
+            w = (len(y_arr) / (len(self.classes_) * counts))[y_idx]
+        elif isinstance(self.class_weight, dict):
+            cw = np.array([float(self.class_weight.get(
+                c, self.class_weight.get(str(c), 1.0)))
+                for c in self.classes_.tolist()])
+            w = cw[y_idx]
         cfg = BuildConfig(n_classes=len(self.classes_),
                           max_depth=self.max_depth,
                           min_samples_leaf=self.min_samples_leaf,
-                          min_gain=self.min_gain)
+                          min_gain=self.min_gain,
+                          mdl_penalty=self.mdl_penalty,
+                          split_criterion=self.split_criterion,
+                          categorical_split=self.categorical_split)
         n = len(y_arr)
         if self.pruning == "reduced_error":
             rng = np.random.default_rng(self.random_state)
@@ -140,6 +177,9 @@ class DTL:
             if self.pruning == "cost_complexity":
                 root, self.pruning_report_ = cost_complexity_prune(
                     root, self.ccp_alpha)
+            elif self.pruning == "pessimistic":
+                root, self.pruning_report_ = pessimistic_prune(
+                    root, self.confidence)
             else:
                 self.pruning_report_ = None
         self.root_ = root
@@ -208,8 +248,16 @@ class DTL:
         self._check_fitted()
         rows = _stack(self._predict_columns(X))
         out = np.empty((len(rows), len(self.classes_)), dtype=float)
+        k = len(self.classes_)
+        if getattr(self, "shrinkage", 0.0) > 0.0 or getattr(self, "laplace", False):
+            for i, row in enumerate(rows):
+                out[i] = predict_row_shrunk(self.root_, row, k, self.shrinkage,
+                                            self.laplace)
+            return out
+        predict = (predict_row_distributed
+                   if self.missing_predict == "distribute" else predict_row)
         for i, row in enumerate(rows):
-            out[i] = predict_row(self.root_, row, len(self.classes_))
+            out[i] = predict(self.root_, row, k)
         return out
 
     def predict(self, X) -> np.ndarray:
@@ -217,7 +265,6 @@ class DTL:
         return self.classes_[np.argmax(proba, axis=1)]
 
     def apply(self, X) -> np.ndarray:
-        """Index of the leaf each row lands in (leaf ids are preorder)."""
         self._check_fitted()
         rows = _stack(self._predict_columns(X))
         return np.array([traverse(self.root_, row).leaf_id for row in rows])
@@ -231,6 +278,16 @@ class DTL:
             "ccp_alpha": self.ccp_alpha,
             "val_fraction": self.val_fraction,
             "random_state": self.random_state,
+            "mdl_penalty": self.mdl_penalty,
+            "missing_predict": self.missing_predict,
+            "split_criterion": self.split_criterion,
+            "confidence": self.confidence,
+            "shrinkage": self.shrinkage,
+            "laplace": self.laplace,
+            "categorical_split": self.categorical_split,
+            "class_weight": (None if self.class_weight is None else
+                             self.class_weight if isinstance(self.class_weight, str)
+                             else {str(k): float(v) for k, v in self.class_weight.items()}),
         }
         save_model(path, params, self.classes_, self.feature_names_,
                    self.kinds_, self.pruning_report_, self.root_,
