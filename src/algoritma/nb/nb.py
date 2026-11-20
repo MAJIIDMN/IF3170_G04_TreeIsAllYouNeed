@@ -1,4 +1,4 @@
-import jso
+import json
 import numpy as np
 
 GAUSSIAN = "gaussian"
