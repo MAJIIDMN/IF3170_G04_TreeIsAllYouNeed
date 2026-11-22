@@ -1,0 +1,28 @@
+\subsection{Implementasi \textit{From Scratch}}
+\label{subsec:lr-implementasi}
+
+\subsubsection{Landasan Teori}
+\todo{Jelaskan fungsi sigmoid, \textit{log-loss}, \textit{gradient descent} (\textit{batch}, stokastik, \textit{mini-batch}), serta regularisasi L1 \cite{tibshirani1996lasso}, L2, dan \textit{Elastic Net} \cite{zou2005elasticnet} lengkap dengan rumus penalti dan gradiennya. Acu \cite{khodra-lr-what,khodra-lr-sga}. Sertakan rumus utama dalam lingkungan \texttt{equation}/\texttt{align}.}
+
+\subsubsection{Struktur Kelas dan Fungsi}
+\todo{Deskripsikan kelas pada \texttt{src/algoritma/lr/lr.py}: \texttt{sigmoid}, \texttt{\_\_init\_\_}, fungsi penalti dan gradiennya, \texttt{loss}, \texttt{fit}, \texttt{predict\_proba}, \texttt{predict}, \texttt{save}, \texttt{load}. Isi tabel di bawah, satu baris per fungsi/metode.}
+
+\begin{table}[H]
+	\centering
+	\caption{Deskripsi kelas dan fungsi LR}
+	\label{tab:lr-fungsi}
+	\begin{tabularx}{\textwidth}{l Y}
+		\toprule
+		\textbf{Fungsi/Metode} & \textbf{Deskripsi} \\
+		\midrule
+		\texttt{nama\_fungsi} & \todo{deskripsi} \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+\subsubsection{\textit{Source Code}}
+\todo{Sisipkan potongan kode inti (penalti regularisasi, fungsi \textit{loss}, dan \textit{loop} pelatihan) dengan makro \texttt{\textbackslash kode}, lalu jelaskan alurnya. Cek ulang nomor baris jika kode berubah.}
+% \kode{../../src/algoritma/lr/lr.py}{1}{30}{Judul potongan kode}{lst:lr-inti}
+
+\subsubsection{\textit{Save} dan \textit{Load} Model}
+\todo{Format penyimpanan (JSON/\texttt{.npz}/\textit{pickle}), isi yang disimpan, dan contoh pemakaian.}

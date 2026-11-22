@@ -1,0 +1,28 @@
+\subsection{Implementasi \textit{From Scratch}}
+\label{subsec:nb-implementasi}
+
+\subsubsection{Landasan Teori}
+\todo{Jelaskan teorema Bayes, asumsi independensi bersyarat (\textit{Naive Bayes} sebagai \textit{Bayesian network} dengan kelas sebagai \textit{parent} semua fitur), \textit{likelihood} kategorikal dengan Laplace \textit{smoothing} dan numerik dengan Gaussian, serta perhitungan dalam ruang log. Acu \cite{slide-bayesnet}. Sertakan rumus utama dalam lingkungan \texttt{equation}/\texttt{align}.}
+
+\subsubsection{Struktur Kelas dan Fungsi}
+\todo{Deskripsikan kelas pada \texttt{src/algoritma/nb/nb.py}: \texttt{\_\_init\_\_}, \texttt{fit} (estimasi \textit{prior} dan \textit{likelihood}), \texttt{predict\_proba}, \texttt{predict}, \texttt{save}, \texttt{load}. Isi tabel di bawah, satu baris per fungsi/metode.}
+
+\begin{table}[H]
+	\centering
+	\caption{Deskripsi kelas dan fungsi NB}
+	\label{tab:nb-fungsi}
+	\begin{tabularx}{\textwidth}{l Y}
+		\toprule
+		\textbf{Fungsi/Metode} & \textbf{Deskripsi} \\
+		\midrule
+		\texttt{nama\_fungsi} & \todo{deskripsi} \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+\subsubsection{\textit{Source Code}}
+\todo{Sisipkan potongan kode inti (estimasi parameter dan perhitungan \textit{posterior}) dengan makro \texttt{\textbackslash kode}, lalu jelaskan alurnya. Cek ulang nomor baris jika kode berubah.}
+% \kode{../../src/algoritma/nb/nb.py}{1}{30}{Judul potongan kode}{lst:nb-inti}
+
+\subsubsection{\textit{Save} dan \textit{Load} Model}
+\todo{Format penyimpanan (JSON/\texttt{.npz}/\textit{pickle}), isi yang disimpan, dan contoh pemakaian.}

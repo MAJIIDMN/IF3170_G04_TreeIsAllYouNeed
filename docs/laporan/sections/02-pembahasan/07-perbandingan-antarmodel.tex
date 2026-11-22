@@ -1,0 +1,30 @@
+\section{Perbandingan Antarmodel}
+\label{sec:perbandingan}
+
+\todo{Rangkum kinerja terbaik setiap algoritma pada protokol validasi yang sama.}
+
+\begin{table}[H]
+	\centering
+	\caption{Rangkuman kinerja seluruh model}
+	\label{tab:rangkuman}
+	\begin{tabular}{l c c c c}
+		\toprule
+		\textbf{Model} & \textbf{CV Macro F1 (scratch)} & \textbf{CV Macro F1 (sklearn)} & \textbf{Kaggle} & \textbf{Waktu latih (s)} \\
+		\midrule
+		KNN & & & & \\
+		DTL (C4.5) & & & & \\
+		\textit{Logistic Regression} & & & & \\
+		SVM & & & & \\
+		\textit{Naive Bayes} & & & & \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+	\centering
+	\placeholdergambar{Diagram batang \textit{macro F1} per model, \textit{scratch} vs \textit{scikit-learn}}
+	\caption{Perbandingan \textit{macro F1} seluruh model}
+	\label{fig:rangkuman}
+\end{figure}
+
+\todo{Analisis: model terbaik dan alasannya (kecocokan bias induktif dengan karakteristik data), \textit{trade-off} kinerja dan waktu, serta model yang dipilih untuk submisi Kaggle.}

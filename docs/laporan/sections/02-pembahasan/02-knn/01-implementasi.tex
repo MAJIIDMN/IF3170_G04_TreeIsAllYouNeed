@@ -1,0 +1,28 @@
+\subsection{Implementasi \textit{From Scratch}}
+\label{subsec:knn-implementasi}
+
+\subsubsection{Landasan Teori}
+\todo{Jelaskan prinsip \textit{lazy learning}, metrik jarak (Euclidean, Manhattan, Minkowski), pemilihan $k$, \textit{voting} mayoritas atau berbobot jarak, dan penanganan \textit{tie}. Acu salindia KNN \cite{slide-knn} dan \cite{cunningham2020knn}. Sertakan rumus utama dalam lingkungan \texttt{equation}/\texttt{align}.}
+
+\subsubsection{Struktur Kelas dan Fungsi}
+\todo{Deskripsikan kelas pada \texttt{src/algoritma/knn/knn.py}: \texttt{\_\_init\_\_}, \texttt{fit}, perhitungan jarak, pencarian $k$ tetangga, \texttt{predict\_proba}, \texttt{predict}, \texttt{save}, \texttt{load}. Isi tabel di bawah, satu baris per fungsi/metode.}
+
+\begin{table}[H]
+	\centering
+	\caption{Deskripsi kelas dan fungsi KNN}
+	\label{tab:knn-fungsi}
+	\begin{tabularx}{\textwidth}{l Y}
+		\toprule
+		\textbf{Fungsi/Metode} & \textbf{Deskripsi} \\
+		\midrule
+		\texttt{nama\_fungsi} & \todo{deskripsi} \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+\subsubsection{\textit{Source Code}}
+\todo{Sisipkan potongan kode inti (perhitungan jarak (vektorisasi) dan \textit{voting}) dengan makro \texttt{\textbackslash kode}, lalu jelaskan alurnya. Cek ulang nomor baris jika kode berubah.}
+% \kode{../../src/algoritma/knn/knn.py}{1}{30}{Judul potongan kode}{lst:knn-inti}
+
+\subsubsection{\textit{Save} dan \textit{Load} Model}
+\todo{Format penyimpanan (JSON/\texttt{.npz}/\textit{pickle}), isi yang disimpan, dan contoh pemakaian.}

@@ -1,0 +1,80 @@
+\section{Eksplorasi Data}
+\label{sec:eda}
+
+\todo{Rangkum temuan \textit{exploratory data analysis} (EDA) dari \texttt{src/kaggle/eda.ipynb}. Gambar hasil EDA tersedia di \texttt{output/eda/}; ganti setiap \texttt{\textbackslash placeholdergambar} dengan \texttt{\textbackslash includegraphics}.}
+
+\subsection{Kualitas Data}
+\label{subsec:kualitas-data}
+
+\todo{Temuan nilai hilang, duplikat, dan nilai tidak wajar. Tuliskan persentase dan kolom
+yang terdampak.}
+
+\begin{figure}[H]
+	\centering
+	\placeholdergambar{\texttt{output/eda/missing\_pct.png}}
+	\caption{Persentase nilai hilang per fitur}
+	\label{fig:missing-pct}
+\end{figure}
+
+\subsection{Distribusi Fitur Numerik}
+\label{subsec:eda-numerik}
+
+\todo{Distribusi fitur kontinu, hitungan, dan biner serta hubungannya dengan target.}
+
+\begin{figure}[H]
+	\centering
+	\placeholdergambar{\texttt{output/eda/continuous\_features.png}}
+	\caption{Distribusi fitur kontinu terhadap target}
+	\label{fig:continuous-features}
+\end{figure}
+
+\subsection{Distribusi Fitur Kategorikal}
+\label{subsec:eda-kategorikal}
+
+\todo{Tingkat pembatalan per kategori. Kategori apa yang paling informatif?}
+
+\begin{figure}[H]
+	\centering
+	\placeholdergambar{\texttt{output/eda/categorical\_rates.png}}
+	\caption{Tingkat pembatalan per kategori}
+	\label{fig:categorical-rates}
+\end{figure}
+
+\subsection{Pola Waktu}
+\label{subsec:eda-waktu}
+
+\todo{Tren bulanan, pola kalender, dan interaksi \textit{lead time} dengan periode.}
+
+\begin{figure}[H]
+	\centering
+	\placeholdergambar{\texttt{output/eda/monthly\_trend.png}}
+	\caption{Tren pembatalan bulanan}
+	\label{fig:monthly-trend}
+\end{figure}
+
+\subsection{Korelasi dan Relevansi Fitur}
+\label{subsec:eda-korelasi}
+
+\todo{Korelasi Spearman, \textit{mutual information}, dan Cram\'er's V. Fitur mana yang paling
+berpengaruh terhadap target?}
+
+\begin{figure}[H]
+	\centering
+	\begin{subfigure}{0.48\textwidth}
+		\placeholdergambar{\texttt{output/eda/spearman\_correlation.png}}
+		\caption{Korelasi Spearman}
+	\end{subfigure}
+	\hfill
+	\begin{subfigure}{0.48\textwidth}
+		\placeholdergambar{\texttt{output/eda/mutual\_information.png}}
+		\caption{\textit{Mutual information}}
+	\end{subfigure}
+	\caption{Relevansi fitur terhadap target}
+	\label{fig:relevansi-fitur}
+\end{figure}
+
+\subsection{Ringkasan Temuan}
+\label{subsec:ringkasan-eda}
+
+\todo{Kaitkan EDA dengan tahap \textit{data understanding} pada CRISP-DM \cite{slide-crispdm}. Daftar temuan utama yang menjadi dasar keputusan \textit{cleaning} dan
+\textit{preprocessing} pada subbab \textit{preprocessing} tiap algoritma pada Bab~2.}

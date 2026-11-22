@@ -1,0 +1,26 @@
+\section{Kerangka Umum Eksperimen}
+\label{sec:kerangka-umum}
+
+\todo{Bagian yang berlaku untuk semua algoritma, supaya tidak diulang di setiap subbab algoritma:}
+
+\subsection{Struktur Kode dan Antarmuka}
+\todo{Struktur direktori \texttt{src/} dan antarmuka seragam setiap kelas (\texttt{fit}, \texttt{predict}, \texttt{predict\_proba}, \texttt{save}, \texttt{load}). Hanya NumPy yang dipakai untuk implementasi \textit{from scratch}.}
+
+\begin{table}[H]
+	\centering
+	\caption{Ringkasan implementasi algoritma}
+	\label{tab:ringkasan-implementasi}
+	\begin{tabular}{l l l l}
+		\toprule
+		\textbf{Algoritma} & \textbf{Berkas} & \textbf{Kelas} & \textbf{Format model} \\
+		\midrule
+		\todo{} & & & \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\subsection{\textit{Preprocessing} Bersama}
+\todo{Langkah yang dipakai semua model, misalnya pemuatan data, pembuangan kolom ID, atau fitur turunan bersama. Tegaskan bahwa \textit{preprocessing} dilakukan terpisah pada data latih dan data uji.}
+
+\subsection{Protokol Validasi dan Reproduktibilitas}
+\todo{\textit{Fold} CV yang dipakai bersama, \textit{seed}, metrik (rujuk Subbab~\ref{sec:metrik}), versi pustaka (\texttt{requirements.txt}), dan notebook mana yang mereproduksi submisi Kaggle.}

@@ -1,0 +1,29 @@
+\subsection{Hasil dan Perbandingan dengan \textit{Scikit-learn}}
+\label{subsec:knn-hasil}
+
+\todo{Bandingkan dengan \texttt{sklearn.neighbors.KNeighborsClassifier} dengan $k$, metrik, dan bobot yang sama. Pakai \textit{preprocessing} dan \textit{fold} yang sama agar perbedaan hanya berasal dari implementasi \cite{pedregosa2011sklearn}.}
+
+\begin{table}[H]
+	\centering
+	\caption{Perbandingan KNN \textit{from scratch} dan \textit{scikit-learn}}
+	\label{tab:knn-hasil}
+	\begin{tabular}{l c c c c c}
+		\toprule
+		\textbf{Implementasi} & \textbf{Macro F1} & \textbf{Accuracy} & \textbf{Precision} & \textbf{Recall} & \textbf{Waktu (s)} \\
+		\midrule
+		\textit{From scratch} & & & & & \\
+		\textit{Scikit-learn} & & & & & \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+	\centering
+	\placeholdergambar{\textit{Confusion matrix} \textit{from scratch} vs \textit{scikit-learn}}
+	\caption{\textit{Confusion matrix} KNN}
+	\label{fig:knn-cm}
+\end{figure}
+
+
+\subsubsection{Analisis}
+\todo{Hasil seharusnya identik jika $k$, metrik, dan penanganan \textit{tie} sama. Jelaskan selisih yang muncul dan bandingkan waktu prediksinya (\textit{brute force} vs KD-tree/Ball-tree).}
