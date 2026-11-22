@@ -1,0 +1,25 @@
+\subsection{\textit{Data Cleaning} dan \textit{Preprocessing}}
+\label{subsec:knn-preprocessing}
+
+\todo{Jelaskan \textit{pipeline} khusus KNN beserta alasan tiap langkah, dikaitkan dengan temuan EDA (Subbab~\ref{sec:eda}) dan karakteristik algoritma. Semua transformasi di-\textit{fit} pada data latih saja lalu diterapkan ke data uji \cite{slide-dataprep}.}
+
+\subsubsection{Penanganan \textit{Missing Values}}
+\todo{KNN tidak bisa menghitung jarak dengan nilai hilang, sehingga imputasi wajib. Jelaskan strategi per kolom (median/modus/konstanta) dan alasannya.}
+
+\subsubsection{Data Duplikat dan Data Tidak Valid}
+\todo{Jumlah duplikat, nilai tidak wajar, atau \textit{outlier} yang ditangani untuk KNN dan caranya. Baris data uji tidak boleh dibuang.}
+
+\subsubsection{Konstruksi Fitur dan \textit{Encoding}}
+\todo{KNN butuh fitur numerik. Jelaskan \textit{encoding} kategorikal (\textit{one-hot} vs \textit{ordinal}/\textit{target}) dan dampaknya ke jarak (dimensi besar membuat jarak kurang bermakna).}
+
+\subsubsection{Normalisasi dan Standarisasi}
+\todo{Wajib karena KNN berbasis jarak. Fitur berskala besar akan mendominasi. Jelaskan \textit{scaler} yang dipilih (standar/\textit{min-max}/\textit{robust}).}
+
+\subsubsection{Penanganan \textit{Imbalanced Data}}
+\todo{Misalnya \textit{distance-weighted voting}, \textit{threshold} probabilitas, atau \textit{resampling}.}
+
+\subsubsection{\textit{Feature Selection}}
+\todo{Sangat berpengaruh karena fitur tak relevan ikut menambah jarak (\textit{curse of dimensionality}). Sebutkan fitur akhir yang dipakai.}
+
+\subsubsection{\textit{Dimensionality Reduction}}
+\todo{Relevan untuk KNN: mengurangi dimensi dan mempercepat perhitungan jarak. Laporkan dampaknya.}

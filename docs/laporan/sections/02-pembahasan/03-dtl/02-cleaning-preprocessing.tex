@@ -1,0 +1,25 @@
+\subsection{\textit{Data Cleaning} dan \textit{Preprocessing}}
+\label{subsec:dtl-preprocessing}
+
+\todo{Jelaskan \textit{pipeline} khusus DTL beserta alasan tiap langkah, dikaitkan dengan temuan EDA (Subbab~\ref{sec:eda}) dan karakteristik algoritma. Semua transformasi di-\textit{fit} pada data latih saja lalu diterapkan ke data uji \cite{slide-dataprep}.}
+
+\subsubsection{Penanganan \textit{Missing Values}}
+\todo{C4.5 menangani \textit{null} secara bawaan (bobot fraksional saat \textit{training} dan distribusi probabilitas saat prediksi), jadi imputasi tidak wajib. Jelaskan apakah tetap ada imputasi dan alasannya.}
+
+\subsubsection{Data Duplikat dan Data Tidak Valid}
+\todo{Jumlah duplikat, nilai tidak wajar, atau \textit{outlier} yang ditangani untuk DTL dan caranya. Baris data uji tidak boleh dibuang.}
+
+\subsubsection{Konstruksi Fitur dan \textit{Encoding}}
+\todo{DTL dapat memakai kategori mentah (\textit{multiway} atau \textit{binary split}), sehingga \textit{encoding} tidak wajib. Jelaskan keputusan yang diambil.}
+
+\subsubsection{Normalisasi dan Standarisasi}
+\todo{Tidak diperlukan karena \textit{split} berbasis \textit{threshold} tidak terpengaruh skala. Tulis alasannya singkat.}
+
+\subsubsection{Penanganan \textit{Imbalanced Data}}
+\todo{Misalnya \textit{class weight}, \textit{threshold} probabilitas daun, atau Laplace \textit{correction}.}
+
+\subsubsection{\textit{Feature Selection}}
+\todo{Pohon melakukan seleksi fitur implisit, tetapi fitur ber-kardinalitas tinggi dapat memicu \textit{overfitting}. Laporkan \textit{ablation study} jika ada. Sebutkan fitur akhir yang dipakai.}
+
+\subsubsection{\textit{Dimensionality Reduction}}
+\todo{Umumnya merugikan DTL karena komponen PCA sulit dipecah dengan \textit{split} sejajar sumbu dan menghilangkan interpretabilitas. Laporkan hasil percobaannya.}
