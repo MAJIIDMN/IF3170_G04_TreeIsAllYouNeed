@@ -68,6 +68,8 @@ FINAL_THRESHOLD = MODELS["nb"]["threshold"]
 
 COST_FP = 2.0
 COST_FN = 1.0
+# Threshold di bawah merupakan aturan keputusan cost-sensitive.
+# Referensi: "The Foundations of Cost-Sensitive Learning" (Elkan, 2001)
 COST_THRESHOLD = float(np.log(COST_FP / COST_FN))
 
 def expected_cost(y_true, y_pred, c_fp=COST_FP, c_fn=COST_FN):
