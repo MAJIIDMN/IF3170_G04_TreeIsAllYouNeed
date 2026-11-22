@@ -1,0 +1,33 @@
+\subsection{Hasil dan Perbandingan dengan \textit{Scikit-learn}}
+\label{subsec:svm-hasil}
+
+\todo{Bandingkan dengan \texttt{sklearn.svm.SVC} untuk tiap kernel dengan $C$, $\gamma$, dan \textit{degree} yang sama. Pakai \textit{preprocessing} dan \textit{fold} yang sama agar perbedaan hanya berasal dari implementasi \cite{pedregosa2011sklearn}.}
+
+\begin{table}[H]
+	\centering
+	\caption{Perbandingan SVM \textit{from scratch} dan \textit{scikit-learn}}
+	\label{tab:svm-hasil}
+	\begin{tabular}{l c c c c c}
+		\toprule
+		\textbf{Implementasi} & \textbf{Macro F1} & \textbf{Accuracy} & \textbf{Precision} & \textbf{Recall} & \textbf{Waktu (s)} \\
+		\midrule
+		\textit{Scratch} -- \textit{Linear} & & & & & \\
+		\textit{Sklearn} -- \textit{Linear} & & & & & \\
+		\textit{Scratch} -- \textit{Polynomial} & & & & & \\
+		\textit{Sklearn} -- \textit{Polynomial} & & & & & \\
+		\textit{Scratch} -- \textit{Gaussian} & & & & & \\
+		\textit{Sklearn} -- \textit{Gaussian} & & & & & \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+	\centering
+	\placeholdergambar{\textit{Confusion matrix} \textit{from scratch} vs \textit{scikit-learn}}
+	\caption{\textit{Confusion matrix} SVM}
+	\label{fig:svm-cm}
+\end{figure}
+
+
+\subsubsection{Analisis}
+\todo{Bandingkan juga jumlah \textit{support vector} dan nilai \texttt{decision\_function}. Jelaskan selisih akibat toleransi, pemilihan \textit{working set}, dan \textit{shrinking} pada LIBSVM.}

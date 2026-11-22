@@ -1,0 +1,33 @@
+\subsection{Hasil dan Perbandingan dengan \textit{Scikit-learn}}
+\label{subsec:dtl-hasil}
+
+\todo{Bandingkan dengan \texttt{DecisionTreeClassifier} dalam tiga konfigurasi wajib dari spesifikasi: ID3 (\texttt{criterion='entropy'}), C4.5 (\texttt{criterion='entropy'} + \texttt{ccp\_alpha}), dan CART (\texttt{criterion='gini'}). Jelaskan \textit{preprocessing} tambahan untuk \textit{sklearn} (\textit{encoding} dan imputasi) serta cara memilih \texttt{ccp\_alpha}. Pakai \textit{preprocessing} dan \textit{fold} yang sama agar perbedaan hanya berasal dari implementasi \cite{pedregosa2011sklearn}.}
+
+\begin{table}[H]
+	\centering
+	\caption{Perbandingan DTL \textit{from scratch} dan \textit{scikit-learn}}
+	\label{tab:dtl-hasil}
+	\begin{tabular}{l c c c c c}
+		\toprule
+		\textbf{Implementasi} & \textbf{Macro F1} & \textbf{Accuracy} & \textbf{Precision} & \textbf{Recall} & \textbf{Waktu (s)} \\
+		\midrule
+		\textit{From scratch} (C4.5) & & & & & \\
+		\textit{Sklearn} ID3 & & & & & \\
+		\textit{Sklearn} C4.5 (\texttt{ccp\_alpha}) & & & & & \\
+		\textit{Sklearn} CART & & & & & \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+	\centering
+	\placeholdergambar{\textit{Confusion matrix} \textit{from scratch} vs \textit{scikit-learn}}
+	\caption{\textit{Confusion matrix} DTL}
+	\label{fig:dtl-cm}
+\end{figure}
+
+\subsubsection{Pengaruh \textit{Pruning}}
+\todo{Bandingkan strategi \textit{pruning} (tanpa, \textit{pessimistic}, \textit{reduced error}, \textit{cost-complexity}): kedalaman, jumlah daun, dan \textit{macro F1}. Sertakan grafik.}
+
+\subsubsection{Analisis}
+\todo{Bandingkan kedalaman, jumlah daun, dan kinerja. Jelaskan perbedaan karena \textit{gain ratio} vs entropi/gini, \textit{multiway} vs \textit{binary split}, penanganan \textit{null}, dan jenis \textit{pruning}.}

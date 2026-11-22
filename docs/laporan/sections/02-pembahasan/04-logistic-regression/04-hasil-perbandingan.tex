@@ -1,0 +1,35 @@
+\subsection{Hasil dan Perbandingan dengan \textit{Scikit-learn}}
+\label{subsec:lr-hasil}
+
+\todo{Bandingkan dengan \texttt{sklearn.linear\_model.LogisticRegression} untuk tiap penalti. Perhatikan konversi parameter ($C = 1/(n\lambda)$, \texttt{l1\_ratio} $=\rho$) dan \textit{solver} yang mendukung tiap penalti. Pakai \textit{preprocessing} dan \textit{fold} yang sama agar perbedaan hanya berasal dari implementasi \cite{pedregosa2011sklearn}.}
+
+\begin{table}[H]
+	\centering
+	\caption{Perbandingan LR \textit{from scratch} dan \textit{scikit-learn}}
+	\label{tab:lr-hasil}
+	\begin{tabular}{l c c c c c}
+		\toprule
+		\textbf{Implementasi} & \textbf{Macro F1} & \textbf{Accuracy} & \textbf{Precision} & \textbf{Recall} & \textbf{Waktu (s)} \\
+		\midrule
+		\textit{Scratch} -- L1 & & & & & \\
+		\textit{Sklearn} -- L1 & & & & & \\
+		\textit{Scratch} -- L2 & & & & & \\
+		\textit{Sklearn} -- L2 & & & & & \\
+		\textit{Scratch} -- \textit{Elastic Net} & & & & & \\
+		\textit{Sklearn} -- \textit{Elastic Net} & & & & & \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+	\centering
+	\placeholdergambar{\textit{Confusion matrix} \textit{from scratch} vs \textit{scikit-learn}}
+	\caption{\textit{Confusion matrix} LR}
+	\label{fig:lr-cm}
+\end{figure}
+
+\subsubsection{Kurva \textit{Loss}}
+\todo{Plot \texttt{loss\_history} per \textit{epoch} untuk tiap penalti dan analisis konvergensinya.}
+
+\subsubsection{Analisis}
+\todo{Bandingkan juga bobot yang dihasilkan dan jumlah bobot nol (\textit{sparsity}). Jelaskan perbedaan akibat \textit{solver} (GD vs L-BFGS/SAGA/\textit{coordinate descent}) dan kriteria berhenti.}

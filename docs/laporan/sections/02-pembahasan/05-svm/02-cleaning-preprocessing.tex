@@ -1,0 +1,25 @@
+\subsection{\textit{Data Cleaning} dan \textit{Preprocessing}}
+\label{subsec:svm-preprocessing}
+
+\todo{Jelaskan \textit{pipeline} khusus SVM beserta alasan tiap langkah, dikaitkan dengan temuan EDA (Subbab~\ref{sec:eda}) dan karakteristik algoritma. Semua transformasi di-\textit{fit} pada data latih saja lalu diterapkan ke data uji \cite{slide-dataprep}.}
+
+\subsubsection{Penanganan \textit{Missing Values}}
+\todo{SVM tidak menerima \textit{null}, jadi imputasi wajib. Jelaskan strategi per kolom dan alasannya.}
+
+\subsubsection{Data Duplikat dan Data Tidak Valid}
+\todo{Jumlah duplikat, nilai tidak wajar, atau \textit{outlier} yang ditangani untuk SVM dan caranya. Baris data uji tidak boleh dibuang.}
+
+\subsubsection{Konstruksi Fitur dan \textit{Encoding}}
+\todo{SVM butuh fitur numerik. Jelaskan \textit{encoding} kategorikal dan pengaruhnya ke kernel.}
+
+\subsubsection{Normalisasi dan Standarisasi}
+\todo{Wajib, terutama untuk kernel RBF dan \textit{polynomial} yang sensitif terhadap skala.}
+
+\subsubsection{Penanganan \textit{Imbalanced Data}}
+\todo{Misalnya \textit{class weight} (nilai $C$ berbeda per kelas) atau penyesuaian \textit{threshold} pada \texttt{decision\_function}.}
+
+\subsubsection{\textit{Feature Selection}}
+\todo{Jelaskan seleksi fitur yang dipakai dan dampaknya ke waktu pelatihan. Sebutkan fitur akhir yang dipakai.}
+
+\subsubsection{\textit{Dimensionality Reduction}}
+\todo{Jelaskan apakah PCA dipakai (juga untuk visualisasi 2D bonus) dan dampaknya.}
