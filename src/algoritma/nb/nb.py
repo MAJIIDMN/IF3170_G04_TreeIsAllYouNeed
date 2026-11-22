@@ -67,7 +67,7 @@ class NaiveBayes:
                         self.var_[c, j] = max(epsilon, 1.0)
             else:
                 codes = column[known]
-                if codes.size and (codes < 0).any() or (codes != np.floor(codes)).any():
+                if (codes.size and (codes < 0).any()) or (codes != np.floor(codes)).any():
                     raise ValueError(f"categorical feature {j} needs non-negative integer codes")
                 n_cat = int(codes.max()) + 1 if codes.size else 1
                 counts = np.zeros((n_classes, n_cat))
@@ -130,8 +130,17 @@ class NaiveBayes:
         return self.classes_[(self.decision_function(X) > threshold).astype(int)]
 
     def save(self, path):
+        with open(path, "w", encoding="utf-8") as file:
+            json.dump(self.to_dict(), file)
+
+    @classmethod
+    def load(cls, path):
+        with open(path, encoding="utf-8") as file:
+            return cls.from_dict(json.load(file))
+
+    def to_dict(self):
         self._check_fitted()
-        payload = {
+        return {
             "params": {"alpha": self.alpha, "var_smoothing": self.var_smoothing,
                        "class_prior": None if self.class_prior is None else list(self.class_prior)},
             "classes": self.classes_.tolist(),
@@ -144,13 +153,9 @@ class NaiveBayes:
             "log_theta": {str(j): t.tolist() for j, t in self.log_theta_.items()},
             "unseen_log": {str(j): t.tolist() for j, t in self.unseen_log_.items()},
         }
-        with open(path, "w", encoding="utf-8") as file:
-            json.dump(payload, file)
 
     @classmethod
-    def load(cls, path):
-        with open(path, encoding="utf-8") as file:
-            payload = json.load(file)
+    def from_dict(cls, payload):
         model = cls(**payload["params"])
         model.classes_ = np.asarray(payload["classes"])
         model.feature_types_ = list(payload["feature_types"])
