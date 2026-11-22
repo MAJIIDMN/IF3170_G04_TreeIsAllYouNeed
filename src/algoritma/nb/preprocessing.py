@@ -167,6 +167,37 @@ class Preprocessor:
     def fit_transform(self, df, y=None):
         return self.fit(df, y).transform(df)
 
+    def to_dict(self):
+        spec = {name: (["cross", [list(part) for part in rep[1]]] if isinstance(rep, tuple) else rep)
+                for name, rep in self.spec.items()}
+        return {
+            "spec": spec,
+            "winsorize": self.winsorize,
+            "categories": {name: list(values) for name, values in self.categories_.items()},
+            "cuts": {name: [float(c) for c in cuts] for name, cuts in self.cuts_.items()},
+            "bounds": {name: [float(low), float(high)] for name, (low, high) in self.bounds_.items()},
+            "offsets": {name: float(value) for name, value in self.offsets_.items()},
+            "parts": {name: {"subs": [sub.to_dict() for sub in info["subs"]],
+                             "sizes": [int(s) for s in info["sizes"]],
+                             "ids": [[float(key), int(value)] for key, value in info["ids"].items()]}
+                      for name, info in self.parts_.items()},
+        }
+
+    @classmethod
+    def from_dict(cls, payload):
+        spec = {name: (("cross", [tuple(part) for part in rep[1]]) if isinstance(rep, list) else rep)
+                for name, rep in payload["spec"].items()}
+        prep = cls(spec, winsorize=payload["winsorize"])
+        prep.categories_ = {name: list(values) for name, values in payload["categories"].items()}
+        prep.cuts_ = {name: list(cuts) for name, cuts in payload["cuts"].items()}
+        prep.bounds_ = {name: tuple(bound) for name, bound in payload["bounds"].items()}
+        prep.offsets_ = dict(payload["offsets"])
+        prep.parts_ = {name: {"subs": [cls.from_dict(sub) for sub in info["subs"]],
+                              "sizes": list(info["sizes"]),
+                              "ids": {float(key): int(value) for key, value in info["ids"]}}
+                       for name, info in payload["parts"].items()}
+        return prep
+
     def _fit_cross(self, name, parts, df, y):
         subs = [Preprocessor({feature: rep}, winsorize=self.winsorize).fit(df, y)
                 for feature, rep in parts]
