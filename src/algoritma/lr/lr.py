@@ -28,7 +28,6 @@ Referensi Algoritma Optimasi (bonus, solver="irls_cd"):
         Sec. 3: logistic regression lewat aproksimasi kuadratik (IRLS) + coordinate descent.
 - T. Hastie, R. Tibshirani, and J. Friedman, The Elements of Statistical Learning, 2nd ed.
      Springer, 2009, Sec. 4.4.1 -> Newton-Raphson / IRLS untuk logistic regression.
-
 """
 import numpy as np
 
@@ -111,9 +110,13 @@ class LogisticRegression:
         s = self._sample_weight(y)
         return -np.mean(s * (y * np.log(p) + (1 - y) * np.log(1 - p))) + self._penalty_value(w)
 
-    def fit(self, X, y):
+    def fit(self, X, y, init=None):
+        # init = (w, b) titik awal, default nol seperti di [Khodra, video 2] ("boleh nilai lain")
         X, y = np.asarray(X, float), np.asarray(y, float).ravel()
-        self.w, self.b = np.zeros(X.shape[1]), 0.0
+        if init is None:
+            self.w, self.b = np.zeros(X.shape[1]), 0.0
+        else:
+            self.w, self.b = np.array(init[0], float).reshape(X.shape[1]), float(init[1])
         self.loss_history, self.path = [], []
         if self.solver == "irls_cd":
             return self._fit_irls_cd(X, y)

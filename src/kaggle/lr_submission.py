@@ -188,15 +188,19 @@ def compare_sklearn(train, y, configs):
 
     rows = []
     for cfg in configs:
+        start = time.perf_counter()
         ours = LogisticRegression(**cfg, **TRAIN_KW).fit(X_fit, y_fit)
+        sec_ours = time.perf_counter() - start
         p_ours = ours.predict_proba(X_val)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
+            start = time.perf_counter()
             sk = sklearn_model(cfg, len(y_fit)).fit(X_fit, y_fit)
+            sec_sk = time.perf_counter() - start
         p_sk = sk.predict_proba(X_val)[:, 1]
-        for label, p in [("scratch", p_ours), ("sklearn", p_sk)]:
+        for label, p, sec, w in [("scratch", p_ours, sec_ours, ours.w), ("sklearn", p_sk, sec_sk, sk.coef_.ravel())]:
             r = report(y_val, p, 0.5)
-            rows.append({"config": name_of(cfg), "impl": label, **r})
+            rows.append({"config": name_of(cfg), "impl": label, **r, "waktu_s": sec, "bobot_nol": int(np.sum(w == 0))})
         agree = np.mean((p_ours >= 0.5) == (p_sk >= 0.5))
         w_diff = np.max(np.abs(ours.w - sk.coef_.ravel()))
         print(f"  {name_of(cfg):<40} label sama {agree:.2%}  max|w_scratch - w_sklearn|={w_diff:.4f}  "
