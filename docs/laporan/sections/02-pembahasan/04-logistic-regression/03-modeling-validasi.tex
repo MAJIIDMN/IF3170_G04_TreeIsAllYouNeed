@@ -1,0 +1,84 @@
+\subsection{\textit{Modeling} dan Validasi}
+\label{subsec:lr-validasi}
+
+\subsubsection{Skema Validasi}
+Pemilihan model memakai \textit{stratified} 5-\textit{fold cross validation} pada seluruh data latih bersih (27.309 baris setelah duplikat dibuang), dengan \textit{seed} 42. Stratifikasi diimplementasikan sendiri (\texttt{stratified\_folds} di \nolinkurl{src/kaggle/lr_submission.py}): indeks setiap kelas diacak lalu dibagi bergiliran ke lima \textit{fold}, sehingga setiap \textit{fold} memiliki proporsi batal sekitar 32,8\%. Pada setiap \textit{fold}:
+\begin{enumerate}
+	\item \texttt{Preprocessor} di-\textit{fit} hanya pada empat \textit{fold} latih, lalu dipakai untuk men-\textit{transform} \textit{fold} validasi;
+	\item model dilatih pada empat \textit{fold} latih;
+	\item peluang \textit{fold} validasi disimpan sebagai prediksi \textit{out-of-fold} (OOF).
+\end{enumerate}
+Setelah lima \textit{fold}, setiap baris memiliki tepat satu peluang OOF dari model yang tidak pernah melihat baris tersebut. Macro F1 dihitung pada gabungan prediksi OOF, dan \textit{threshold} dicari pada \textit{grid} 0,20 sampai 0,80 dengan langkah 0,01. Semua konfigurasi dievaluasi pada \textit{fold} yang sama, sehingga perbedaan skor hanya berasal dari konfigurasi, bukan dari pembagian data.
+
+Selain itu, data latih dibagi secara \textit{stratified} menjadi \texttt{train\_set} (80\%, 21.847 baris) dan \texttt{val\_set} (20\%, 5.462 baris). Pembagian ini dipakai untuk analisis yang membutuhkan satu model tetap: kurva \textit{loss}, perbandingan dengan \textit{scikit-learn}, analisis kesalahan, dan \textit{cost-sensitive}. Ada satu keterbatasan yang perlu dicatat. \texttt{val\_set} termasuk dalam data CV yang dipakai memilih konfigurasi dan \textit{threshold}, sehingga skornya bukan estimasi yang sepenuhnya independen. Estimasi independen satu-satunya adalah skor data uji Kaggle (Subbab~\ref{sec:kaggle}).
+
+\subsubsection{\textit{Hyperparameter Tuning}}
+\textit{Grid search} dilakukan atas 8 konfigurasi penalti untuk masing-masing dari 2 \textit{solver}, sehingga ada 16 kombinasi. Hiperparameter optimasi SGD ditetapkan dan tidak di-\textit{tuning}: \textit{learning rate} 0,1, \textit{batch} 128, maksimum 100 \textit{epoch}, dan toleransi $10^{-7}$. Pada IRLS-CD, batas 100 yang sama berlaku sebagai jumlah maksimum iterasi Newton. Ruang pencarian dan hasilnya dirangkum pada Tabel~\ref{tab:lr-tuning}, dan hasil lengkapnya pada Tabel~\ref{tab:lr-cv}.
+
+\begin{table}[H]
+	\centering
+	\caption{Hasil \textit{tuning} hiperparameter LR}
+	\label{tab:lr-tuning}
+	\begin{tabular}{l l c}
+		\toprule
+		\textbf{Hiperparameter} & \textbf{Ruang pencarian} & \textbf{Terbaik} \\
+		\midrule
+		\texttt{penalty} & \texttt{None}, \texttt{l2}, \texttt{l1}, \texttt{elasticnet} & \texttt{None} \\
+		$\lambda$ (\texttt{lam}) & $10^{-4}, 10^{-3}$ (dan $10^{-2}$ untuk L2) & -- (tanpa penalti) \\
+		$\rho$ (\texttt{rho}, \textit{Elastic Net}) & 0,5 (tetap) & -- \\
+		\texttt{solver} & \texttt{sgd}, \texttt{irls\_cd} & \texttt{irls\_cd} \\
+		\textit{threshold} & 0,20 sampai 0,80 (langkah 0,01) & 0,46 \\
+		\texttt{lr}, \texttt{batch\_size}, \texttt{n\_epochs} & tetap: 0,1; 128; 100 & -- \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\begin{table}[H]
+	\centering
+	\caption{Hasil \textit{stratified} 5-\textit{fold} CV untuk seluruh konfigurasi (prediksi OOF). Kolom ``iterasi'' adalah rata-rata \textit{epoch} (SGD) atau iterasi Newton (IRLS-CD) per \textit{fold}.}
+	\label{tab:lr-cv}
+	\small
+	\begin{tabular}{l l c c c c c}
+		\toprule
+		\textbf{Penalti} & \textbf{\textit{Solver}} & \textbf{F1@0,5} & \textbf{\textit{Thr.}} & \textbf{F1@\textit{thr}} & \textbf{AUC} & \textbf{Iterasi} \\
+		\midrule
+		tanpa & \texttt{sgd} & 0,7771 & 0,44 & 0,7813 & 0,8727 & 100 \\
+		L2, $10^{-4}$ & \texttt{sgd} & 0,7769 & 0,45 & 0,7814 & 0,8726 & 100 \\
+		L2, $10^{-3}$ & \texttt{sgd} & 0,7754 & 0,47 & 0,7803 & 0,8714 & 100 \\
+		L2, $10^{-2}$ & \texttt{sgd} & 0,7687 & 0,44 & 0,7760 & 0,8654 & 100 \\
+		L1, $10^{-4}$ & \texttt{sgd} & 0,7769 & 0,45 & 0,7810 & 0,8724 & 100 \\
+		L1, $10^{-3}$ & \texttt{sgd} & 0,7754 & 0,44 & 0,7803 & 0,8692 & 100 \\
+		EN, $10^{-4}$ & \texttt{sgd} & 0,7770 & 0,45 & 0,7813 & 0,8725 & 100 \\
+		EN, $10^{-3}$ & \texttt{sgd} & 0,7752 & 0,45 & 0,7800 & 0,8702 & 100 \\
+		\midrule
+		\textbf{tanpa} & \textbf{\texttt{irls\_cd}} & \textbf{0,7786} & \textbf{0,46} & \textbf{0,7824} & \textbf{0,8739} & \textbf{12,6} \\
+		L2, $10^{-4}$ & \texttt{irls\_cd} & 0,7780 & 0,46 & 0,7817 & 0,8737 & 9,0 \\
+		L2, $10^{-3}$ & \texttt{irls\_cd} & 0,7763 & 0,47 & 0,7799 & 0,8719 & 8,0 \\
+		L2, $10^{-2}$ & \texttt{irls\_cd} & 0,7689 & 0,47 & 0,7753 & 0,8658 & 6,0 \\
+		L1, $10^{-4}$ & \texttt{irls\_cd} & 0,7780 & 0,46 & 0,7822 & 0,8737 & 8,0 \\
+		L1, $10^{-3}$ & \texttt{irls\_cd} & 0,7763 & 0,46 & 0,7799 & 0,8697 & 7,0 \\
+		EN, $10^{-4}$ & \texttt{irls\_cd} & 0,7781 & 0,45 & 0,7821 & 0,8737 & 8,0 \\
+		EN, $10^{-3}$ & \texttt{irls\_cd} & 0,7751 & 0,47 & 0,7802 & 0,8707 & 7,0 \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\paragraph{Analisis.}
+\begin{itemize}
+	\item \textbf{Regularisasi tidak membantu.} Mulai dari $\lambda = 10^{-4}$, skor turun secara monoton seiring $\lambda$ membesar, untuk setiap jenis penalti dan kedua \textit{solver}. Di bawah itu, tanpa penalti dan $\lambda = 10^{-4}$ praktis setara (selisih paling besar 0,0007). Contohnya, L2 dengan IRLS-CD turun dari 0,7817 ($10^{-4}$) ke 0,7799 ($10^{-3}$) lalu ke 0,7753 ($10^{-2}$). Pola ini adalah gejala \textit{underfitting}, bukan \textit{overfitting}. Dengan 27 ribu baris dan 100 kolom, variansi model linear sudah kecil, sehingga penalti hanya menambah bias. Hal yang sama terlihat dari Macro F1 model final pada data latihnya sendiri (0,7841), yang hampir sama dengan OOF (0,7824). Pada model ini, perbaikan berarti hanya datang dari fitur: interaksi kanal $\times$ \textit{lead time} menaikkan Macro F1 sekitar 0,006, lebih besar daripada selisih antara konfigurasi terbaik dan terburuk dengan $\lambda \le 10^{-3}$.
+	\item \textbf{Perbedaan teratas tidak signifikan.} Tujuh konfigurasi teratas berada dalam rentang 0,7813 sampai 0,7824 (selisih 0,0011). Sebagai pembanding, Macro F1 konfigurasi terbaik per \textit{fold} adalah 0,7705; 0,7861; 0,7866; 0,7885; dan 0,7800, sehingga rata-ratanya $0{,}7823 \pm 0{,}0073$ (simpangan baku). Variasi antar-\textit{fold} sekitar tujuh kali lebih besar daripada selisih antar konfigurasi teratas, sehingga ``tanpa penalti'', L1 $10^{-4}$, dan \textit{Elastic Net} $10^{-4}$ dengan IRLS-CD tidak dapat dibedakan secara statistik. Model tanpa penalti terpilih karena aturan seleksi (Macro F1 OOF tertinggi) ditetapkan sebelum melihat hasil, agar pemilihan tidak dipengaruhi preferensi setelah melihat angka. Dengan performa yang praktis sama, L1 $10^{-4}$ sebenarnya lebih menarik karena menghasilkan 16 bobot nol dan bobot yang unik.
+	\item \textbf{IRLS-CD sedikit lebih baik karena SGD belum konvergen.} Pada penalti lemah (tanpa penalti dan $\lambda = 10^{-4}$), IRLS-CD selalu lebih tinggi daripada SGD (0,7817 sampai 0,7824 terhadap 0,7810 sampai 0,7814). Semua konfigurasi SGD berhenti di batas 100 \textit{epoch}, sedangkan IRLS-CD konvergen dalam 6 sampai 13 iterasi. Karena masalahnya konveks, kedua \textit{solver} menuju optimum yang sama, dan selisih skornya mencerminkan seberapa jauh SGD dari optimum, bukan model yang berbeda. Pada $\lambda \ge 10^{-3}$ kedua \textit{solver} berselisih paling besar 0,0007.
+	\item \textbf{\textit{Threshold} stabil.} \textit{Threshold} optimal berada di 0,44 sampai 0,47 untuk semua konfigurasi, dan Macro F1 pada \textit{threshold} tersebut 0,004 sampai 0,007 lebih tinggi daripada pada 0,5. Kenaikan dari pemilihan \textit{threshold} ini lebih besar daripada seluruh selisih antarkonfigurasi dengan $\lambda \le 10^{-3}$ (paling besar 0,0025).
+	\item \textbf{Keterbatasan \textit{tuning}.} Ruang pencarian sempit. $\rho$ tidak di-\textit{tuning}, $\lambda$ hanya dua atau tiga nilai, dan \textit{learning rate}, ukuran \textit{batch}, serta jumlah \textit{epoch} SGD tidak di-\textit{tuning}. Untuk penalti, keterbatasan ini tidak mengubah kesimpulan. Skor turun monoton untuk $\lambda \ge 10^{-4}$, sementara tanpa penalti dan $\lambda = 10^{-4}$ sudah setara, sehingga optimumnya berada di $\lambda$ yang sangat kecil dan sudah tercakup oleh \textit{grid}. Untuk SGD, \textit{tuning} \textit{learning rate} atau jumlah \textit{epoch} kemungkinan menutup selisih kecilnya dengan IRLS-CD. Selain itu, konfigurasi dan \textit{threshold} dipilih dari prediksi OOF yang sama, yaitu skor maksimum dari $16 \times 61$ kombinasi. Akibatnya 0,7824 sedikit optimis sebagai estimasi performa pada data baru, walaupun besar biasnya kemungkinan di bawah variasi antar-\textit{fold}.
+\end{itemize}
+
+\subsubsection{Model Final}
+Konfigurasi final adalah LR \textbf{tanpa penalti} dengan \textit{solver} \textbf{IRLS-CD} dan \textit{threshold} \textbf{0,46}. Hasil CV-nya adalah Macro F1 OOF 0,7824 (per \textit{fold} $0{,}7823 \pm 0{,}0073$), ROC-AUC OOF 0,8739 (per \textit{fold} $0{,}8742 \pm 0{,}0050$), dan \textit{accuracy} 0,8094. Untuk submisi, \texttt{Preprocessor} dan model di-\textit{fit} ulang pada seluruh 27.309 baris data latih, lalu data uji hanya di-\textit{transform}. \textit{Threshold} 0,46 diterapkan pada peluang data uji. \textit{Threshold} ini dipilih dari model yang dilatih pada empat per lima data, sehingga dengan memakainya pada model data penuh diasumsikan kalibrasi peluang kedua model serupa. Asumsi ini wajar karena peluang OOF terkalibrasi baik (rata-rata peluang per bin berselisih paling banyak sekitar 0,03 dari tingkat batal aktual, notebook bagian 12) dan data tambahannya hanya 25\%.
+
+Model 100 bobot tersebut memprediksi 31,5\% pesanan uji batal, dekat dengan proporsi batal data latih (32,8\%). Artefaknya tersimpan di \nolinkurl{output/lr/}:
+\begin{itemize}
+	\item \texttt{lr\_model.npz}: model final;
+	\item \texttt{submission.csv}: berkas submisi;
+	\item \texttt{lr\_cv\_results.csv}: Tabel~\ref{tab:lr-cv}.
+\end{itemize}
+Notebook \nolinkurl{src/algoritma/lr/lr.ipynb} dan skrip \nolinkurl{src/kaggle/lr_submission.py} menghasilkan \texttt{submission.csv} yang identik. Keduanya sudah diverifikasi dengan membandingkan berkas hasil kedua jalur.

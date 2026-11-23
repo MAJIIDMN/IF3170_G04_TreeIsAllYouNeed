@@ -1,0 +1,36 @@
+\documentclass[12pt,a4paper]{report}
+\input{preamble}
+
+\begin{document}
+
+	\input{cover}
+
+	\clearpage
+	\pagenumbering{roman}
+	\tableofcontents
+	\listoffigures
+	\listoftables
+	\clearpage
+	\pagenumbering{arabic}
+
+	% Struktur mengikuti komponen laporan pada spesifikasi Tugas Besar 2
+	\chapter{Deskripsi Persoalan}
+	\input{sections/01-deskripsi-persoalan/00-main}
+
+	\chapter{Pembahasan}
+	\input{sections/02-pembahasan/00-main}
+
+	\chapter{Kesimpulan dan Saran}
+	\input{sections/03-kesimpulan-saran}
+
+	\chapter{Pembagian Tugas}
+	\input{sections/04-pembagian-tugas}
+
+	\bibliographystyle{ieeetr}
+	\bibliography{dafpus}
+	\addcontentsline{toc}{chapter}{Daftar Pustaka}
+
+	\appendix
+	\input{sections/05-lampiran/00-main}
+
+\end{document}

@@ -8,11 +8,10 @@ import numpy as np
 import pandas as pd
 
 HERE = Path(__file__).resolve().parent         
-sys.path.insert(0, str(HERE.parent))            
-sys.path.insert(0, str(HERE))               
+sys.path.insert(0, str(HERE.parent))       
 
 from algoritma.lr.lr import LogisticRegression
-from preprocessing import ID_COL, TARGET, Preprocessor, drop_duplicates, load_data  
+from algoritma.lr.preprocessing import ID_COL, TARGET, Preprocessor, drop_duplicates, load_data
 
 DATA_DIR = HERE / "dataset"
 OUTPUT_DIR = HERE.parent.parent / "output" / "lr"  
@@ -22,7 +21,7 @@ HOLDOUT = 0.2
 
 TRAIN_KW = dict(lr=0.1, n_epochs=100, batch_size=128, tol=1e-7, seed=SEED)
 
-GRID = [
+PENALTIES = [
     dict(penalty=None, lam=0.0, rho=0.5),
     dict(penalty="l2", lam=1e-4, rho=0.5),
     dict(penalty="l2", lam=1e-3, rho=0.5),
@@ -32,7 +31,13 @@ GRID = [
     dict(penalty="elasticnet", lam=1e-4, rho=0.5),
     dict(penalty="elasticnet", lam=1e-3, rho=0.5),
 ]
+SOLVERS = ["sgd", "irls_cd"]
+GRID = [dict(cfg, solver=s) for s in SOLVERS for cfg in PENALTIES]
 THRESHOLDS = np.round(np.arange(0.20, 0.81, 0.01), 2)
+
+COST_FP = 2.0
+COST_FN = 1.0
+COST_THRESHOLDS = np.round(np.arange(0.01, 1.00, 0.01), 2)
 
 def confusion(y, pred):
     tp = int(np.sum((y == 1) & (pred == 1)))
@@ -70,6 +75,25 @@ def best_threshold(y, proba):
     i = int(np.argmax(scores))
     return float(THRESHOLDS[i]), float(scores[i])
 
+def total_cost(y, pred, c_fp=COST_FP, c_fn=COST_FN):
+    # total biaya salah klasifikasi = c_fp * FP + c_fn * FN
+    _, fp, fn, _ = confusion(y, pred)
+    return c_fp * fp + c_fn * fn
+
+
+def cost_threshold(c_fp=COST_FP, c_fn=COST_FN):
+    # threshold optimal Bayes (Elkan 2001): prediksi batal jika biaya harapannya lebih kecil,
+    # (1 - p) * c_fp < p * c_fn  <=>  p > c_fp / (c_fp + c_fn)
+    return c_fp / (c_fp + c_fn)
+
+
+def best_cost_threshold(y, proba, c_fp=COST_FP, c_fn=COST_FN):
+    # threshold empiris dengan total biaya terkecil
+    costs = [total_cost(y, (proba >= t).astype(int), c_fp, c_fn) for t in COST_THRESHOLDS]
+    i = int(np.argmin(costs))
+    return float(COST_THRESHOLDS[i]), float(costs[i])
+
+
 def stratified_folds(y, k, seed):
     rng = np.random.default_rng(seed)
     fold_of = np.empty(len(y), int)
@@ -90,14 +114,16 @@ def stratified_holdout(y, frac, seed):
 def cfg_from_row(row):
     pen = row["penalty"]
     return dict(penalty=None if pen is None or pd.isna(pen) else pen,
-                lam=float(row["lam"]), rho=float(row["rho"]))
+                lam=float(row["lam"]), rho=float(row["rho"]), solver=row.get("solver", "sgd"))
 
 
 def name_of(cfg):
     if cfg["penalty"] is None:
-        return "none"
-    extra = f",rho={cfg['rho']}" if cfg["penalty"] == "elasticnet" else ""
-    return f"{cfg['penalty']}(lam={cfg['lam']:g}{extra})"
+        name = "none"
+    else:
+        extra = f",rho={cfg['rho']}" if cfg["penalty"] == "elasticnet" else ""
+        name = f"{cfg['penalty']}(lam={cfg['lam']:g}{extra})"
+    return f"{name} [{cfg['solver']}]" if "solver" in cfg else name
 
 
 def cross_validate(train, y):
@@ -123,10 +149,21 @@ def cross_validate(train, y):
                      "threshold": thr, "macro_f1@thr": rbest["macro_f1"],
                      "accuracy@thr": rbest["accuracy"], "roc_auc": r05["roc_auc"],
                      "epochs_mean": float(np.mean(epochs)), "sec": time.perf_counter() - start})
-        print(f"  {rows[-1]['config']:<28} macroF1@0.5={r05['macro_f1']:.4f}  "
+        print(f"  {rows[-1]['config']:<40} macroF1@0.5={r05['macro_f1']:.4f}  "
               f"macroF1@{thr:.2f}={rbest['macro_f1']:.4f}  AUC={r05['roc_auc']:.4f}  "
               f"epochs~{np.mean(epochs):.0f}  ({rows[-1]['sec']:.1f}s)")
     return pd.DataFrame(rows)
+
+
+def oof_proba(df, y, cfg, class_weight=None):
+    # probabilitas out-of-fold (stratified k-fold) untuk satu konfigurasi, dipakai memilih threshold
+    oof = np.zeros(len(y))
+    for fit_idx, val_idx in stratified_folds(y, N_FOLDS, SEED):
+        prep = Preprocessor().fit(df.iloc[fit_idx])
+        model = LogisticRegression(**cfg, **TRAIN_KW, class_weight=class_weight)
+        model.fit(prep.transform(df.iloc[fit_idx]), y[fit_idx])
+        oof[val_idx] = model.predict_proba(prep.transform(df.iloc[val_idx]))
+    return oof
 
 
 def sklearn_model(cfg, n):
@@ -151,18 +188,22 @@ def compare_sklearn(train, y, configs):
 
     rows = []
     for cfg in configs:
+        start = time.perf_counter()
         ours = LogisticRegression(**cfg, **TRAIN_KW).fit(X_fit, y_fit)
+        sec_ours = time.perf_counter() - start
         p_ours = ours.predict_proba(X_val)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
+            start = time.perf_counter()
             sk = sklearn_model(cfg, len(y_fit)).fit(X_fit, y_fit)
+            sec_sk = time.perf_counter() - start
         p_sk = sk.predict_proba(X_val)[:, 1]
-        for label, p in [("scratch", p_ours), ("sklearn", p_sk)]:
+        for label, p, sec, w in [("scratch", p_ours, sec_ours, ours.w), ("sklearn", p_sk, sec_sk, sk.coef_.ravel())]:
             r = report(y_val, p, 0.5)
-            rows.append({"config": name_of(cfg), "impl": label, **r})
+            rows.append({"config": name_of(cfg), "impl": label, **r, "waktu_s": sec, "bobot_nol": int(np.sum(w == 0))})
         agree = np.mean((p_ours >= 0.5) == (p_sk >= 0.5))
         w_diff = np.max(np.abs(ours.w - sk.coef_.ravel()))
-        print(f"  {name_of(cfg):<28} label sama {agree:.2%}  max|w_scratch - w_sklearn|={w_diff:.4f}  "
+        print(f"  {name_of(cfg):<40} label sama {agree:.2%}  max|w_scratch - w_sklearn|={w_diff:.4f}  "
               f"nonzero w: scratch={np.sum(np.abs(ours.w) > 1e-6)} sklearn={np.sum(np.abs(sk.coef_) > 1e-6)}")
     return pd.DataFrame(rows)
 
