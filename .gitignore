@@ -6,3 +6,6 @@ __pycache__/
 .venv/
 .ipynb_checkpoints/
 .DS_Store
+src/algoritma/nb/output/figures/
+src/algoritma/nb/output/submission*.csv
+src/algoritma/nb/output/*_artifact.json
