@@ -11,8 +11,10 @@ sys.path.insert(0, str(REPO / "src" / "algoritma"))
 
 from dtl import DTL
 from dtl.criteria import (entropy, information_gain, select_split)  # noqa: E402
+from dtl.plot import top_branchings  # noqa: E402
 from dtl.splitting import (best_split_categorical,  # noqa: E402
                            best_split_continuous)
+from dtl.tree import children_of, iter_internal  # noqa: E402
 
 
 def playtennis():
@@ -256,6 +258,47 @@ class TestDTL(unittest.TestCase):
             DTL(ccp_alpha=-1.0)
         with self.assertRaises(RuntimeError):
             DTL().predict(np.zeros((2, 2)))
+
+
+class PlotTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        rng = np.random.default_rng(0)
+        X = rng.normal(size=(400, 4))
+        y = ((X[:, 0] > 0) ^ (X[:, 1] > 0.3) ^ (X[:, 2] > 0.8)).astype(int)
+        cls.model = DTL(max_depth=6, min_samples_leaf=5).fit(X, y)
+        cls.n_internal = sum(1 for _ in iter_internal(cls.model.root_))
+
+    def test_top_n_limits_the_number_of_branchings(self):
+        for top_n in (1, 3, 5):
+            self.assertEqual(len(top_branchings(self.model.root_, top_n)), top_n)
+
+    def test_branchings_are_taken_from_the_root_down(self):
+        shown = top_branchings(self.model.root_, 3)
+        self.assertIs(shown[0], self.model.root_)
+        for node in shown[1:]:
+            self.assertTrue(any(node in children_of(parent) for parent in shown))
+
+    def test_none_shows_every_branching(self):
+        self.assertEqual(len(top_branchings(self.model.root_, None)), self.n_internal)
+
+    def test_plot_writes_an_image(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "tree.png"
+            self.model.plot(path, top_n=4)
+            self.assertGreater(path.stat().st_size, 1000)
+
+    def test_multiway_split_can_be_drawn(self):
+        X = np.array([["a"], ["b"], ["c"]] * 20, dtype=object)
+        model = DTL(min_samples_leaf=1).fit(X, [0, 1, 0] * 20)
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "tree.png"
+            model.plot(path)
+            self.assertTrue(path.exists())
+
+    def test_invalid_top_n_is_rejected(self):
+        with self.assertRaises(ValueError):
+            top_branchings(self.model.root_, 0)
 
 
 if __name__ == "__main__":
