@@ -161,7 +161,7 @@ Kelas \texttt{SVM} berada pada \nolinkurl{src/algoritma/svm/svm.py} dan hanya me
 	\caption{Deskripsi kelas dan fungsi SVM (\texttt{src/algoritma/svm/svm.py})}
 	\label{tab:svm-fungsi}
 	\small
-	\begin{tabularx}{\textwidth}{l Y}
+	\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.8cm} Y}
 		\toprule
 		\textbf{Fungsi/Metode} & \textbf{Deskripsi} \\
 		\midrule
@@ -179,7 +179,7 @@ Kelas \texttt{SVM} berada pada \nolinkurl{src/algoritma/svm/svm.py} dan hanya me
 		\texttt{\_solve(X, sign, upper)} & Inti SMO: memilih pasangan, memperbarui $\alpha$ dan skor, memeriksa kriteria berhenti, dan menghitung bias. Mengembalikan $(\alpha, b)$ dan mengisi \texttt{n\_iter\_}. \\
 		\texttt{\_move(value, delta, hits\_bound, upper)} & Memperbarui satu $\alpha$; jika langkah terpotong batas, nilainya diset persis ke $0$ atau \texttt{upper}. \\
 		\texttt{\_gram(A, B, B\_squared\_norms)} & Matriks kernel antara baris \texttt{A} dan \texttt{B} untuk kernel yang dipilih. \\
-		\texttt{\_gram\_diagonal(squared\_norms)} & Diagonal matriks kernel, $K_{ii}$, tanpa membentuk seluruh matriks. \\
+		\texttt{\_gram\_diagonal\allowbreak(squared\_norms)} & Diagonal matriks kernel, $K_{ii}$, tanpa membentuk seluruh matriks. \\
 		\texttt{\_resolve\_gamma(X)} & Mengubah \texttt{"scale"} dan \texttt{"auto"} menjadi nilai $\gamma$ numerik. \\
 		\texttt{\_box\_limits(y)} & Batas atas $C_i$ tiap titik dari \texttt{class\_weight} (\texttt{None}, \texttt{"balanced"}, atau kamus). \\
 		\texttt{\_check\_fitted()} & Melempar \texttt{RuntimeError} jika \texttt{predict} dipanggil sebelum \texttt{fit}. \\
@@ -193,7 +193,7 @@ Kelas \texttt{SVM} berada pada \nolinkurl{src/algoritma/svm/svm.py} dan hanya me
 	\caption{Fungsi pembangun fitur dan bobot (\texttt{src/kaggle/booking\_features.py})}
 	\label{tab:svm-fitur-fungsi}
 	\small
-	\begin{tabularx}{\textwidth}{l Y}
+	\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.8cm} Y}
 		\toprule
 		\textbf{Fungsi} & \textbf{Deskripsi} \\
 		\midrule
