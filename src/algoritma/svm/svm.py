@@ -4,12 +4,22 @@ from collections import OrderedDict
 
 import numpy as np
 
-KERNELS = ("linear", "poly", "rbf")
+KERNELS = ("linear", "poly", "rbf", "laplacian")
 
 # Sumber: C.-C. Chang & C.-J. Lin, "LIBSVM: A Library for Support Vector Machines", ACM TIST 2(3), 2011.
 TAU = 1e-12
 
 PREDICT_BATCH_ROWS = 4096
+LAPLACIAN_BATCH_ROWS = 256
+
+
+def _l1_distances(A, B):
+    if len(A) == 1:
+        return np.abs(B - A[0]).sum(axis=1)[None]
+    distances = np.zeros((len(A), len(B)))
+    for column in range(A.shape[1]):
+        distances += np.abs(A[:, column, None] - B[None, :, column])
+    return distances
 
 
 class _KernelRowCache:
@@ -71,8 +81,9 @@ class SVM:
         X = self._as_matrix(X)
         support_sq = np.einsum("ij,ij->i", self.support_vectors_, self.support_vectors_)
         scores = np.empty(len(X))
-        for start in range(0, len(X), PREDICT_BATCH_ROWS):
-            batch = slice(start, start + PREDICT_BATCH_ROWS)
+        batch_rows = LAPLACIAN_BATCH_ROWS if self.kernel == "laplacian" else PREDICT_BATCH_ROWS
+        for start in range(0, len(X), batch_rows):
+            batch = slice(start, start + batch_rows)
             scores[batch] = self._gram(X[batch], self.support_vectors_, support_sq) @ self.dual_coef_
         return scores + self.intercept_
 
@@ -161,6 +172,9 @@ class SVM:
         return value + delta
 
     def _gram(self, A, B, B_squared_norms):
+        # Sumber: B. Scholkopf & A. Smola, "Learning with Kernels", MIT Press, 2002 (kernel Laplacian).
+        if self.kernel == "laplacian":
+            return np.exp(-self.gamma_ * _l1_distances(A, B))
         dot = A @ B.T
         if self.kernel == "linear":
             return dot
