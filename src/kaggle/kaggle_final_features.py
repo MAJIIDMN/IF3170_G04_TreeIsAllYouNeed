@@ -1,16 +1,14 @@
-"""Fitur dan bobot fitur untuk notebook kaggle_final. Semua statistik dihitung dari train saja.
-
-Sumber:
-- Target encoding dihaluskan: D. Micci-Barreca, SIGKDD Explorations 3(1), 2001.
-- Kesamaan tetangga bersama: R. Jarvis & E. Patrick, IEEE Transactions on Computers C-22, 1973.
-- Bobot fitur dari gradien (AGOP): A. Radhakrishnan dkk., Science 383, 2024.
-- Pendekatan Nystrom: C. Williams & M. Seeger, NIPS 13, 2001.
-"""
+"""Fitur untuk DTL dan SVM di notebook kaggle_final. Semua statistik dihitung dari train saja."""
 import numpy as np
 import pandas as pd
 
-from dtl_new_features import (CAT_COLS, ID_COL, KEY, SOFT, TARGET, add_booking_dates, clean,
-                              impute_and_flag, load_data)
+ID_COL = "id"
+TARGET = "is_canceled"
+CAT_COLS = ["meal_package", "room_category", "booking_channel"]
+KEY = ["arrival_year", "arrival_month", "arrival_day", "weekend_nights", "weekday_nights",
+       "booking_channel"]
+SOFT = ["room_category", "meal_package", "num_adults", "num_children", "special_requests",
+        "needs_parking"]
 
 LEAD_TOLERANCE = 10
 RATE_TOLERANCE = 0.05
@@ -21,6 +19,43 @@ CENTRES = 1500
 GRADIENT_ROWS = 4000
 RIDGE = 0.3
 ROUNDS = 2
+
+
+def load_data(data_dir):
+    train = pd.read_csv(f"{data_dir}/train.csv", dtype={ID_COL: str})
+    test = pd.read_csv(f"{data_dir}/test.csv", dtype={ID_COL: str})
+    return train, test
+
+
+def clean(train):
+    return train.drop(columns=[ID_COL]).drop_duplicates().reset_index(drop=True)
+
+
+def add_booking_dates(df):
+    out = df.drop(columns=[c for c in (ID_COL, TARGET) if c in df]).reset_index(drop=True)
+    arrival = pd.to_datetime({"year": out["arrival_year"], "month": out["arrival_month"],
+                              "day": out["arrival_day"]})
+    out["arr_ord"] = (arrival - pd.Timestamp("2023-01-01")).dt.days.astype(float)
+    out["book_ord"] = out["arr_ord"] - out["days_before_arrival"]
+    out["arr_dow"] = arrival.dt.day_of_week.astype(float)
+    return out
+
+
+def impute_and_flag(train, other):
+    fill, flags = {}, []
+    for col in train.columns:
+        fill[col] = train[col].mode().iloc[0] if col in CAT_COLS else train[col].median()
+        if train[col].isna().any():
+            flags.append(col)
+    results = []
+    for df in (train, other):
+        out = df.copy()
+        for col, value in fill.items():
+            out[col] = out[col].fillna(value)
+        for col in flags:
+            out[f"missing_{col}"] = df[col].isna().astype(float)
+        results.append(out)
+    return results
 
 
 def sibling_pairs(reference, query, same=False):
@@ -58,6 +93,7 @@ def sibling_pairs(reference, query, same=False):
     return pairs
 
 
+# Sumber: R. Jarvis & E. Patrick, IEEE Trans. Computers C-22(11), 1973 (kesamaan tetangga bersama).
 def shared_neighbour_weights(pairs, reference_sets, include_self):
     """Bobot saudara dikali akar indeks Jaccard antara dua daftar saudara."""
     weights = []
@@ -88,6 +124,8 @@ def build_features(train, labels, other, shared_neighbours):
     for k, held in enumerate(np.array_split(np.random.default_rng(0).permutation(len(labels)), INNER_FOLDS)):
         fold[held] = k
 
+    # Sumber: D. Micci-Barreca, SIGKDD Explorations 3(1), 2001 (target encoding dihaluskan);
+    # F. Pargent dkk., Computational Statistics 37, 2022 (target encoding dengan regularisasi).
     def encode(pairs, weights, out_of_fold):
         total, weight_sum = np.zeros(len(pairs)), np.zeros(len(pairs))
         for i, ((idx, _), w) in enumerate(zip(pairs, weights)):
@@ -128,6 +166,7 @@ def standardize(train, other):
     return np.column_stack(A), np.column_stack(B), names
 
 
+# Sumber: O. Chapelle, P. Haffner & V. Vapnik, IEEE Trans. Neural Networks 10, 1999 (kernel Laplacian).
 def laplacian_gram(A, B, scale):
     distances = np.zeros((len(A), len(B)))
     for col in range(A.shape[1]):
@@ -135,6 +174,8 @@ def laplacian_gram(A, B, scale):
     return np.exp(-distances / scale)
 
 
+# Sumber: A. Radhakrishnan dkk., Science, 2024, doi:10.1126/science.adi5639 (AGOP, di sini hanya diagonalnya);
+# C. Saunders dkk., ICML 1998 (kernel ridge); C. Williams & M. Seeger, NIPS 13, 2001 (Nystrom).
 def feature_weights(X, y, scale):
     """Bobot fitur: akar dari RMS gradien regresi kernel ridge terhadap tiap fitur (AGOP diagonal)."""
     n, d = X.shape
