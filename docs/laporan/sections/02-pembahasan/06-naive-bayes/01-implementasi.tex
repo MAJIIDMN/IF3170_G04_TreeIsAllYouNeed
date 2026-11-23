@@ -1,7 +1,7 @@
 \subsection{Implementasi \textit{From Scratch}}
 \label{subsec:nb-implementasi}
 
-\textit{Naive Bayes} (NB) dan \textit{Tree-Augmented Naive Bayes} (TAN) ditulis dengan NumPy saja dan dipanggil langsung dari \textit{notebook}. \textit{scikit-learn} \cite{pedregosa2011sklearn} hanya menjadi pembanding pada Subbab~\ref{subsec:nb-hasil}.
+\textit{Naive Bayes} (NB) dan \textit{Tree-Augmented Naive Bayes} (TAN) ditulis dengan NumPy saja dan dipanggil langsung dari \textit{notebook}. \textit{scikit-learn} \cite{pedregosa2011sklearn} dipakai sebagai pembanding model pada Subbab~\ref{subsec:nb-hasil}, serta untuk metrik dan PCA.
 
 \subsubsection{Alur Implementasi}
 Alur kerja dari data mentah sampai analisis kesalahan ditunjukkan pada Gambar~\ref{fig:nb-workflow}.
@@ -37,7 +37,7 @@ Naive Bayes adalah \textit{Bayesian network} dengan kelas sebagai satu-satunya \
 \end{tcolorbox}
 
 \subsubsection{Struktur Kelas dan Fungsi}
-Kode ada di \texttt{src/algoritma/nb/}, sedangkan fungsi pipeline dan penyimpanan model ditulis langsung di \textit{notebook}.
+Model ada di \texttt{src/algoritma/nb/}, sedangkan \textit{preprocessing}, seleksi fitur, pipeline, dan penyimpanan model ditulis langsung di \textit{notebook}.
 
 \begin{longtable}{@{}p{2.9cm} p{4.3cm} p{6.6cm}@{}}
 	\caption{Peta kode implementasi \textit{Naive Bayes}}
@@ -59,12 +59,10 @@ Kode ada di \texttt{src/algoritma/nb/}, sedangkan fungsi pipeline dan penyimpana
 	\midrule
 	\texttt{tan.py} & \texttt{TANNaiveBayes} & Turunan \texttt{NaiveBayes} dengan satu \textit{parent} fitur per fitur (CMI dan algoritma Prim) \\
 	\midrule
-	\texttt{preprocessing.py} & \texttt{Preprocessor}, \texttt{mdl\_\allowbreak cuts} & Mempelajari kategori, titik potong (MDL, kuantil), dan batas dari data latih, lalu menerapkannya \\
-	& \texttt{cross\_\allowbreak validate}, \texttt{macro\_\allowbreak f1}, \texttt{roc\_\allowbreak auc} & Validasi silang (\textit{preprocessing} di-\textit{fit} ulang tiap \textit{fold}) dan metrik dengan NumPy \\
-	\midrule
-	\texttt{selection.py} & \texttt{FoldCache}, \texttt{forward\_\allowbreak selection} & Seleksi fitur satu per satu berdasarkan ROC-AUC \\
-	\midrule
-	\textit{Notebook} & \texttt{fit\_\allowbreak pipeline}, \texttt{train\_\allowbreak and\_\allowbreak save}, \texttt{load\_\allowbreak artifact}, \texttt{write\_\allowbreak submission} & Melatih, menyimpan, memuat model, dan menulis submisi Kaggle \\
+	\textit{Notebook} & \texttt{Preprocessor}, \texttt{mdl\_\allowbreak cuts} & Mempelajari kategori, titik potong (MDL, kuantil), dan batas dari data latih, lalu menerapkannya \\
+	& \texttt{cross\_\allowbreak validate}, \texttt{stratified\_\allowbreak folds} & Validasi silang berstrata dengan \textit{preprocessing} di-\textit{fit} ulang tiap \textit{fold} \\
+	& \texttt{FoldCache}, \texttt{forward\_\allowbreak selection} & Seleksi fitur satu per satu berdasarkan ROC-AUC \\
+	& \texttt{fit\_\allowbreak pipeline}, \texttt{train\_\allowbreak and\_\allowbreak save}, \texttt{load\_\allowbreak artifact}, \texttt{write\_\allowbreak submission} & Melatih, menyimpan, memuat model, dan menulis submisi Kaggle \\
 \end{longtable}
 
 \subsubsection{\textit{Source Code}}
