@@ -1,0 +1,38 @@
+\section{\textit{Cost-Sensitive Classification} (Bonus)}
+\label{sec:cost-sensitive}
+
+\todo{Konteks: \textit{False Positive} (diprediksi batal padahal datang) dua kali lebih mahal daripada \textit{False Negative} karena membuat penginapan \textit{overbooked}. Tampilkan matriks biaya.}
+
+\begin{table}[H]
+	\centering
+	\caption{Matriks biaya (kelas positif = batal)}
+	\label{tab:cost-matrix}
+	\begin{tabular}{l c c}
+		\toprule
+		& \textbf{Prediksi: tidak batal} & \textbf{Prediksi: batal} \\
+		\midrule
+		\textbf{Aktual: tidak batal} & 0 & $C_{FP} = 2$ \\
+		\textbf{Aktual: batal} & $C_{FN} = 1$ & 0 \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\subsection{Pendekatan}
+\todo{Pendekatan yang dipakai, misalnya \textit{threshold moving} ($P \ge C_{FP}/(C_{FP}+C_{FN}) = 2/3$), pembobotan kelas atau sampel saat pelatihan, atau pemilihan \textit{threshold} yang meminimalkan total biaya pada prediksi \textit{out-of-fold}. Sebutkan model yang dipakai dan lokasinya di notebook.}
+
+\subsection{Hasil dan Analisis}
+\todo{Isi tabel perbandingan FP, FN, total biaya, dan \textit{macro F1} antara skema standar dan \textit{cost-sensitive}, lalu analisis \textit{trade-off}-nya dan berikan rekomendasi bagi penginapan.}
+
+\begin{table}[H]
+	\centering
+	\caption{Perbandingan skema standar dan \textit{cost-sensitive}}
+	\label{tab:cost-hasil}
+	\begin{tabular}{l c c c c c}
+		\toprule
+		\textbf{Skema} & \textbf{Threshold} & \textbf{FP} & \textbf{FN} & \textbf{Total Cost} & \textbf{Macro F1} \\
+		\midrule
+		Standar & & & & & \\
+		\textit{Cost-sensitive} & & & & & \\
+		\bottomrule
+	\end{tabular}
+\end{table}

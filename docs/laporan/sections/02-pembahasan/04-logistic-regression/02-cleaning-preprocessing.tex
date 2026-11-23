@@ -1,0 +1,25 @@
+\subsection{\textit{Data Cleaning} dan \textit{Preprocessing}}
+\label{subsec:lr-preprocessing}
+
+\todo{Jelaskan \textit{pipeline} khusus LR beserta alasan tiap langkah, dikaitkan dengan temuan EDA (Subbab~\ref{sec:eda}) dan karakteristik algoritma. Semua transformasi di-\textit{fit} pada data latih saja lalu diterapkan ke data uji \cite{slide-dataprep}.}
+
+\subsubsection{Penanganan \textit{Missing Values}}
+\todo{LR tidak menerima \textit{null}, jadi imputasi wajib. Jelaskan strategi per kolom dan alasannya.}
+
+\subsubsection{Data Duplikat dan Data Tidak Valid}
+\todo{Jumlah duplikat, nilai tidak wajar, atau \textit{outlier} yang ditangani untuk LR dan caranya. Baris data uji tidak boleh dibuang.}
+
+\subsubsection{Konstruksi Fitur dan \textit{Encoding}}
+\todo{LR butuh fitur numerik. Jelaskan \textit{one-hot} (hindari \textit{dummy trap} bila tanpa regularisasi) atau \textit{encoding} lain.}
+
+\subsubsection{Normalisasi dan Standarisasi}
+\todo{Penting agar \textit{gradient descent} konvergen dan penalti regularisasi adil antarfitur.}
+
+\subsubsection{Penanganan \textit{Imbalanced Data}}
+\todo{Misalnya pembobotan kelas pada \textit{loss} atau penyesuaian \textit{threshold}.}
+
+\subsubsection{\textit{Feature Selection}}
+\todo{Regularisasi L1 menghasilkan bobot \textit{sparse} sehingga bisa menjadi seleksi fitur implisit. Sebutkan fitur akhir yang dipakai.}
+
+\subsubsection{\textit{Dimensionality Reduction}}
+\todo{Jelaskan apakah PCA dipakai dan dampaknya (dekorelasi fitur vs kehilangan interpretabilitas bobot).}
