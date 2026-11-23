@@ -1,0 +1,1671 @@
+{
+  "format": "if3170-dtl",
+  "version": 1,
+  "params": {
+    "max_depth": 20,
+    "min_samples_leaf": 2,
+    "min_gain": 1e-07,
+    "pruning": "cost_complexity",
+    "ccp_alpha": 2.5,
+    "val_fraction": 0.3,
+    "random_state": 42,
+    "mdl_penalty": false,
+    "missing_predict": "majority",
+    "split_criterion": "gain_ratio",
+    "confidence": 0.25,
+    "shrinkage": 0.0,
+    "laplace": false,
+    "categorical_split": "multiway",
+    "class_weight": null
+  },
+  "classes": [
+    0,
+    1
+  ],
+  "feature_names": [
+    "num_adults",
+    "num_children",
+    "weekend_nights",
+    "weekday_nights",
+    "needs_parking",
+    "days_before_arrival",
+    "arrival_year",
+    "arrival_month",
+    "arrival_day",
+    "is_returning_guest",
+    "prior_cancellations",
+    "prior_completed_bookings",
+    "nightly_rate_idr",
+    "special_requests",
+    "arr_ord",
+    "book_ord",
+    "arr_dow",
+    "missing_num_adults",
+    "missing_num_children",
+    "missing_meal_package",
+    "missing_needs_parking",
+    "missing_room_category",
+    "missing_days_before_arrival",
+    "missing_nightly_rate_idr",
+    "missing_special_requests",
+    "missing_book_ord",
+    "sib_te",
+    "sib_n",
+    "nights",
+    "weekend_share",
+    "meal_package_Breakfast",
+    "meal_package_Full Board",
+    "meal_package_Half Board",
+    "meal_package_Room Only",
+    "room_category_Type A",
+    "room_category_Type B",
+    "room_category_Type C",
+    "room_category_Type D",
+    "room_category_Type E",
+    "room_category_Type F",
+    "room_category_Type G",
+    "booking_channel_Airline",
+    "booking_channel_Complimentary",
+    "booking_channel_Corporate",
+    "booking_channel_Offline Agent",
+    "booking_channel_Online Travel Agent"
+  ],
+  "kinds": [
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous",
+    "continuous"
+  ],
+  "named_fit": true,
+  "pruning_report": {
+    "pruned_nodes": 236
+  },
+  "root": {
+    "leaf": false,
+    "class_weights": [
+      18365.0,
+      8944.0
+    ],
+    "feature": 26,
+    "kind": "binary",
+    "threshold": 0.4697992656235997,
+    "p_left": 0.8548463876377751,
+    "default": 0,
+    "left": {
+      "leaf": false,
+      "class_weights": [
+        18141.0,
+        5204.0
+      ],
+      "feature": 26,
+      "kind": "binary",
+      "threshold": 0.2735962433306566,
+      "p_left": 0.24814735489398157,
+      "default": 1,
+      "left": {
+        "leaf": true,
+        "class_weights": [
+          5595.0,
+          198.0
+        ]
+      },
+      "right": {
+        "leaf": false,
+        "class_weights": [
+          12546.0,
+          5006.0
+        ],
+        "feature": 5,
+        "kind": "binary",
+        "threshold": 148.5,
+        "p_left": 0.8780765724703737,
+        "default": 0,
+        "left": {
+          "leaf": false,
+          "class_weights": [
+            11867.0,
+            3545.0
+          ],
+          "feature": 4,
+          "kind": "binary",
+          "threshold": 0.5,
+          "p_left": 0.9572411108227356,
+          "default": 0,
+          "left": {
+            "leaf": false,
+            "class_weights": [
+              11212.0,
+              3541.0
+            ],
+            "feature": 11,
+            "kind": "binary",
+            "threshold": 0.5,
+            "p_left": 0.9732257845861859,
+            "default": 0,
+            "left": {
+              "leaf": false,
+              "class_weights": [
+                10818.0,
+                3540.0
+              ],
+              "feature": 13,
+              "kind": "binary",
+              "threshold": 0.5,
+              "p_left": 0.46608162696754424,
+              "default": 1,
+              "left": {
+                "leaf": false,
+                "class_weights": [
+                  4176.0,
+                  2516.0
+                ],
+                "feature": 45,
+                "kind": "binary",
+                "threshold": 0.5,
+                "p_left": 0.32890017931858934,
+                "default": 1,
+                "left": {
+                  "leaf": false,
+                  "class_weights": [
+                    1974.0,
+                    227.0
+                  ],
+                  "feature": 2,
+                  "kind": "binary",
+                  "threshold": 3.5,
+                  "p_left": 0.9972739663789186,
+                  "default": 0,
+                  "left": {
+                    "leaf": false,
+                    "class_weights": [
+                      1973.0,
+                      222.0
+                    ],
+                    "feature": 26,
+                    "kind": "binary",
+                    "threshold": 0.3877002475596345,
+                    "p_left": 0.9712984054669704,
+                    "default": 0,
+                    "left": {
+                      "leaf": true,
+                      "class_weights": [
+                        1937.0,
+                        195.0
+                      ]
+                    },
+                    "right": {
+                      "leaf": false,
+                      "class_weights": [
+                        36.0,
+                        27.0
+                      ],
+                      "feature": 5,
+                      "kind": "binary",
+                      "threshold": 57.0,
+                      "p_left": 0.2222222222222222,
+                      "default": 1,
+                      "left": {
+                        "leaf": true,
+                        "class_weights": [
+                          14.0,
+                          0.0
+                        ]
+                      },
+                      "right": {
+                        "leaf": false,
+                        "class_weights": [
+                          22.0,
+                          27.0
+                        ],
+                        "feature": 12,
+                        "kind": "binary",
+                        "threshold": 1327500.0,
+                        "p_left": 0.12244897959183673,
+                        "default": 1,
+                        "left": {
+                          "leaf": true,
+                          "class_weights": [
+                            6.0,
+                            0.0
+                          ]
+                        },
+                        "right": {
+                          "leaf": false,
+                          "class_weights": [
+                            16.0,
+                            27.0
+                          ],
+                          "feature": 14,
+                          "kind": "binary",
+                          "threshold": 632.5,
+                          "p_left": 0.9302325581395349,
+                          "default": 0,
+                          "left": {
+                            "leaf": true,
+                            "class_weights": [
+                              13.0,
+                              27.0
+                            ]
+                          },
+                          "right": {
+                            "leaf": true,
+                            "class_weights": [
+                              3.0,
+                              0.0
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "right": {
+                    "leaf": true,
+                    "class_weights": [
+                      1.0,
+                      5.0
+                    ]
+                  }
+                },
+                "right": {
+                  "leaf": false,
+                  "class_weights": [
+                    2202.0,
+                    2289.0
+                  ],
+                  "feature": 14,
+                  "kind": "binary",
+                  "threshold": 395.5,
+                  "p_left": 0.1507459363170786,
+                  "default": 1,
+                  "left": {
+                    "leaf": false,
+                    "class_weights": [
+                      575.0,
+                      102.0
+                    ],
+                    "feature": 15,
+                    "kind": "binary",
+                    "threshold": 183.0,
+                    "p_left": 0.10487444608567208,
+                    "default": 1,
+                    "left": {
+                      "leaf": true,
+                      "class_weights": [
+                        27.0,
+                        44.0
+                      ]
+                    },
+                    "right": {
+                      "leaf": false,
+                      "class_weights": [
+                        548.0,
+                        58.0
+                      ],
+                      "feature": 26,
+                      "kind": "binary",
+                      "threshold": 0.35807875525551014,
+                      "p_left": 0.995049504950495,
+                      "default": 0,
+                      "left": {
+                        "leaf": true,
+                        "class_weights": [
+                          548.0,
+                          55.0
+                        ]
+                      },
+                      "right": {
+                        "leaf": true,
+                        "class_weights": [
+                          0.0,
+                          3.0
+                        ]
+                      }
+                    }
+                  },
+                  "right": {
+                    "leaf": false,
+                    "class_weights": [
+                      1627.0,
+                      2187.0
+                    ],
+                    "feature": 15,
+                    "kind": "binary",
+                    "threshold": 681.5,
+                    "p_left": 0.957000524383849,
+                    "default": 0,
+                    "left": {
+                      "leaf": false,
+                      "class_weights": [
+                        1484.0,
+                        2166.0
+                      ],
+                      "feature": 5,
+                      "kind": "binary",
+                      "threshold": 6.5,
+                      "p_left": 0.12904109589041096,
+                      "default": 1,
+                      "left": {
+                        "leaf": false,
+                        "class_weights": [
+                          359.0,
+                          112.0
+                        ],
+                        "feature": 12,
+                        "kind": "binary",
+                        "threshold": 3327000.0,
+                        "p_left": 0.9575371549893843,
+                        "default": 0,
+                        "left": {
+                          "leaf": false,
+                          "class_weights": [
+                            357.0,
+                            94.0
+                          ],
+                          "feature": 15,
+                          "kind": "binary",
+                          "threshold": 671.0,
+                          "p_left": 0.9889135254988913,
+                          "default": 0,
+                          "left": {
+                            "leaf": false,
+                            "class_weights": [
+                              357.0,
+                              89.0
+                            ],
+                            "feature": 28,
+                            "kind": "binary",
+                            "threshold": 6.5,
+                            "p_left": 0.9730941704035875,
+                            "default": 0,
+                            "left": {
+                              "leaf": true,
+                              "class_weights": [
+                                356.0,
+                                78.0
+                              ]
+                            },
+                            "right": {
+                              "leaf": true,
+                              "class_weights": [
+                                1.0,
+                                11.0
+                              ]
+                            }
+                          },
+                          "right": {
+                            "leaf": true,
+                            "class_weights": [
+                              0.0,
+                              5.0
+                            ]
+                          }
+                        },
+                        "right": {
+                          "leaf": true,
+                          "class_weights": [
+                            2.0,
+                            18.0
+                          ]
+                        }
+                      },
+                      "right": {
+                        "leaf": false,
+                        "class_weights": [
+                          1125.0,
+                          2054.0
+                        ],
+                        "feature": 15,
+                        "kind": "binary",
+                        "threshold": 364.5,
+                        "p_left": 0.06385655866624725,
+                        "default": 1,
+                        "left": {
+                          "leaf": false,
+                          "class_weights": [
+                            135.0,
+                            68.0
+                          ],
+                          "feature": 3,
+                          "kind": "binary",
+                          "threshold": 5.5,
+                          "p_left": 0.9753694581280788,
+                          "default": 0,
+                          "left": {
+                            "leaf": false,
+                            "class_weights": [
+                              135.0,
+                              63.0
+                            ],
+                            "feature": 0,
+                            "kind": "binary",
+                            "threshold": 0.5,
+                            "p_left": 0.015151515151515152,
+                            "default": 1,
+                            "left": {
+                              "leaf": true,
+                              "class_weights": [
+                                0.0,
+                                3.0
+                              ]
+                            },
+                            "right": {
+                              "leaf": false,
+                              "class_weights": [
+                                135.0,
+                                60.0
+                              ],
+                              "feature": 12,
+                              "kind": "binary",
+                              "threshold": 905000.0,
+                              "p_left": 0.07692307692307693,
+                              "default": 1,
+                              "left": {
+                                "leaf": true,
+                                "class_weights": [
+                                  15.0,
+                                  0.0
+                                ]
+                              },
+                              "right": {
+                                "leaf": false,
+                                "class_weights": [
+                                  120.0,
+                                  60.0
+                                ],
+                                "feature": 8,
+                                "kind": "binary",
+                                "threshold": 26.5,
+                                "p_left": 0.8888888888888888,
+                                "default": 0,
+                                "left": {
+                                  "leaf": false,
+                                  "class_weights": [
+                                    115.0,
+                                    45.0
+                                  ],
+                                  "feature": 14,
+                                  "kind": "binary",
+                                  "threshold": 487.0,
+                                  "p_left": 0.875,
+                                  "default": 0,
+                                  "left": {
+                                    "leaf": true,
+                                    "class_weights": [
+                                      107.0,
+                                      33.0
+                                    ]
+                                  },
+                                  "right": {
+                                    "leaf": true,
+                                    "class_weights": [
+                                      8.0,
+                                      12.0
+                                    ]
+                                  }
+                                },
+                                "right": {
+                                  "leaf": true,
+                                  "class_weights": [
+                                    5.0,
+                                    15.0
+                                  ]
+                                }
+                              }
+                            }
+                          },
+                          "right": {
+                            "leaf": true,
+                            "class_weights": [
+                              0.0,
+                              5.0
+                            ]
+                          }
+                        },
+                        "right": {
+                          "leaf": false,
+                          "class_weights": [
+                            990.0,
+                            1986.0
+                          ],
+                          "feature": 12,
+                          "kind": "binary",
+                          "threshold": 3233500.0,
+                          "p_left": 0.969758064516129,
+                          "default": 0,
+                          "left": {
+                            "leaf": false,
+                            "class_weights": [
+                              989.0,
+                              1897.0
+                            ],
+                            "feature": 27,
+                            "kind": "binary",
+                            "threshold": 2.727272727272727,
+                            "p_left": 0.9982674982674983,
+                            "default": 0,
+                            "left": {
+                              "leaf": false,
+                              "class_weights": [
+                                984.0,
+                                1897.0
+                              ],
+                              "feature": 12,
+                              "kind": "binary",
+                              "threshold": 998500.0,
+                              "p_left": 0.013536966331135023,
+                              "default": 1,
+                              "left": {
+                                "leaf": true,
+                                "class_weights": [
+                                  33.0,
+                                  6.0
+                                ]
+                              },
+                              "right": {
+                                "leaf": false,
+                                "class_weights": [
+                                  951.0,
+                                  1891.0
+                                ],
+                                "feature": 36,
+                                "kind": "binary",
+                                "threshold": 0.5,
+                                "p_left": 0.9894440534834623,
+                                "default": 0,
+                                "left": {
+                                  "leaf": false,
+                                  "class_weights": [
+                                    927.0,
+                                    1885.0
+                                  ],
+                                  "feature": 3,
+                                  "kind": "binary",
+                                  "threshold": 5.5,
+                                  "p_left": 0.9754623044096729,
+                                  "default": 0,
+                                  "left": {
+                                    "leaf": false,
+                                    "class_weights": [
+                                      920.0,
+                                      1823.0
+                                    ],
+                                    "feature": 5,
+                                    "kind": "binary",
+                                    "threshold": 13.5,
+                                    "p_left": 0.08129784907036092,
+                                    "default": 1,
+                                    "left": {
+                                      "leaf": false,
+                                      "class_weights": [
+                                        111.0,
+                                        112.0
+                                      ],
+                                      "feature": 26,
+                                      "kind": "binary",
+                                      "threshold": 0.40980867241440677,
+                                      "p_left": 0.9775784753363229,
+                                      "default": 0,
+                                      "left": {
+                                        "leaf": false,
+                                        "class_weights": [
+                                          111.0,
+                                          107.0
+                                        ],
+                                        "feature": 28,
+                                        "kind": "binary",
+                                        "threshold": 2.5,
+                                        "p_left": 0.4908256880733945,
+                                        "default": 1,
+                                        "left": {
+                                          "leaf": true,
+                                          "class_weights": [
+                                            71.0,
+                                            36.0
+                                          ]
+                                        },
+                                        "right": {
+                                          "leaf": true,
+                                          "class_weights": [
+                                            40.0,
+                                            71.0
+                                          ]
+                                        }
+                                      },
+                                      "right": {
+                                        "leaf": true,
+                                        "class_weights": [
+                                          0.0,
+                                          5.0
+                                        ]
+                                      }
+                                    },
+                                    "right": {
+                                      "leaf": false,
+                                      "class_weights": [
+                                        809.0,
+                                        1711.0
+                                      ],
+                                      "feature": 37,
+                                      "kind": "binary",
+                                      "threshold": 0.5,
+                                      "p_left": 0.9837301587301587,
+                                      "default": 0,
+                                      "left": {
+                                        "leaf": false,
+                                        "class_weights": [
+                                          788.0,
+                                          1691.0
+                                        ],
+                                        "feature": 27,
+                                        "kind": "binary",
+                                        "threshold": 0.35000000000000003,
+                                        "p_left": 0.9919322307382009,
+                                        "default": 0,
+                                        "left": {
+                                          "leaf": true,
+                                          "class_weights": [
+                                            777.0,
+                                            1682.0
+                                          ]
+                                        },
+                                        "right": {
+                                          "leaf": false,
+                                          "class_weights": [
+                                            11.0,
+                                            9.0
+                                          ],
+                                          "feature": 24,
+                                          "kind": "binary",
+                                          "threshold": 0.5,
+                                          "p_left": 0.4,
+                                          "default": 1,
+                                          "left": {
+                                            "leaf": true,
+                                            "class_weights": [
+                                              8.0,
+                                              0.0
+                                            ]
+                                          },
+                                          "right": {
+                                            "leaf": true,
+                                            "class_weights": [
+                                              3.0,
+                                              9.0
+                                            ]
+                                          }
+                                        }
+                                      },
+                                      "right": {
+                                        "leaf": false,
+                                        "class_weights": [
+                                          21.0,
+                                          20.0
+                                        ],
+                                        "feature": 14,
+                                        "kind": "binary",
+                                        "threshold": 417.5,
+                                        "p_left": 0.17073170731707318,
+                                        "default": 1,
+                                        "left": {
+                                          "leaf": true,
+                                          "class_weights": [
+                                            7.0,
+                                            0.0
+                                          ]
+                                        },
+                                        "right": {
+                                          "leaf": true,
+                                          "class_weights": [
+                                            14.0,
+                                            20.0
+                                          ]
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "right": {
+                                    "leaf": true,
+                                    "class_weights": [
+                                      7.0,
+                                      62.0
+                                    ]
+                                  }
+                                },
+                                "right": {
+                                  "leaf": true,
+                                  "class_weights": [
+                                    24.0,
+                                    6.0
+                                  ]
+                                }
+                              }
+                            },
+                            "right": {
+                              "leaf": true,
+                              "class_weights": [
+                                5.0,
+                                0.0
+                              ]
+                            }
+                          },
+                          "right": {
+                            "leaf": true,
+                            "class_weights": [
+                              1.0,
+                              89.0
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "right": {
+                      "leaf": true,
+                      "class_weights": [
+                        143.0,
+                        21.0
+                      ]
+                    }
+                  }
+                }
+              },
+              "right": {
+                "leaf": false,
+                "class_weights": [
+                  6642.0,
+                  1024.0
+                ],
+                "feature": 14,
+                "kind": "binary",
+                "threshold": 206.5,
+                "p_left": 0.006000521784503,
+                "default": 1,
+                "left": {
+                  "leaf": true,
+                  "class_weights": [
+                    6.0,
+                    40.0
+                  ]
+                },
+                "right": {
+                  "leaf": false,
+                  "class_weights": [
+                    6636.0,
+                    984.0
+                  ],
+                  "feature": 28,
+                  "kind": "binary",
+                  "threshold": 12.5,
+                  "p_left": 0.9963254593175853,
+                  "default": 0,
+                  "left": {
+                    "leaf": false,
+                    "class_weights": [
+                      6628.0,
+                      964.0
+                    ],
+                    "feature": 26,
+                    "kind": "binary",
+                    "threshold": 0.3311894601084513,
+                    "p_left": 0.9844573234984194,
+                    "default": 0,
+                    "left": {
+                      "leaf": true,
+                      "class_weights": [
+                        6560.0,
+                        914.0
+                      ]
+                    },
+                    "right": {
+                      "leaf": false,
+                      "class_weights": [
+                        68.0,
+                        50.0
+                      ],
+                      "feature": 1,
+                      "kind": "binary",
+                      "threshold": 1.0,
+                      "p_left": 0.9576271186440678,
+                      "default": 0,
+                      "left": {
+                        "leaf": false,
+                        "class_weights": [
+                          68.0,
+                          45.0
+                        ],
+                        "feature": 3,
+                        "kind": "binary",
+                        "threshold": 4.5,
+                        "p_left": 0.9557522123893806,
+                        "default": 0,
+                        "left": {
+                          "leaf": false,
+                          "class_weights": [
+                            68.0,
+                            40.0
+                          ],
+                          "feature": 32,
+                          "kind": "binary",
+                          "threshold": 0.5,
+                          "p_left": 0.9722222222222222,
+                          "default": 0,
+                          "left": {
+                            "leaf": false,
+                            "class_weights": [
+                              68.0,
+                              37.0
+                            ],
+                            "feature": 37,
+                            "kind": "binary",
+                            "threshold": 0.5,
+                            "p_left": 0.9809523809523809,
+                            "default": 0,
+                            "left": {
+                              "leaf": false,
+                              "class_weights": [
+                                68.0,
+                                35.0
+                              ],
+                              "feature": 28,
+                              "kind": "binary",
+                              "threshold": 4.5,
+                              "p_left": 0.9514563106796117,
+                              "default": 0,
+                              "left": {
+                                "leaf": false,
+                                "class_weights": [
+                                  63.0,
+                                  35.0
+                                ],
+                                "feature": 26,
+                                "kind": "binary",
+                                "threshold": 0.37705556490396497,
+                                "p_left": 0.14285714285714285,
+                                "default": 1,
+                                "left": {
+                                  "leaf": false,
+                                  "class_weights": [
+                                    4.0,
+                                    10.0
+                                  ],
+                                  "feature": 27,
+                                  "kind": "binary",
+                                  "threshold": 0.30000000000000004,
+                                  "p_left": 0.21428571428571427,
+                                  "default": 1,
+                                  "left": {
+                                    "leaf": true,
+                                    "class_weights": [
+                                      3.0,
+                                      0.0
+                                    ]
+                                  },
+                                  "right": {
+                                    "leaf": true,
+                                    "class_weights": [
+                                      1.0,
+                                      10.0
+                                    ]
+                                  }
+                                },
+                                "right": {
+                                  "leaf": true,
+                                  "class_weights": [
+                                    59.0,
+                                    25.0
+                                  ]
+                                }
+                              },
+                              "right": {
+                                "leaf": true,
+                                "class_weights": [
+                                  5.0,
+                                  0.0
+                                ]
+                              }
+                            },
+                            "right": {
+                              "leaf": true,
+                              "class_weights": [
+                                0.0,
+                                2.0
+                              ]
+                            }
+                          },
+                          "right": {
+                            "leaf": true,
+                            "class_weights": [
+                              0.0,
+                              3.0
+                            ]
+                          }
+                        },
+                        "right": {
+                          "leaf": true,
+                          "class_weights": [
+                            0.0,
+                            5.0
+                          ]
+                        }
+                      },
+                      "right": {
+                        "leaf": true,
+                        "class_weights": [
+                          0.0,
+                          5.0
+                        ]
+                      }
+                    }
+                  },
+                  "right": {
+                    "leaf": false,
+                    "class_weights": [
+                      8.0,
+                      20.0
+                    ],
+                    "feature": 7,
+                    "kind": "binary",
+                    "threshold": 1.5,
+                    "p_left": 0.17857142857142858,
+                    "default": 1,
+                    "left": {
+                      "leaf": true,
+                      "class_weights": [
+                        5.0,
+                        0.0
+                      ]
+                    },
+                    "right": {
+                      "leaf": true,
+                      "class_weights": [
+                        3.0,
+                        20.0
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "right": {
+              "leaf": true,
+              "class_weights": [
+                394.0,
+                1.0
+              ]
+            }
+          },
+          "right": {
+            "leaf": true,
+            "class_weights": [
+              655.0,
+              4.0
+            ]
+          }
+        },
+        "right": {
+          "leaf": false,
+          "class_weights": [
+            679.0,
+            1461.0
+          ],
+          "feature": 13,
+          "kind": "binary",
+          "threshold": 2.5,
+          "p_left": 0.9742990654205608,
+          "default": 0,
+          "left": {
+            "leaf": false,
+            "class_weights": [
+              624.0,
+              1461.0
+            ],
+            "feature": 44,
+            "kind": "binary",
+            "threshold": 0.5,
+            "p_left": 0.841726618705036,
+            "default": 0,
+            "left": {
+              "leaf": false,
+              "class_weights": [
+                382.0,
+                1373.0
+              ],
+              "feature": 12,
+              "kind": "binary",
+              "threshold": 1647500.0,
+              "p_left": 0.5025641025641026,
+              "default": 0,
+              "left": {
+                "leaf": false,
+                "class_weights": [
+                  317.0,
+                  565.0
+                ],
+                "feature": 13,
+                "kind": "binary",
+                "threshold": 0.5,
+                "p_left": 0.4580498866213152,
+                "default": 1,
+                "left": {
+                  "leaf": false,
+                  "class_weights": [
+                    31.0,
+                    373.0
+                  ],
+                  "feature": 42,
+                  "kind": "binary",
+                  "threshold": 0.5,
+                  "p_left": 0.995049504950495,
+                  "default": 0,
+                  "left": {
+                    "leaf": false,
+                    "class_weights": [
+                      29.0,
+                      373.0
+                    ],
+                    "feature": 12,
+                    "kind": "binary",
+                    "threshold": 116000.0,
+                    "p_left": 0.029850746268656716,
+                    "default": 1,
+                    "left": {
+                      "leaf": true,
+                      "class_weights": [
+                        9.0,
+                        3.0
+                      ]
+                    },
+                    "right": {
+                      "leaf": false,
+                      "class_weights": [
+                        20.0,
+                        370.0
+                      ],
+                      "feature": 15,
+                      "kind": "binary",
+                      "threshold": 497.0,
+                      "p_left": 0.9641025641025641,
+                      "default": 0,
+                      "left": {
+                        "leaf": true,
+                        "class_weights": [
+                          12.0,
+                          364.0
+                        ]
+                      },
+                      "right": {
+                        "leaf": false,
+                        "class_weights": [
+                          8.0,
+                          6.0
+                        ],
+                        "feature": 14,
+                        "kind": "binary",
+                        "threshold": 702.5,
+                        "p_left": 0.2857142857142857,
+                        "default": 1,
+                        "left": {
+                          "leaf": true,
+                          "class_weights": [
+                            0.0,
+                            4.0
+                          ]
+                        },
+                        "right": {
+                          "leaf": true,
+                          "class_weights": [
+                            8.0,
+                            2.0
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "right": {
+                    "leaf": true,
+                    "class_weights": [
+                      2.0,
+                      0.0
+                    ]
+                  }
+                },
+                "right": {
+                  "leaf": false,
+                  "class_weights": [
+                    286.0,
+                    192.0
+                  ],
+                  "feature": 29,
+                  "kind": "binary",
+                  "threshold": 0.19090909090909092,
+                  "p_left": 0.3368200836820084,
+                  "default": 1,
+                  "left": {
+                    "leaf": false,
+                    "class_weights": [
+                      51.0,
+                      110.0
+                    ],
+                    "feature": 5,
+                    "kind": "binary",
+                    "threshold": 176.5,
+                    "p_left": 0.2546583850931677,
+                    "default": 1,
+                    "left": {
+                      "leaf": false,
+                      "class_weights": [
+                        32.0,
+                        9.0
+                      ],
+                      "feature": 26,
+                      "kind": "binary",
+                      "threshold": 0.35553144872874637,
+                      "p_left": 0.926829268292683,
+                      "default": 0,
+                      "left": {
+                        "leaf": true,
+                        "class_weights": [
+                          32.0,
+                          6.0
+                        ]
+                      },
+                      "right": {
+                        "leaf": true,
+                        "class_weights": [
+                          0.0,
+                          3.0
+                        ]
+                      }
+                    },
+                    "right": {
+                      "leaf": false,
+                      "class_weights": [
+                        19.0,
+                        101.0
+                      ],
+                      "feature": 12,
+                      "kind": "binary",
+                      "threshold": 641000.0,
+                      "p_left": 0.025,
+                      "default": 1,
+                      "left": {
+                        "leaf": true,
+                        "class_weights": [
+                          3.0,
+                          0.0
+                        ]
+                      },
+                      "right": {
+                        "leaf": false,
+                        "class_weights": [
+                          16.0,
+                          101.0
+                        ],
+                        "feature": 14,
+                        "kind": "binary",
+                        "threshold": 704.5,
+                        "p_left": 0.8376068376068376,
+                        "default": 0,
+                        "left": {
+                          "leaf": true,
+                          "class_weights": [
+                            5.0,
+                            93.0
+                          ]
+                        },
+                        "right": {
+                          "leaf": false,
+                          "class_weights": [
+                            11.0,
+                            8.0
+                          ],
+                          "feature": 8,
+                          "kind": "binary",
+                          "threshold": 15.5,
+                          "p_left": 0.3157894736842105,
+                          "default": 1,
+                          "left": {
+                            "leaf": true,
+                            "class_weights": [
+                              6.0,
+                              0.0
+                            ]
+                          },
+                          "right": {
+                            "leaf": true,
+                            "class_weights": [
+                              5.0,
+                              8.0
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "right": {
+                    "leaf": false,
+                    "class_weights": [
+                      235.0,
+                      82.0
+                    ],
+                    "feature": 3,
+                    "kind": "binary",
+                    "threshold": 9.5,
+                    "p_left": 0.9842271293375394,
+                    "default": 0,
+                    "left": {
+                      "leaf": false,
+                      "class_weights": [
+                        235.0,
+                        77.0
+                      ],
+                      "feature": 5,
+                      "kind": "binary",
+                      "threshold": 334.0,
+                      "p_left": 0.9871794871794872,
+                      "default": 0,
+                      "left": {
+                        "leaf": true,
+                        "class_weights": [
+                          235.0,
+                          73.0
+                        ]
+                      },
+                      "right": {
+                        "leaf": true,
+                        "class_weights": [
+                          0.0,
+                          4.0
+                        ]
+                      }
+                    },
+                    "right": {
+                      "leaf": true,
+                      "class_weights": [
+                        0.0,
+                        5.0
+                      ]
+                    }
+                  }
+                }
+              },
+              "right": {
+                "leaf": false,
+                "class_weights": [
+                  65.0,
+                  808.0
+                ],
+                "feature": 14,
+                "kind": "binary",
+                "threshold": 696.0,
+                "p_left": 0.9369988545246277,
+                "default": 0,
+                "left": {
+                  "leaf": true,
+                  "class_weights": [
+                    30.0,
+                    788.0
+                  ]
+                },
+                "right": {
+                  "leaf": false,
+                  "class_weights": [
+                    35.0,
+                    20.0
+                  ],
+                  "feature": 13,
+                  "kind": "binary",
+                  "threshold": 0.5,
+                  "p_left": 0.4909090909090909,
+                  "default": 1,
+                  "left": {
+                    "leaf": true,
+                    "class_weights": [
+                      26.0,
+                      1.0
+                    ]
+                  },
+                  "right": {
+                    "leaf": false,
+                    "class_weights": [
+                      9.0,
+                      19.0
+                    ],
+                    "feature": 14,
+                    "kind": "binary",
+                    "threshold": 722.0,
+                    "p_left": 0.25,
+                    "default": 1,
+                    "left": {
+                      "leaf": true,
+                      "class_weights": [
+                        6.0,
+                        1.0
+                      ]
+                    },
+                    "right": {
+                      "leaf": true,
+                      "class_weights": [
+                        3.0,
+                        18.0
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "right": {
+              "leaf": false,
+              "class_weights": [
+                242.0,
+                88.0
+              ],
+              "feature": 12,
+              "kind": "binary",
+              "threshold": 1650000.0,
+              "p_left": 0.8454545454545455,
+              "default": 0,
+              "left": {
+                "leaf": true,
+                "class_weights": [
+                  237.0,
+                  42.0
+                ]
+              },
+              "right": {
+                "leaf": false,
+                "class_weights": [
+                  5.0,
+                  46.0
+                ],
+                "feature": 7,
+                "kind": "binary",
+                "threshold": 11.0,
+                "p_left": 0.9215686274509803,
+                "default": 0,
+                "left": {
+                  "leaf": true,
+                  "class_weights": [
+                    1.0,
+                    46.0
+                  ]
+                },
+                "right": {
+                  "leaf": true,
+                  "class_weights": [
+                    4.0,
+                    0.0
+                  ]
+                }
+              }
+            }
+          },
+          "right": {
+            "leaf": true,
+            "class_weights": [
+              55.0,
+              0.0
+            ]
+          }
+        }
+      }
+    },
+    "right": {
+      "leaf": false,
+      "class_weights": [
+        224.0,
+        3740.0
+      ],
+      "feature": 26,
+      "kind": "binary",
+      "threshold": 0.7453562799317095,
+      "p_left": 0.3819374369323915,
+      "default": 1,
+      "left": {
+        "leaf": false,
+        "class_weights": [
+          215.0,
+          1299.0
+        ],
+        "feature": 27,
+        "kind": "binary",
+        "threshold": 2.045454545454546,
+        "p_left": 0.8910171730515192,
+        "default": 0,
+        "left": {
+          "leaf": false,
+          "class_weights": [
+            154.0,
+            1195.0
+          ],
+          "feature": 5,
+          "kind": "binary",
+          "threshold": 146.5,
+          "p_left": 0.6115641215715345,
+          "default": 0,
+          "left": {
+            "leaf": false,
+            "class_weights": [
+              141.0,
+              684.0
+            ],
+            "feature": 13,
+            "kind": "binary",
+            "threshold": 0.5,
+            "p_left": 0.7381818181818182,
+            "default": 0,
+            "left": {
+              "leaf": true,
+              "class_weights": [
+                65.0,
+                544.0
+              ]
+            },
+            "right": {
+              "leaf": false,
+              "class_weights": [
+                76.0,
+                140.0
+              ],
+              "feature": 8,
+              "kind": "binary",
+              "threshold": 30.5,
+              "p_left": 0.9722222222222222,
+              "default": 0,
+              "left": {
+                "leaf": false,
+                "class_weights": [
+                  70.0,
+                  140.0
+                ],
+                "feature": 13,
+                "kind": "binary",
+                "threshold": 2.5,
+                "p_left": 0.9761904761904762,
+                "default": 0,
+                "left": {
+                  "leaf": false,
+                  "class_weights": [
+                    65.0,
+                    140.0
+                  ],
+                  "feature": 5,
+                  "kind": "binary",
+                  "threshold": 13.5,
+                  "p_left": 0.13658536585365855,
+                  "default": 1,
+                  "left": {
+                    "leaf": false,
+                    "class_weights": [
+                      20.0,
+                      8.0
+                    ],
+                    "feature": 12,
+                    "kind": "binary",
+                    "threshold": 1748500.0,
+                    "p_left": 0.4642857142857143,
+                    "default": 1,
+                    "left": {
+                      "leaf": true,
+                      "class_weights": [
+                        13.0,
+                        0.0
+                      ]
+                    },
+                    "right": {
+                      "leaf": false,
+                      "class_weights": [
+                        7.0,
+                        8.0
+                      ],
+                      "feature": 16,
+                      "kind": "binary",
+                      "threshold": 4.0,
+                      "p_left": 0.6,
+                      "default": 0,
+                      "left": {
+                        "leaf": true,
+                        "class_weights": [
+                          1.0,
+                          8.0
+                        ]
+                      },
+                      "right": {
+                        "leaf": true,
+                        "class_weights": [
+                          6.0,
+                          0.0
+                        ]
+                      }
+                    }
+                  },
+                  "right": {
+                    "leaf": true,
+                    "class_weights": [
+                      45.0,
+                      132.0
+                    ]
+                  }
+                },
+                "right": {
+                  "leaf": true,
+                  "class_weights": [
+                    5.0,
+                    0.0
+                  ]
+                }
+              },
+              "right": {
+                "leaf": true,
+                "class_weights": [
+                  6.0,
+                  0.0
+                ]
+              }
+            }
+          },
+          "right": {
+            "leaf": true,
+            "class_weights": [
+              13.0,
+              511.0
+            ]
+          }
+        },
+        "right": {
+          "leaf": false,
+          "class_weights": [
+            61.0,
+            104.0
+          ],
+          "feature": 8,
+          "kind": "binary",
+          "threshold": 2.0,
+          "p_left": 0.030303030303030304,
+          "default": 1,
+          "left": {
+            "leaf": true,
+            "class_weights": [
+              5.0,
+              0.0
+            ]
+          },
+          "right": {
+            "leaf": false,
+            "class_weights": [
+              56.0,
+              104.0
+            ],
+            "feature": 35,
+            "kind": "binary",
+            "threshold": 0.5,
+            "p_left": 0.025,
+            "default": 1,
+            "left": {
+              "leaf": true,
+              "class_weights": [
+                4.0,
+                0.0
+              ]
+            },
+            "right": {
+              "leaf": true,
+              "class_weights": [
+                52.0,
+                104.0
+              ]
+            }
+          }
+        }
+      },
+      "right": {
+        "leaf": true,
+        "class_weights": [
+          9.0,
+          2441.0
+        ]
+      }
+    }
+  }
+}
