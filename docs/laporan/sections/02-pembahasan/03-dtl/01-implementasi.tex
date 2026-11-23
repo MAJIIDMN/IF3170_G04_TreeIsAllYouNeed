@@ -2,27 +2,232 @@
 \label{subsec:dtl-implementasi}
 
 \subsubsection{Landasan Teori}
-\todo{Jelaskan entropi, \textit{information gain}, \textit{split information}, \textit{gain ratio}; pencarian \textit{threshold} untuk atribut kontinu; penanganan \textit{missing value} dengan bobot fraksional; dan \textit{pruning} (\textit{pessimistic error pruning} C4.5). Acu \cite{slide-dtl,slide-dtl-issues,quinlan1993c45}. Jelaskan juga alasan memilih C4.5 dibanding ID3 dan CART. Sertakan rumus utama dalam lingkungan \texttt{equation}/\texttt{align}.}
+
+\paragraph{Pembangunan pohon.} \textit{Decision tree} membagi data secara rekursif. Di setiap simpul
+dipilih satu atribut yang paling memisahkan kelas, lalu data dipecah ke cabang sesuai nilai atribut
+tersebut. Pembagian berhenti saat simpul sudah murni atau syarat berhenti terpenuhi, dan simpul itu
+menjadi daun yang memprediksi kelas mayoritasnya \cite{slide-dtl}. Implementasi kami juga menyimpan
+distribusi kelas di setiap daun, sehingga pohon menghasilkan peluang $P(\text{batal} \mid x)$ dan
+\textit{threshold} keputusan dapat disesuaikan (Subbab~\ref{subsec:dtl-validasi}).
+
+\paragraph{Entropi dan \textit{information gain}.} Kemurnian simpul diukur dengan entropi. Untuk
+himpunan contoh $S$ dengan proporsi kelas $p_c$:
+\begin{equation}
+	\text{Entropy}(S) = -\sum_{c} p_c \log_2 p_c
+	\label{eq:dtl-entropy}
+\end{equation}
+\textit{Information gain} sebuah atribut $A$ adalah penurunan entropi setelah $S$ dipecah menurut
+nilai $v$ dari $A$:
+\begin{equation}
+	\text{Gain}(S, A) = \text{Entropy}(S) - \sum_{v \in \text{Values}(A)} \frac{|S_v|}{|S|}\,\text{Entropy}(S_v)
+	\label{eq:dtl-gain}
+\end{equation}
+
+\paragraph{\textit{Gain ratio}.} ID3 memilih atribut dengan \textit{gain} terbesar. Kriteria ini
+condong ke atribut yang bernilai banyak, karena atribut seperti itu menghasilkan banyak cabang kecil
+yang tampak murni. C4.5 mengoreksinya dengan membagi \textit{gain} dengan \textit{split information},
+yaitu entropi dari ukuran cabang itu sendiri \cite{slide-dtl-issues}:
+\begin{align}
+	\text{SplitInfo}(S, A) &= -\sum_{v} \frac{|S_v|}{|S|} \log_2 \frac{|S_v|}{|S|} \\
+	\text{GainRatio}(S, A) &= \frac{\text{Gain}(S, A)}{\text{SplitInfo}(S, A)}
+	\label{eq:dtl-gain-ratio}
+\end{align}
+\textit{Gain ratio} menjadi tidak stabil saat $\text{SplitInfo}$ mendekati nol. Karena itu,
+\textit{gain ratio} hanya dibandingkan di antara atribut yang \textit{gain}-nya tidak lebih kecil
+daripada rata-rata \textit{gain} semua kandidat \cite{slide-dtl-issues}.
+
+\paragraph{Atribut kontinu dan nilai hilang.} Nilai atribut kontinu diurutkan, lalu setiap titik
+tengah antara dua nilai berurutan yang berbeda menjadi kandidat ambang $c$. Atribut kontinu dipecah
+menjadi dua cabang, $A \le c$ dan $A > c$, dengan ambang yang memberi \textit{gain} terbesar
+\cite{slide-dtl-issues}. Untuk nilai hilang, \textit{gain} dihitung hanya dari contoh yang nilainya
+diketahui, lalu dikalikan dengan proporsi contoh yang diketahui tersebut. Saat pohon dibangun, contoh
+dengan nilai hilang dikirim ke semua cabang dengan bobot pecahan sebesar proporsi contoh di cabang itu
+\cite{slide-dtl-issues,quinlan1993c45}.
+
+\paragraph{\textit{Pruning}.} Pohon yang dibiarkan tumbuh sampai murni akan menghafal
+\textit{noise}. Ketiga metode berikut bekerja setelah pohon selesai dibangun dan mengubah simpul
+internal menjadi daun.
+\begin{itemize}
+	\item \textbf{\textit{Reduced error pruning}} \cite{slide-dtl-issues}. Sebanyak
+	\texttt{val\_fraction} data latih disisihkan sebagai data validasi. Secara berulang, simpul yang
+	paling banyak mengurangi kesalahan validasi jika dijadikan daun akan dipangkas, sampai tidak ada
+	lagi pemangkasan yang mengurangi kesalahan.
+	\item \textbf{\textit{Pessimistic pruning}} \cite{quinlan1993c45}. Kesalahan setiap simpul
+	diperkirakan dengan batas atas selang kepercayaan binomial pada faktor kepercayaan CF. Sebuah
+	subpohon diganti daun jika perkiraan kesalahannya sebagai daun tidak lebih besar daripada jumlah
+	perkiraan kesalahan daun-daunnya ditambah toleransi 0,1, sama seperti C4.5. Metode ini tidak
+	membutuhkan data validasi.
+	\item \textbf{\textit{Cost-complexity pruning}} \cite{breiman1984cart}. Untuk setiap simpul
+	internal $t$ dengan subpohon $T_t$ dihitung
+	\begin{equation}
+		\alpha_{\text{eff}}(t) = \frac{R(t) - R(T_t)}{|\text{daun}(T_t)| - 1}
+		\label{eq:dtl-ccp}
+	\end{equation}
+	dengan $R$ jumlah contoh latih yang salah klasifikasi. Simpul dengan $\alpha_{\text{eff}}$
+	terkecil dipangkas berulang kali selama nilainya tidak melebihi \texttt{ccp\_alpha}. Karena $R$
+	dihitung dalam jumlah contoh, bukan proporsi seperti pada \textit{scikit-learn}, $\alpha = 2{,}5$
+	berarti sebuah subpohon hanya dipertahankan jika setiap daun tambahannya mengurangi lebih dari 2,5
+	kesalahan latih.
+\end{itemize}
+
+Kami memilih C4.5 karena spesifikasi meminta DTL yang menangani data numerik, kategorikal, dan nilai
+hilang. ID3 dasar hanya menangani atribut diskret tanpa nilai hilang. CART menangani ketiganya,
+tetapi selalu memecah dua cabang dan memakai indeks Gini, sedangkan materi kuliah membahas penanganan
+atribut kontinu dan nilai hilang dalam kerangka C4.5.
 
 \subsubsection{Struktur Kelas dan Fungsi}
-\todo{Deskripsikan kelas pada \texttt{src/algoritma/dtl/}: tiap modul (\texttt{criteria.py}, \texttt{splitting.py}, \texttt{tree.py}, \texttt{pruning.py}, \texttt{serialization.py}, \texttt{dtl.py}) beserta fungsi pentingnya dan parameter kelas \texttt{DTL}. Isi tabel di bawah, satu baris per fungsi/metode.}
+
+Implementasi berada pada paket \nolinkurl{src/algoritma/dtl/} dan hanya memakai NumPy (ditambah
+Matplotlib untuk menggambar pohon). Paket ini dipecah menjadi tujuh modul agar setiap bagian dapat
+diuji terpisah (Tabel~\ref{tab:dtl-modul}). Pengujian unitnya ada di \nolinkurl{test/test_dtl.py},
+termasuk uji nilai entropi dan \textit{gain} pada data \textit{PlayTennis}, titik tengah ambang
+kontinu, pecahan \textit{gain} untuk nilai hilang, \textit{save} dan \textit{load}, serta gambar
+pohon.
 
 \begin{table}[H]
 	\centering
-	\caption{Deskripsi kelas dan fungsi DTL}
-	\label{tab:dtl-fungsi}
+	\caption{Modul pada paket \texttt{dtl}}
+	\label{tab:dtl-modul}
+	\small
 	\begin{tabularx}{\textwidth}{l Y}
 		\toprule
-		\textbf{Fungsi/Metode} & \textbf{Deskripsi} \\
+		\textbf{Modul} & \textbf{Isi} \\
 		\midrule
-		\texttt{nama\_fungsi} & \todo{deskripsi} \\
+		\texttt{criteria.py} & \texttt{entropy}, \texttt{information\_gain} (dengan faktor proporsi nilai diketahui), \texttt{split\_info}, \texttt{gain\_ratio}, dan \texttt{select\_split} (\textit{gain ratio} terbesar di antara kandidat dengan \textit{gain} di atas rata-rata). \\
+		\texttt{splitting.py} & Pencarian ambang terbaik atribut kontinu (\texttt{best\_split\_continuous}), pemecahan \textit{multiway} atribut kategorikal (\texttt{best\_split\_categorical}), dan alternatif pemecahan biner kategorikal. \\
+		\texttt{tree.py} & Kelas \texttt{Node}, pembangunan pohon rekursif (\texttt{build\_tree}, \texttt{\_build\_child}), dan penelusuran pohon saat prediksi. \\
+		\texttt{pruning.py} & \texttt{reduced\_error\_prune}, \texttt{pessimistic\_prune}, dan \texttt{cost\_complexity\_prune}. \\
+		\texttt{serialization.py} & Konversi pohon ke \textit{dictionary} dan sebaliknya, serta \texttt{save\_model} dan \texttt{load\_model} berformat JSON. \\
+		\texttt{plot.py} & \texttt{top\_branchings} dan \texttt{plot\_tree} untuk menggambar pohon (bonus, Subbab~\ref{subsec:dtl-bonus}). \\
+		\texttt{dtl.py} & Kelas \texttt{DTL} yang menyatukan modul di atas. \\
 		\bottomrule
 	\end{tabularx}
 \end{table}
 
+Tabel~\ref{tab:dtl-param} merangkum parameter konstruktor kelas \texttt{DTL}, dan
+Tabel~\ref{tab:dtl-fungsi} merangkum metode publiknya. Parameter \texttt{shrinkage} dan
+\texttt{laplace} mengatur penghalusan probabilitas daun dan tidak dipakai pada model final, sehingga
+tidak dicantumkan.
+
+\begin{table}[H]
+	\centering
+	\caption{Parameter kelas \texttt{DTL}}
+	\label{tab:dtl-param}
+	\small
+	\begin{tabularx}{\textwidth}{l l Y}
+		\toprule
+		\textbf{Parameter} & \textbf{Bawaan} & \textbf{Fungsi} \\
+		\midrule
+		\texttt{max\_depth} & 12 & Kedalaman maksimum pohon. \\
+		\texttt{min\_samples\_leaf} & 5 & Jumlah contoh minimum di setiap cabang hasil pemecahan. \\
+		\texttt{min\_gain} & $10^{-7}$ & \textit{Gain} minimum agar simpul dipecah. \\
+		\texttt{split\_criterion} & \texttt{gain\_ratio} & \texttt{gain\_ratio} (C4.5) atau \texttt{gain} (ID3). \\
+		\texttt{categorical\_split} & \texttt{multiway} & Satu cabang per kategori (\texttt{multiway}) atau dua cabang (\texttt{binary}). \\
+		\texttt{pruning} & \texttt{none} & \texttt{none}, \texttt{reduced\_error}, \texttt{pessimistic}, atau \texttt{cost\_complexity}. \\
+		\texttt{val\_fraction} & 0,3 & Porsi data validasi untuk \textit{reduced error pruning}. \\
+		\texttt{confidence} & 0,25 & Faktor kepercayaan (CF) \textit{pessimistic pruning}. \\
+		\texttt{ccp\_alpha} & 0 & Ambang $\alpha$ \textit{cost-complexity pruning}, dalam satuan jumlah contoh. \\
+		\texttt{missing\_predict} & \texttt{majority} & Cara prediksi saat nilai atribut hilang: cabang terbesar (\texttt{majority}) atau semua cabang (\texttt{distribute}). \\
+		\texttt{class\_weight} & \texttt{None} & Bobot kelas: \texttt{None}, \texttt{balanced}, atau \textit{dictionary}. \\
+		\texttt{mdl\_penalty} & \texttt{False} & Penalti MDL untuk ambang atribut kontinu \cite{quinlan1996continuous}. \\
+		\texttt{random\_state} & 42 & \textit{Seed} pemisahan data validasi \textit{reduced error pruning}. \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+	\centering
+	\caption{Metode publik kelas \texttt{DTL} (\texttt{src/algoritma/dtl/dtl.py})}
+	\label{tab:dtl-fungsi}
+	\small
+	\begin{tabularx}{\textwidth}{l Y}
+		\toprule
+		\textbf{Metode} & \textbf{Deskripsi} \\
+		\midrule
+		\texttt{fit(X, y)} & Mendeteksi tipe setiap kolom (kontinu atau kategorikal), menyusun bobot contoh dari \texttt{class\_weight}, membangun pohon, lalu menjalankan \textit{pruning} yang dipilih. Menerima \texttt{DataFrame} pandas maupun larik NumPy. \\
+		\texttt{predict\_proba(X)} & Menelusuri pohon untuk setiap baris dan mengembalikan distribusi kelas di daun tujuan. \\
+		\texttt{predict(X)} & Kelas dengan peluang terbesar. \textit{Threshold} selain 0,5 diterapkan di luar kelas pada keluaran \texttt{predict\_proba}. \\
+		\texttt{apply(X)} & Nomor daun tujuan setiap baris. \\
+		\texttt{plot(path, top\_n, class\_names)} & Menggambar \texttt{top\_n} percabangan teratas ke berkas gambar (bonus, Subbab~\ref{subsec:dtl-bonus}). \\
+		\texttt{save(path)}, \texttt{load(path)} & Menyimpan dan memuat parameter beserta seluruh struktur pohon dalam berkas JSON. \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+Fungsi \texttt{build\_tree} bekerja rekursif pada indeks contoh dan bobotnya.
+\begin{enumerate}
+	\item Distribusi kelas berbobot di simpul dihitung. Simpul langsung menjadi daun jika contohnya
+	kurang dari $2 \times$ \texttt{min\_samples\_leaf}, hanya berisi satu kelas, atau kedalaman sudah
+	mencapai \texttt{max\_depth}.
+	\item Setiap atribut menghasilkan satu kandidat pemecahan. Atribut kontinu memakai ambang dengan
+	\textit{gain} terbesar. Pencarian ambangnya divektorisasi: nilai diurutkan sekali, lalu jumlah
+	kumulatif bobot per kelas memberi distribusi cabang kiri dan kanan untuk semua ambang sekaligus.
+	Atribut kategorikal dipecah satu cabang per kategori, dan kandidat ditolak jika ada kategori
+	dengan contoh kurang dari \texttt{min\_samples\_leaf}.
+	\item \texttt{select\_split} memilih kandidat dengan \textit{gain ratio} terbesar di antara
+	kandidat yang \textit{gain}-nya tidak di bawah rata-rata. Jika tidak ada kandidat dengan
+	\textit{gain} di atas \texttt{min\_gain}, simpul menjadi daun.
+	\item Contoh dengan nilai atribut terpilih yang diketahui dikirim ke cabangnya. Contoh dengan nilai
+	hilang dikirim ke setiap cabang dengan bobot dikalikan proporsi bobot cabang tersebut.
+\end{enumerate}
+Saat prediksi, kategori yang tidak pernah muncul di data latih dan nilai yang hilang diarahkan ke
+cabang dengan bobot terbesar (\texttt{missing\_predict="majority"}). Opsi
+\texttt{missing\_predict="distribute"} mengikuti C4.5 secara penuh: baris dikirim ke semua cabang dan
+distribusi kelas dari setiap cabang dijumlahkan dengan bobot proporsi cabang \cite{quinlan1993c45}.
+
 \subsubsection{\textit{Source Code}}
-\todo{Sisipkan potongan kode inti (perhitungan \textit{gain ratio}, pembangunan pohon rekursif, dan \textit{pruning}) dengan makro \texttt{\textbackslash kode}, lalu jelaskan alurnya. Cek ulang nomor baris jika kode berubah.}
-% \kode{../../src/algoritma/dtl/dtl.py}{1}{30}{Judul potongan kode}{lst:dtl-inti}
+
+Kode~\ref{lst:dtl-criteria} memuat kriteria pemilihan atribut. Faktor \texttt{known /
+parent\_total} pada \texttt{information\_gain} adalah koreksi C4.5 untuk nilai hilang.
+
+\kode{../../src/algoritma/dtl/criteria.py}{6}{52}{Entropi, \textit{information gain}, \textit{gain ratio}, dan pemilihan kandidat}{lst:dtl-criteria}
+
+Kode~\ref{lst:dtl-continuous} mencari ambang untuk atribut kontinu. Variabel \texttt{boundaries}
+menyimpan posisi tempat nilai berubah, dan \texttt{thresholds} adalah titik tengahnya.
+
+\kode{../../src/algoritma/dtl/splitting.py}{22}{57}{Pencarian ambang atribut kontinu}{lst:dtl-continuous}
+
+Kode~\ref{lst:dtl-build} dan Kode~\ref{lst:dtl-missing} adalah inti pembangunan pohon. Bagian kedua
+memperlihatkan distribusi bobot pecahan untuk contoh dengan nilai hilang.
+
+\kode{../../src/algoritma/dtl/tree.py}{183}{231}{Syarat berhenti dan pemilihan kandidat pemecahan}{lst:dtl-build}
+\kode{../../src/algoritma/dtl/tree.py}{233}{286}{Pemecahan simpul dan distribusi contoh bernilai hilang}{lst:dtl-missing}
+
+Kode~\ref{lst:dtl-ccp} dan Kode~\ref{lst:dtl-pessimistic} adalah dua metode \textit{pruning} di luar
+materi kelas yang memberi hasil terbaik pada Subbab~\ref{subsec:dtl-validasi}.
+
+\kode{../../src/algoritma/dtl/pruning.py}{69}{106}{\textit{Cost-complexity pruning}}{lst:dtl-ccp}
+\kode{../../src/algoritma/dtl/pruning.py}{109}{151}{\textit{Pessimistic pruning} C4.5}{lst:dtl-pessimistic}
+
+Ada dua keterbatasan implementasi yang perlu dicatat. Pertama, pembangunan pohon ditulis sebagai
+rekursi Python per simpul. Hanya pencarian ambang yang divektorisasi dengan NumPy, sehingga satu kali
+validasi silang 5-\textit{fold} memerlukan sekitar 22 detik, sedangkan \textit{scikit-learn} sekitar
+1 hingga 2 detik (Tabel~\ref{tab:dtl-hasil}). Kedua, opsi \texttt{missing\_predict="distribute"}
+mengirim baris bernilai hilang ke semua cabang, sehingga waktu pelatihan dan prediksi naik tajam pada
+pohon yang dalam. Karena itu, varian yang memakai data mentah dengan nilai hilang dibatasi ke
+kedalaman 10 (Subbab~\ref{subsec:dtl-validasi}).
 
 \subsubsection{\textit{Save} dan \textit{Load} Model}
-\todo{Format penyimpanan (JSON/\texttt{.npz}/\textit{pickle}), isi yang disimpan, dan contoh pemakaian.}
+
+Model disimpan sebagai JSON agar dapat dibaca manusia dan tidak bergantung pada versi Python seperti
+\textit{pickle}. Berkas berisi penanda format dan versi, semua parameter konstruktor, daftar kelas,
+nama dan tipe fitur, laporan \textit{pruning}, serta pohon dalam bentuk \textit{dictionary} bersarang.
+Setiap simpul menyimpan distribusi kelas berbobot, atribut, jenis pemecahan, ambang atau daftar
+kategori, dan proporsi cabang. \texttt{DTL.load} membangun ulang objek \texttt{Node} dari berkas itu
+tanpa mengeksekusi kode apa pun.
+
+\kode{../../src/algoritma/dtl/serialization.py}{69}{83}{Penyimpanan model ke JSON}{lst:dtl-save}
+
+\begin{lstlisting}[caption={Contoh penyimpanan dan pemuatan model},label={lst:dtl-usage}]
+tree = DTL(max_depth=20, min_samples_leaf=2,
+           pruning="cost_complexity", ccp_alpha=2.5).fit(X, y)
+tree.save("output/dtl/dtl_model.json")
+tree = DTL.load("output/dtl/dtl_model.json")
+labels = (tree.predict_proba(X_test)[:, 1] >= 0.4).astype(int)
+\end{lstlisting}
+
+Notebook memprediksi data uji dengan model hasil \texttt{load}, bukan dengan model di memori, sehingga
+berkas submisi membuktikan bahwa model tersimpan dapat dipakai. Sama seperti pada LR, berkas JSON
+hanya menyimpan pohon, bukan \textit{preprocessing}. Untuk memprediksi data baru, fitur harus dibangun
+ulang dari data latih yang sama dengan \texttt{build\_features}. Langkah ini deterministik, tetapi
+berkas model belum dapat dipakai berdiri sendiri.

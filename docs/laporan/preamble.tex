@@ -112,5 +112,12 @@
 \kepala
 \fancypagestyle{plain}{\kepala}
 
+% ---------- Pemenggalan baris ----------
+% Nama fungsi/kolom panjang di \texttt boleh dipatah setelah garis bawah, dan spasi antarkata
+% boleh melebar sedikit agar tidak ada baris yang keluar margin.
+\let\oldunderscore\_
+\renewcommand{\_}{\oldunderscore\allowbreak}
+\setlength{\emergencystretch}{3em}
+
 % ---------- Hyperref ----------
 \hypersetup{colorlinks=true, linkcolor=black, citecolor=blue, urlcolor=blue}

@@ -1,33 +1,93 @@
 \subsection{Hasil dan Perbandingan dengan \textit{Scikit-learn}}
 \label{subsec:dtl-hasil}
 
-\todo{Bandingkan dengan \texttt{DecisionTreeClassifier} dalam tiga konfigurasi wajib dari spesifikasi: ID3 (\texttt{criterion='entropy'}), C4.5 (\texttt{criterion='entropy'} + \texttt{ccp\_alpha}), dan CART (\texttt{criterion='gini'}). Jelaskan \textit{preprocessing} tambahan untuk \textit{sklearn} (\textit{encoding} dan imputasi) serta cara memilih \texttt{ccp\_alpha}. Pakai \textit{preprocessing} dan \textit{fold} yang sama agar perbedaan hanya berasal dari implementasi \cite{pedregosa2011sklearn}.}
+Pembandingnya adalah \texttt{DecisionTreeClassifier} \cite{sklearn-dtc} dengan pemetaan dari
+spesifikasi: ID3 sebagai \texttt{criterion="entropy"}, CART sebagai \texttt{criterion="gini"}, dan
+C4.5 sebagai \texttt{criterion="entropy"} dengan \texttt{ccp\_alpha}. Kedua implementasi memakai
+46 fitur, \textit{fold} (\textit{seed} 42), \texttt{max\_depth=20}, dan \texttt{min\_samples\_leaf=2}
+yang sama, sehingga perbedaan hasil hanya berasal dari algoritma. \texttt{ccp\_alpha} pada
+\textit{scikit-learn} memakai satuan ketidakmurnian, bukan jumlah contoh, sehingga nilai 2,5 tidak
+dapat dipakai langsung. Nilainya dipilih lewat CV yang sama dari $\{5 \times 10^{-5}, 10^{-4},
+2 \times 10^{-4}, 4 \times 10^{-4}, 8 \times 10^{-4}\}$, baik untuk entropi maupun Gini. Hasilnya
+dirangkum pada Tabel~\ref{tab:dtl-hasil} dan Gambar~\ref{fig:dtl-comparison}.
 
 \begin{table}[H]
 	\centering
-	\caption{Perbandingan DTL \textit{from scratch} dan \textit{scikit-learn}}
+	\caption{Perbandingan DTL \textit{from scratch} dan \textit{scikit-learn} (5-\textit{fold}, \textit{seed} 42). Macro F1 pada \textit{threshold} 0,4 berupa rata-rata $\pm$ simpangan baku per \textit{fold}. Metrik lain dari gabungan prediksi OOF pada \textit{threshold} 0,4. Waktu adalah total lima \textit{fold}.}
 	\label{tab:dtl-hasil}
-	\begin{tabular}{l c c c c c}
+	\footnotesize
+	\setlength{\tabcolsep}{3.5pt}
+	\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X c c c c r r}
 		\toprule
-		\textbf{Implementasi} & \textbf{Macro F1} & \textbf{Accuracy} & \textbf{Precision} & \textbf{Recall} & \textbf{Waktu (s)} \\
+		\textbf{Model} & \textbf{F1@0,4} & \textbf{F1@0,5} & \textbf{Prec.} & \textbf{Rec.} & \textbf{Daun} & \textbf{Waktu (s)} \\
 		\midrule
-		\textit{From scratch} (C4.5) & & & & & \\
-		\textit{Sklearn} ID3 & & & & & \\
-		\textit{Sklearn} C4.5 (\texttt{ccp\_alpha}) & & & & & \\
-		\textit{Sklearn} CART & & & & & \\
+		\textbf{\textit{Scratch}, $\boldsymbol{\alpha}$ 2,5} & $\mathbf{0{,}8692 \pm 0{,}0030}$ & \textbf{0,8692} & \textbf{0,8538} & \textbf{0,7904} & \textbf{65,6} & \textbf{22,2} \\
+		\textit{Scratch}, tanpa \textit{pruning} & $0{,}8497 \pm 0{,}0048$ & 0,8517 & 0,7970 & 0,7990 & 688,4 & 16,1 \\
+		\textit{Sklearn} ID3 (entropi) & $0{,}8288 \pm 0{,}0043$ & 0,8292 & 0,7531 & 0,7933 & 1.285,4 & 1,0 \\
+		\textit{Sklearn} CART (Gini) & $0{,}8246 \pm 0{,}0037$ & 0,8250 & 0,7428 & 0,7952 & 1.463,2 & 0,9 \\
+		\textit{Sklearn} C4.5, $\alpha$ $8 \cdot 10^{-4}$ & $0{,}8638 \pm 0{,}0034$ & 0,8642 & 0,8309 & 0,8001 & 64,2 & 1,5 \\
+		\textit{Sklearn} Gini, $\alpha$ $4 \cdot 10^{-4}$ & $0{,}8642 \pm 0{,}0050$ & 0,8642 & 0,8365 & 0,7948 & 45,6 & 1,9 \\
 		\bottomrule
-	\end{tabular}
+	\end{tabularx}
 \end{table}
 
 \begin{figure}[H]
 	\centering
-	\placeholdergambar{\textit{Confusion matrix} \textit{from scratch} vs \textit{scikit-learn}}
-	\caption{\textit{Confusion matrix} DTL}
-	\label{fig:dtl-cm}
+	\includegraphics[width=0.85\textwidth]{dtl/dtl_comparison.png}
+	\caption{Macro F1 (rata-rata dan simpangan baku lima \textit{fold}) DTL \textit{from scratch} (biru) dan \textit{scikit-learn} (abu-abu)}
+	\label{fig:dtl-comparison}
 \end{figure}
 
-\subsubsection{Pengaruh \textit{Pruning}}
-\todo{Bandingkan strategi \textit{pruning} (tanpa, \textit{pessimistic}, \textit{reduced error}, \textit{cost-complexity}): kedalaman, jumlah daun, dan \textit{macro F1}. Sertakan grafik.}
+\textit{Confusion matrix} prediksi OOF model \textit{from scratch} ada pada
+Gambar~\ref{fig:dtl-validation}: 17.155 \textit{true negative}, 1.210 \textit{false positive}, 1.875
+\textit{false negative}, dan 7.069 \textit{true positive}. Model lebih sering melewatkan pemesanan
+yang batal daripada salah menandai pemesanan yang tidak batal, sesuai dengan \textit{recall} kelas
+batal (0,7904) yang lebih rendah daripada \textit{precision}-nya (0,8538).
 
 \subsubsection{Analisis}
-\todo{Bandingkan kedalaman, jumlah daun, dan kinerja. Jelaskan perbedaan karena \textit{gain ratio} vs entropi/gini, \textit{multiway} vs \textit{binary split}, penanganan \textit{null}, dan jenis \textit{pruning}.}
+
+\paragraph{Dengan \textit{pruning}, kedua implementasi berdekatan.} DTL \textit{from scratch}
+(0,8692) berada 0,0050 hingga 0,0054 di atas dua konfigurasi \textit{scikit-learn} dengan
+\texttt{ccp\_alpha}. Selisih ini sedikit lebih besar daripada simpangan baku antar-\textit{fold}
+(0,003 hingga 0,005), tetapi hanya diukur pada satu \textit{seed}, sehingga kami menyebutnya
+keunggulan kecil, bukan perbedaan yang pasti. Ukuran pohonnya hampir sama (sekitar 66 dan 64 daun
+untuk entropi), sehingga selisihnya kemungkinan berasal dari cara memilih pemecahan dan cara
+memangkas, bukan dari ukuran pohon. Ada tiga perbedaan algoritma:
+\begin{enumerate}
+	\item \textbf{Kriteria pemilihan atribut.} \texttt{DTL} memakai \textit{gain ratio} dengan syarat
+	\textit{gain} di atas rata-rata, sedangkan \textit{scikit-learn} tidak memiliki \textit{gain ratio}
+	dan memakai penurunan entropi atau Gini secara langsung. Pada \texttt{DTL} sendiri, mengganti
+	\textit{gain ratio} dengan \textit{information gain} menurunkan skor sebesar 0,0065
+	(Tabel~\ref{tab:dtl-tuning}).
+	\item \textbf{Ukuran \textit{pruning}.} \texttt{DTL} memangkas berdasarkan jumlah kesalahan
+	klasifikasi, sedangkan \textit{scikit-learn} berdasarkan penurunan ketidakmurnian berbobot.
+	Kriteria pertama lebih dekat ke metrik yang dievaluasi.
+	\item \textbf{Pemilihan di antara pemecahan yang setara.} \textit{Scikit-learn} mengacak urutan
+	fitur yang dievaluasi di setiap simpul (dikendalikan oleh \texttt{random\_state}), sedangkan
+	\texttt{DTL} selalu memilih fitur dengan indeks terkecil jika ada nilai yang sama.
+\end{enumerate}
+
+\paragraph{Tanpa \textit{pruning}, selisihnya lebih besar.} Pohon \textit{from scratch} tanpa
+\textit{pruning} (0,8497) unggul sekitar 0,02 atas ID3 (0,8288) dan CART (0,8246) dari
+\textit{scikit-learn}, dengan jumlah daun sekitar separuhnya (688 berbanding 1.285 dan 1.463).
+Penjelasan yang paling mungkin adalah syarat \textit{gain} di atas rata-rata pada C4.5, yang menolak
+pemecahan dengan \textit{gain} kecil, sehingga pohon tumbuh lebih sedikit walaupun batas kedalaman
+dan ukuran daunnya sama. Hipotesis ini belum kami uji secara terpisah. Ketiga pohon tanpa
+\textit{pruning} sama-sama memiliki \textit{precision} kelas batal yang rendah (0,74 hingga 0,80),
+gejala \textit{overfitting} yang sama seperti pada Subbab~\ref{subsec:dtl-validasi}.
+
+\paragraph{Waktu pelatihan.} \textit{Scikit-learn} 10 hingga 20 kali lebih cepat (sekitar 1 hingga 2
+detik untuk lima \textit{fold}, berbanding 16 hingga 22 detik), karena inti algoritmanya ditulis dalam
+Cython, sedangkan \texttt{DTL} membangun pohon dengan rekursi Python. Waktu pada
+Tabel~\ref{tab:dtl-hasil} hanya perkiraan kasar karena diukur sekali pada satu komputer. Untuk
+ukuran data ini, perbedaan tersebut tidak menghalangi: model final dilatih pada seluruh data latih
+dalam sekitar 5 detik.
+
+\paragraph{Keterbatasan.} Perbandingan dilakukan pada satu \textit{seed}. Baris ID3 dan CART juga
+sedikit berubah antarlingkungan Python: saat notebook dijalankan ulang, keduanya bergeser paling banyak
+0,0005, sedangkan baris lain tidak berubah. \texttt{ccp\_alpha} untuk
+\textit{scikit-learn} hanya dipilih dari lima nilai, dan nilai terbaik untuk entropi
+($8 \times 10^{-4}$) berada di ujung \textit{grid}, sehingga nilai yang lebih besar mungkin memberi
+hasil lebih baik. Kedalaman dan ukuran daun juga tidak di-\textit{tuning} terpisah untuk
+\textit{scikit-learn}. Karena itu, angka \textit{scikit-learn} pada tabel ini bukan batas atas
+kinerjanya.

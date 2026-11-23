@@ -12,13 +12,20 @@
 		\textbf{Model} & \textbf{CV Macro F1 (scratch)} & \textbf{CV Macro F1 (sklearn)} & \textbf{Kaggle} & \textbf{Waktu latih (s)} \\
 		\midrule
 		KNN & & & & \\
-		DTL (C4.5) & & & & \\
+		DTL (C4.5) & 0,8692 & 0,8642 & 0,87393 & 5,4 \\
 		\textit{Logistic Regression} & & & & \\
 		SVM & & & & \\
 		\textit{Naive Bayes} & & & & \\
 		\bottomrule
 	\end{tabular}
 \end{table}
+
+Pada baris DTL, kedua kolom CV adalah rata-rata Macro F1 per \textit{fold} pada \textit{stratified}
+5-\textit{fold} dengan \textit{seed} 42, 46 fitur, dan \textit{threshold} 0,4
+(Tabel~\ref{tab:dtl-hasil}). Kolom \textit{scikit-learn} adalah konfigurasi
+\texttt{DecisionTreeClassifier} terbaik. Rata-rata sepuluh \textit{seed} untuk DTL \textit{from
+scratch} adalah 0,8670 (Subbab~\ref{subsec:dtl-validasi}). Waktu latih adalah waktu \texttt{DTL.fit}
+pada seluruh data latih, tanpa pembangunan fitur.
 
 \begin{figure}[H]
 	\centering
