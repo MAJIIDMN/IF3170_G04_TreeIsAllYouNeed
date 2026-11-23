@@ -1,11 +1,4 @@
 """
-Bonus LR: video garis kontur log-loss dan lintasan parameter (theta0, theta1) selama training.
-
-Model utama punya 100 bobot sehingga permukaan loss-nya tidak bisa digambar di bidang 2D. Karena itu
-dilatih model logistic regression dengan tepat dua parameter: theta0 = bias dan theta1 = bobot satu fitur.
-Kontur yang digambar adalah permukaan log-loss J(theta0, theta1) yang sebenarnya, bukan irisan, dan
-lintasannya adalah parameter yang disimpan kelas LogisticRegression (atribut path) setiap epoch.
-
 Referensi:
 - M. L. Khodra, "Logistic Regression: Stochastic Gradient Ascent," YouTube, 2021 (log-loss / LCL,
      update gradien, inisialisasi parameter). https://www.youtube.com/watch?v=O5NSNMQO1yU
@@ -16,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import animation
 
-try:   # ffmpeg dari paket imageio-ffmpeg (requirements.txt) untuk menyimpan MP4
+try:  
     import imageio_ffmpeg
     plt.rcParams["animation.ffmpeg_path"] = imageio_ffmpeg.get_ffmpeg_exe()
 except ImportError:
@@ -28,7 +21,7 @@ PATH_COLOR = "#d62728"
 
 
 def train_2param(x, y, init, **kwargs):
-    """Latih LR dengan satu fitur x (theta0 = bias, theta1 = bobot x) mulai dari init = (theta0, theta1)."""
+    #  train lr dgn satu fitur x (theta0 = bias, theta1 = bobot x) mulai dari init = (theta0, theta1)
     X = np.asarray(x, float).reshape(-1, 1)
     return LogisticRegression(**kwargs).fit(X, y, init=([init[1]], init[0]))
 
@@ -39,13 +32,13 @@ def make_video(x, y, model, init, out_path, fps=12, max_frames=150, grid=90):
     path = np.array([init] + [(b, w[0]) for w, b in model.path])
     loss = np.r_[model.loss(X, y, w=np.array([init[1]]), b=init[0]), model.loss_history]
 
-    # grid parameter yang mencakup seluruh lintasan, J dihitung dengan fungsi loss kelas yang sama
+    # grid parameter yang mencakup seluruh lintasan, J dihitung dgn fungsi loss kelas yang sama
     lo, hi = path.min(0), path.max(0)
     pad = 0.25 * (hi - lo).max() + 0.2
     t0 = np.linspace(lo[0] - pad, hi[0] + pad, grid)
     t1 = np.linspace(lo[1] - pad, hi[1] + pad, grid)
     Z = np.array([[model.loss(X, y, w=np.array([b1]), b=b0) for b0 in t0] for b1 in t1])
-    levels = loss.min() + (Z.max() - loss.min()) * np.linspace(0.01, 1, 20) ** 2   # rapat di dekat minimum
+    levels = loss.min() + (Z.max() - loss.min()) * np.linspace(0.01, 1, 20) ** 2 
 
     fig, (ax, ax2) = plt.subplots(1, 2, figsize=(12, 5))
     ax.contourf(t0, t1, Z, levels=levels, cmap="viridis", alpha=0.35)
