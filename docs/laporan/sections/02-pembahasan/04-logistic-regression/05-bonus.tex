@@ -1,17 +1,86 @@
 \subsection{Bonus LR}
 \label{subsec:lr-bonus}
 
-\todo{Hapus subbab bonus yang tidak dikerjakan.}
+Dua bonus dikerjakan untuk LR: video garis kontur \textit{log-loss} beserta lintasan parameter, dan algoritma optimasi di luar materi kelas (IRLS + \textit{coordinate descent}). Bonus \textit{cost-sensitive classification} dibahas pada Bagian~\ref{sec:cost-sensitive}.
 
 \subsubsection{Video Kontur \textit{Log-Loss}}
-\todo{Video kontur \textit{log-loss} pada bidang $(\theta_0, \theta_1)$ beserta lintasan parameter selama pelatihan. Jelaskan cara pembuatannya, cantumkan cuplikan \textit{frame}, dan tautan atau lokasi berkas video.}
+\label{subsubsec:lr-video}
+Model final memiliki 100 bobot, sehingga permukaan \textit{loss}-nya tidak dapat digambar pada bidang dua dimensi. Karena itu video dibuat dari LR dengan \textit{tepat dua parameter}, memakai kelas \texttt{LogisticRegression} yang sama: $\theta_0$ adalah bias dan $\theta_1$ adalah bobot satu fitur, yaitu \texttt{lead\_log} (\textit{lead time} yang sudah di-log dan distandardisasi, fitur tunggal terkuat), sehingga $P(\text{batal}\mid x) = \sigma(\theta_0 + \theta_1 x)$. Dengan cara ini kontur yang digambar adalah permukaan \textit{log-loss} $J(\theta_0, \theta_1)$ yang sebenarnya pada \texttt{train\_set}, bukan irisan dari permukaan 100 dimensi.
+
+Model dilatih dengan \textit{gradient descent} sesuai materi kelas \cite{khodra-lr-sga} (\texttt{solver="sgd"} tanpa \texttt{batch\_size}, sehingga tiap \textit{epoch} memakai gradien seluruh data) dengan \textit{learning rate} 0,5. Titik awal $(\theta_0, \theta_1) = (1{,}5;\ 0{,}5)$ dipilih di luar $(0, 0)$ agar bentuk lintasan terlihat jelas; menurut \cite{khodra-lr-sga}, inisialisasi memang boleh selain nol. Kelas \texttt{LogisticRegression} menyimpan parameter setelah setiap \textit{epoch} pada atribut \texttt{path}. Video dibuat oleh fungsi \texttt{train\_2param} dan \texttt{make\_video} di \nolinkurl{src/algoritma/lr/contour_video.py} dengan \textit{matplotlib} \cite{hunter2007matplotlib}. Setiap \textit{frame} berisi:
+\begin{itemize}
+	\item \textbf{kiri}: garis kontur $J(\theta_0, \theta_1)$ dengan nilai $J$ yang dihitung oleh fungsi \textit{loss} kelas yang sama pada \textit{grid} $90 \times 90$, titik awal, lintasan parameter sampai \textit{epoch} saat itu, dan titik posisi saat ini;
+	\item \textbf{kanan}: kurva \textit{loss} per \textit{epoch};
+	\item \textbf{judul}: \textit{epoch}, $\theta_0$, $\theta_1$, dan $J$ pada \textit{frame} tersebut.
+\end{itemize}
+Video disimpan sebagai MP4 (H.264, 12 \textit{frame} per detik, durasi sekitar 11 detik) di \nolinkurl{output/lr/lr_contour.mp4}, dan \textit{frame} terakhirnya di \nolinkurl{output/lr/lr_contour.png} (Gambar~\ref{fig:lr-bonus-0}). Penyimpanan MP4 memerlukan \textit{ffmpeg} dari paket \texttt{imageio-\allowbreak ffmpeg}, yang tercantum di \texttt{requirements.txt}. Video dapat dibuat ulang dengan menjalankan bagian 14 notebook \nolinkurl{src/algoritma/lr/lr.ipynb}.
 
 \begin{figure}[H]
 	\centering
-	\placeholdergambar{Video Kontur \textit{Log-Loss}}
-	\caption{Video Kontur \textit{Log-Loss} LR}
+	\includegraphics[width=\textwidth]{lr/lr_contour.png}
+	\caption{\textit{Frame} terakhir video kontur \textit{log-loss} LR (\nolinkurl{output/lr/lr_contour.mp4}): kontur $J(\theta_0, \theta_1)$ dan lintasan parameter (kiri), serta kurva \textit{loss} per \textit{epoch} (kanan)}
 	\label{fig:lr-bonus-0}
 \end{figure}
 
-\subsubsection{Algoritma Optimasi di Luar Materi Kelas}
-\todo{Jika ada: jelaskan algoritmanya, mengapa dapat mengoptimasi model, bukti perbaikannya (sebelum vs sesudah), dan \textbf{referensinya (tanpa referensi bonus dianulir)}. Misalnya \textit{mini-batch} SGD dengan \textit{early stopping}, \textit{momentum}, Adam, atau \textit{proximal gradient} untuk L1.}
+Pelatihan berhenti pada \textit{epoch} ke-127, ketika perubahan \textit{loss} di bawah toleransi $10^{-7}$, dengan $\theta_0 = -0{,}932$, $\theta_1 = 1{,}100$, dan $J = 0{,}5512$. Dari video dapat dibaca tiga hal:
+\begin{enumerate}
+	\item \textbf{Bentuk permukaan.} \textit{Log-loss} dua parameter ini konveks dengan satu minimum. Konturnya berupa elips miring dan memanjang: permukaan curam ke arah $\theta_0$ tetapi landai di sepanjang lembah.
+	\item \textbf{Lintasan.} Setiap langkah tegak lurus terhadap garis kontur (arah gradien). Pada \textit{epoch}-\textit{epoch} awal parameter turun cepat ke dasar lembah, terutama dengan mengoreksi bias dari 1,5 ke sekitar $-0{,}7$. Setelah itu lintasan berbelok dan merayap pelan di sepanjang lembah sambil menaikkan $\theta_1$ hingga sekitar 1,10. \textit{Loss} turun tajam di awal lalu melandai.
+	\item \textbf{Makna hasil.} $\theta_1 > 0$ berarti peluang batal naik seiring \textit{lead time}, sesuai temuan EDA. $\theta_0 \approx -0{,}93$ setara peluang batal sekitar 28\% untuk \textit{lead time} rata-rata. Langkah yang makin kecil di sepanjang lembah yang landai adalah alasan \textit{gradient descent} membutuhkan banyak \textit{epoch}, dan inilah yang dipercepat oleh algoritma optimasi pada subbab berikutnya.
+\end{enumerate}
+
+\subsubsection{Algoritma Optimasi di Luar Materi Kelas: IRLS + \textit{Coordinate Descent}}
+\label{subsubsec:lr-optimasi}
+Di kelas, bobot LR dicari dengan \textit{(stochastic) gradient ascent} \cite{khodra-lr-sga}: bobot digeser sedikit demi sedikit searah gradien dengan \textit{learning rate} tetap. Sebagai bonus, diimplementasikan algoritma yang dipakai pustaka \texttt{glmnet}: \textit{Iteratively Reweighted Least Squares} (IRLS, yaitu metode Newton untuk LR) yang tiap iterasinya diselesaikan dengan \textit{coordinate descent} \cite{friedman2010glmnet}. Implementasinya ada pada \texttt{solver="irls\_cd"} di \nolinkurl{src/algoritma/lr/lr.py} (\texttt{\_fit\_irls\_cd}). Fungsi tujuannya identik dengan \textit{solver} SGD (Persamaan~\eqref{eq:lr-loss}), sehingga nilai $\lambda$ dan $\rho$ tidak perlu dikonversi.
+
+\paragraph{Mengapa dapat mengoptimasi model.} Satu iterasi terdiri atas dua langkah.
+\begin{enumerate}
+	\item \textbf{IRLS: memakai kelengkungan, bukan hanya kemiringan} \cite{friedman2010glmnet,hastie2009esl}. \textit{Gradient descent} hanya mengetahui \textit{arah} turun (turunan pertama), sehingga besar langkah harus ditebak lewat \textit{learning rate}. Metode Newton juga memakai turunan kedua, yaitu seberapa melengkung permukaan \textit{loss}, sehingga dapat memperkirakan langsung letak minimum. \textit{Log-loss} diaproksimasi dengan deret Taylor orde dua di sekitar parameter saat ini, yang menghasilkan masalah \textit{least squares} berbobot:
+	\begin{equation}
+		\begin{split}
+		\min_{w,b}\;& \frac{1}{2n}\sum_{i} s_i\,(z_i - b - x_i\cdot w)^2 + \lambda\Big[\rho\lVert w\rVert_1 + \tfrac{1-\rho}{2}\lVert w\rVert_2^2\Big],\\
+		& s_i = p_i(1-p_i),\quad z_i = \eta_i + \frac{y_i - p_i}{p_i(1-p_i)},
+		\end{split}
+	\end{equation}
+	dengan $\eta_i = b + x_i\cdot w$. Bobot $s_i$ adalah turunan kedua \textit{log-loss}: besar untuk contoh yang masih ragu ($p \approx 0{,}5$) dan kecil untuk contoh yang sudah yakin. Karena $s_i$ dan $z_i$ dihitung ulang setiap iterasi, metode ini disebut \textit{iteratively reweighted}. Di dekat optimum, metode Newton konvergen kuadratik: jumlah digit yang benar kira-kira berlipat dua setiap iterasi.
+	\item \textbf{\textit{Coordinate descent}: menyelesaikan \textit{least squares} berbobot satu bobot per langkah} \cite{friedman2010glmnet}. Jika semua bobot lain dibuat tetap, masalah di atas untuk satu bobot $w_j$ berbentuk parabola dengan solusi tertutup:
+	\begin{equation}
+		w_j \leftarrow \frac{S\big(g_j,\ \lambda\rho\big)}{h_j + \lambda(1-\rho)},\qquad S(g, t) = \operatorname{sign}(g)\max(|g| - t,\ 0),
+	\end{equation}
+	dengan $g_j$ korelasi berbobot fitur $j$ dengan residual dan $h_j = \frac1n\sum_i s_i x_{ij}^2$. Operator \textit{soft-thresholding} $S$ adalah cara yang benar menangani $|w|$ yang tidak terdiferensiasi di 0: jika kontribusi fitur lebih kecil dari $\lambda\rho$, bobotnya menjadi \textit{tepat nol}. Sebaliknya, \textit{solver} SGD memakai subgradien $\operatorname{sign}(w)$ sehingga bobot hanya berosilasi di sekitar nol (Subbab~\ref{subsec:lr-implementasi}).
+\end{enumerate}
+
+\paragraph{Bukti perbaikan (sebelum vs sesudah).} Kedua \textit{solver} dibandingkan pada konfigurasi L1 dengan $\lambda = 10^{-4}$ (L1 dipilih agar efek \textit{soft-thresholding} terlihat), \textit{train\_set} yang sama, dan hiperparameter SGD sesuai Tabel~\ref{tab:lr-tuning}. Nilai optimum acuan adalah $J$ pada solusi \textit{scikit-learn} (SAGA, konvergensi ketat).
+
+\begin{table}[H]
+	\centering
+	\caption{Perbandingan \textit{solver} SGD dan IRLS-CD pada L1, $\lambda = 10^{-4}$. $J$ dihitung pada \textit{train\_set}; Macro F1 dan ROC-AUC pada \textit{val\_set} dengan \textit{threshold} 0,46. Nilai $J$ optimum menurut \textit{scikit-learn}: 0,408709.}
+	\label{tab:lr-solver}
+	\small
+	\resizebox{\textwidth}{!}{%
+	\begin{tabular}{l c c c c c c}
+		\toprule
+		\textbf{\textit{Solver}} & \textbf{Iterasi} & \textbf{Waktu (s)} & \textbf{$J$ akhir} & \textbf{Bobot tepat 0} & \textbf{Macro F1} & \textbf{ROC-AUC} \\
+		\midrule
+		SGD (kelas) & 100 (batas) & 4,3 & 0,409511 & 2 & 0,7797 & 0,8726 \\
+		IRLS-CD (bonus) & 8 & 9,1 & 0,408706 & 16 & 0,7818 & 0,8741 \\
+		\bottomrule
+	\end{tabular}}
+\end{table}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{lr/lr_solver_convergence.png}
+	\caption{Kiri: jarak $J - J_{\min}$ terhadap iterasi untuk SGD dan IRLS-CD (skala logaritmik; titik terakhir IRLS-CD adalah $J_{\min}$ itu sendiri, yang digambar di $10^{-16}$). Kanan: bobot hasil SGD terhadap bobot hasil IRLS-CD; titik oranye adalah bobot yang tepat nol di IRLS-CD.}
+	\label{fig:lr-solver}
+\end{figure}
+
+Hasilnya (Tabel~\ref{tab:lr-solver} dan Gambar~\ref{fig:lr-solver}):
+\begin{itemize}
+	\item \textbf{Konvergensi jauh lebih cepat.} IRLS-CD konvergen dalam 8 iterasi, sedangkan SGD berhenti di batas 100 \textit{epoch} dan masih tertinggal sekitar $8 \times 10^{-4}$ dari optimum. Jarak ke optimum pada IRLS-CD turun kira-kira kuadratik ($3{,}9 \times 10^{-2} \to 6{,}9 \times 10^{-3} \to 1{,}1 \times 10^{-3} \to 1{,}7 \times 10^{-4} \to 1{,}8 \times 10^{-5} \to 7{,}0 \times 10^{-7} \to 5{,}8 \times 10^{-9}$). SGD membutuhkan 78 \textit{epoch} untuk mencapai \textit{loss} IRLS-CD pada iterasi ketiga dan tidak pernah mencapai \textit{loss} iterasi keempat.
+	\item \textbf{Mencapai optimum yang sebenarnya.} $J$ akhir IRLS-CD (0,408706) sedikit di bawah $J$ solusi \textit{scikit-learn} (0,408709), sedangkan SGD berhenti di 0,409511.
+	\item \emergencystretch=3em \textbf{Seleksi fitur otomatis.} IRLS-CD menghasilkan 16 bobot tepat nol (\textit{scikit-learn}: 14), sedangkan SGD hanya 2, yaitu dua kolom yang selalu bernilai nol sehingga gradiennya nol. Fitur yang dibuang IRLS-CD antara lain \texttt{meal\_package=\allowbreak Room Only}, \texttt{room\_category=\allowbreak Type D}, \texttt{booking\_channel=\allowbreak Online Travel Agent}, dan beberapa bulan \texttt{arrival\_ym}/\texttt{booking\_ym} yang tidak informatif.
+	\item \textbf{Performa sedikit lebih baik.} Pada \textit{val\_set}, Macro F1 naik dari 0,7797 ke 0,7818 dan ROC-AUC dari 0,8726 ke 0,8741. Pada validasi silang, Macro F1 OOF terbaik naik dari 0,7814 (SGD) menjadi 0,7824 (IRLS-CD); keduanya berselisih paling besar 0,0007 pada $\lambda \ge 10^{-3}$.
+\end{itemize}
+
+\paragraph{Analisis kritis.} Kenaikan performa kecil karena LR bersifat konveks: kedua \textit{solver} menuju optimum yang sama, dan SGD hanya belum sepenuhnya sampai. Selisih 0,002 pada Macro F1 \textit{val\_set} bahkan lebih kecil daripada simpangan baku antar-\textit{fold} (0,0073), sehingga keunggulan IRLS-CD yang dapat dipastikan adalah \textit{kecepatan konvergensi}, ketepatan optimum, dan bobot nol yang eksak, bukan akurasi. Satu iterasi IRLS-CD juga lebih berat daripada satu \textit{epoch} SGD karena matriks Gram $101 \times 101$ dihitung ulang, sehingga waktu totalnya (9,1~s) lebih lama daripada SGD (4,3~s) pada data seukuran ini (waktu diukur sekali dan berubah antarpengukuran, tetapi IRLS-CD lebih lama pada kedua pengukuran). Keunggulannya akan lebih besar jika SGD diberi lebih banyak \textit{epoch} atau \textit{learning rate} yang menurun, yang tidak di-\textit{tuning} di sini. Karena unggul pada optimum dan seleksi fitur, konfigurasi final dan \textit{submission} Kaggle memakai \texttt{solver="irls\_cd"}.

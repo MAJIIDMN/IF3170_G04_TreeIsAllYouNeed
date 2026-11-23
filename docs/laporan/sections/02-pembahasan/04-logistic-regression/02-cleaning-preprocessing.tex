@@ -1,25 +1,134 @@
 \subsection{\textit{Data Cleaning} dan \textit{Preprocessing}}
 \label{subsec:lr-preprocessing}
 
-\todo{Jelaskan \textit{pipeline} khusus LR beserta alasan tiap langkah, dikaitkan dengan temuan EDA (Subbab~\ref{sec:eda}) dan karakteristik algoritma. Semua transformasi di-\textit{fit} pada data latih saja lalu diterapkan ke data uji \cite{slide-dataprep}.}
+Seluruh langkah diimplementasikan pada kelas \texttt{Preprocessor} (\nolinkurl{src/algoritma/lr/preprocessing.py}, pandas dan NumPy) dengan urutan berikut:
+\begin{enumerate}
+	\item pembuangan duplikat (data latih saja),
+	\item nilai tidak valid menjadi kosong,
+	\item penanda kekosongan dan fitur turunan,
+	\item imputasi,
+	\item kategori kosong dan langka,
+	\item fitur interaksi,
+	\item \textit{one-hot encoding},
+	\item standardisasi.
+\end{enumerate}
+Semua statistik (median, daftar kategori, mean, dan simpangan baku) dipelajari dengan \texttt{fit} pada data latih saja, lalu diterapkan ke data validasi dan data uji dengan \texttt{transform} \cite{slide-dataprep}. Pada validasi silang, \texttt{Preprocessor} di-\textit{fit} ulang di setiap \textit{fold} hanya pada bagian latih \textit{fold} tersebut, sehingga tidak ada informasi data validasi yang bocor ke model. Setiap keputusan di bawah diambil dari temuan EDA (Subbab~\ref{sec:eda}) dan karakteristik LR sebagai model linear yang membutuhkan masukan numerik lengkap. Angka analisis berasal dari \texttt{train\_set} (80\% data latih, Subbab~\ref{subsec:lr-validasi}).
 
 \subsubsection{Penanganan \textit{Missing Values}}
-\todo{LR tidak menerima \textit{null}, jadi imputasi wajib. Jelaskan strategi per kolom dan alasannya.}
+LR tidak dapat menerima nilai kosong, dan hanya 60,8\% baris data latih yang lengkap. Membuang baris akan menghilangkan 39,2\% data dan tidak mungkin dilakukan pada data uji, sehingga semua nilai kosong diimputasi. Strategi tiap kolom ditentukan dengan membandingkan tingkat pembatalan saat kolom kosong dan saat terisi (Tabel~\ref{tab:lr-missing}). Jika kekosongan itu sendiri informatif, informasinya perlu dipertahankan.
+
+\begin{table}[H]
+	\centering
+	\caption{Kolom dengan nilai kosong dan penanganannya. Persentase kosong dari seluruh data latih dan uji; tingkat batal dari \texttt{train\_set}.}
+	\label{tab:lr-missing}
+	\small
+	\begin{tabular}{l c c l}
+		\toprule
+		\textbf{Kolom} & \textbf{\% kosong} & \textbf{Tingkat batal} & \textbf{Penanganan} \\
+		& \textbf{latih / uji} & \textbf{kosong / terisi} & \\
+		\midrule
+		\texttt{special\_requests} & 9,13 / 8,66 & 40,3\% / 32,0\% & isi 0 + penanda kosong \\
+		\texttt{num\_children} & 11,09 / 10,91 & 33,4\% / 32,7\% & median (0) \\
+		\texttt{nightly\_rate\_idr} & 7,45 / 7,89 & 30,3\% / 32,9\% & median per kanal \\
+		\texttt{meal\_package} & 6,43 / 6,46 & 32,6\% / 32,8\% & kategori \texttt{kosong} \\
+		\texttt{days\_before\_arrival} & 4,10 / 4,24 & 31,1\% / 32,8\% & median (58 hari) \\
+		\texttt{needs\_parking} & 3,95 / 3,61 & 30,3\% / 32,8\% & median (0) \\
+		\texttt{room\_category} & 3,66 / 3,54 & 33,9\% / 32,7\% & kategori \texttt{kosong} \\
+		\texttt{num\_adults} & 2,96 / 2,63 & 32,3\% / 32,8\% & median (2) \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\begin{itemize}
+	\item \textbf{\texttt{special\_requests}} adalah satu-satunya kolom yang tingkat batalnya berbeda jelas saat kosong (40,3\% terhadap 32,0\%, selisih 8,3 poin persentase). Nilainya diisi 0, nilai yang paling umum, dan ditambahkan kolom biner \texttt{special\_requests\_missing} agar model tetap dapat memakai sinyal kekosongan tersebut.
+	\item \textbf{\texttt{nightly\_rate\_idr}} diisi median per kanal pemesanan, bukan median global, karena tarif sangat bergantung pada kanal: median kanal Complimentary adalah 0, sedangkan kanal lain berkisar 1,29 sampai 1,77 juta (median global 1,64 juta). Imputasi median global akan memberi tarif sekitar 1,6 juta pada pesanan gratis.
+	\item \textbf{Kolom numerik dan biner lain} diisi median data latih. Median tahan terhadap distribusi yang miring dan selalu menghasilkan nilai yang mungkin (mis. 0 anak, bukan 0,3 anak). Selisih tingkat batalnya paling besar 2,6 poin persentase, jauh lebih kecil daripada \texttt{special\_requests}, sehingga tidak diberi penanda.
+	\item \textbf{Kolom kategorikal} yang kosong menjadi kategori tersendiri, \texttt{kosong}, lalu di-\textit{one-hot}. Cara ini tidak memaksakan tebakan dan membiarkan model belajar sendiri apakah kekosongan itu bermakna.
+\end{itemize}
+
+Keputusan ini punya efek samping. \texttt{days\_before\_arrival} yang kosong diisi 58 hari, sehingga pesanan tersebut otomatis masuk rentang \textit{lead time} 31 sampai 90 hari pada fitur interaksi. Sebagian informasinya tetap terjaga karena \texttt{booking\_ym} (tanggal kedatangan dikurangi \textit{lead time}) dihitung sebelum imputasi, sehingga 4,1\% pesanan itu mendapat kategori \texttt{booking\_ym = kosong}. Penanda kekosongan khusus untuk \textit{lead time} tidak ditambahkan karena selisih tingkat batalnya kecil (1,7 poin persentase).
 
 \subsubsection{Data Duplikat dan Data Tidak Valid}
-\todo{Jumlah duplikat, nilai tidak wajar, atau \textit{outlier} yang ditangani untuk LR dan caranya. Baris data uji tidak boleh dibuang.}
+\paragraph{Duplikat.} Data latih memuat 64 baris duplikat penuh (seluruh fitur dan label sama, \texttt{id} berbeda). Baris ini dibuang \emph{sebelum} pembagian data, agar baris identik tidak muncul sekaligus di bagian latih dan validasi, yang akan membuat skor validasi terlalu optimis. Data latih bersih berisi 27.309 baris. Data uji juga memuat 3 baris duplikat, tetapi tidak disentuh karena setiap baris uji harus diprediksi.
+
+\paragraph{Data tidak valid.} Tidak ditemukan tanggal yang tidak valid, nilai negatif, maupun label kategori yang tidak konsisten. Ada dua kasus yang diperiksa lebih lanjut:
+\begin{itemize}
+	\item \textbf{\texttt{num\_children}} bernilai 0 sampai 3 (17.776, 962, 646, dan 14 baris), lalu langsung melompat ke 9 dan 10 (3 baris di \texttt{train\_set}, tidak ada di data uji). Ketiga pesanan itu hanya berisi 1 sampai 2 orang dewasa di kamar biasa dengan tarif wajar, sehingga hampir pasti salah input, bukan keluarga besar. Nilai $> 3$ dianggap tidak valid: diubah menjadi kosong lalu diimputasi median (0). \textit{Clipping} ke 3 tidak dipakai karena nilai aslinya tidak diketahui, dan tidak ada alasan menganggap pesanan itu memiliki jumlah anak terbanyak. Perlu dicatat, keputusan ini hanya menyangkut 3 baris latih dan tidak mengubah satu pun baris uji. Tujuannya adalah kebenaran data, bukan kenaikan skor.
+	\item \textbf{\texttt{num\_adults} = 0} (88 baris) dipertahankan karena 87 di antaranya memiliki anak dan sisanya \texttt{num\_children} kosong. Pola ini masuk akal secara domain.
+\end{itemize}
+
+\paragraph{\textit{Outlier}.} Tidak ada nilai yang dipangkas. \texttt{nightly\_rate\_idr} mencapai 9,17 juta, dengan 3 baris di atas 6 juta di \texttt{train\_set}. Nilai ini tetap masuk akal secara domain (mis. kamar \textit{suite}), dan data uji tidak memiliki tarif di atas 5,7 juta. Uji \textit{stratified} 5-\textit{fold} CV pada \textit{pipeline} sebelum fitur interaksi menunjukkan bahwa pemangkasan pada 6 juta maupun \textit{winsorizing} pada persentil 99,9 tidak mengubah Macro F1 (0,7744 sampai 0,7749). Tiga baris dari sekitar 22 ribu terlalu sedikit untuk memengaruhi model linear yang fiturnya sudah distandardisasi. Masalah yang lebih nyata adalah kemiringan \texttt{prior\_cancellations} dan \texttt{prior\_completed\_bookings} (\textit{skewness} 25,5 dan 19,2, maksimum 13 dan 58). Kedua kolom ini ditransformasi $\log(1 + x)$ agar beberapa nilai ekstrem tidak mendominasi gradien.
 
 \subsubsection{Konstruksi Fitur dan \textit{Encoding}}
-\todo{LR butuh fitur numerik. Jelaskan \textit{one-hot} (hindari \textit{dummy trap} bila tanpa regularisasi) atau \textit{encoding} lain.}
+\paragraph{Fitur turunan.} LR hanya dapat memodelkan hubungan yang linear terhadap fiturnya. Karena itu pola nonlinear yang ditemukan di EDA dibuat eksplisit sebagai fitur:
+\begin{itemize}
+	\item \textbf{\texttt{rate\_is\_zero}} menandai tarif 0. Sebanyak 329 pesanan bertarif 0 hampir tidak pernah batal (0,3\%, terhadap 33,2\% pada pesanan lain), padahal sebagai angka tarif 0 hanya sedikit di bawah tarif murah.
+	\item \textbf{\texttt{lead\_log}} $= \log(1 + \texttt{days\_before\_arrival})$ ditambahkan di samping \textit{lead time} mentah karena kenaikan tingkat batal melandai pada \textit{lead time} panjang.
+	\item \textbf{\texttt{arrival\_ym}} (18 bulan) dan \textbf{\texttt{booking\_ym}} (26 bulan dan \texttt{kosong}, dari tanggal kedatangan dikurangi \textit{lead time}) dijadikan kategori. Efek periode tidak naik-turun secara linear terhadap nomor bulan, sehingga \texttt{arrival\_month} mentah tidak dapat menangkapnya.
+	\item \textbf{20 fitur interaksi} \texttt{lead\_bin\{k\}\_x\_\{kanal\}} dibahas di bawah.
+\end{itemize}
+
+\paragraph{Interaksi kanal $\times$ \textit{lead time}.} Tabel~\ref{tab:lr-kanal-lead} menunjukkan bahwa kenaikan tingkat batal terhadap \textit{lead time} berbeda tajam antarkanal. Pada \textit{lead time} 8 sampai 30 hari, Online Travel Agent batal 23,4\% sedangkan Offline Agent hanya 2,3\%. Corporate jarang batal di bawah 30 hari (sekitar 8\%) tetapi mencapai 80\% di atas 180 hari. Satu fitur \textit{lead time} memaksa kemiringan yang sama untuk semua kanal, dan memang kesalahan terbesar model tanpa interaksi berada di ujung-ujung \textit{lead time}. Karena itu ditambahkan indikator (kanal $= c$) $\times$ (\textit{lead time} di rentang $k$) untuk 5 kanal dan 4 rentang, dengan rentang 0 sampai 7 hari sebagai acuan. Teknik ini adalah \textit{basis expansion} berupa fungsi tangga ditambah interaksi \cite[Sec.~5.1]{hastie2009esl}: setiap kanal mendapat kurva bertingkatnya sendiri, tetapi model tetap linear dalam parameter.
+
+\begin{table}[H]
+	\centering
+	\caption{Tingkat pembatalan per kanal dan rentang \textit{lead time} (\texttt{train\_set}); jumlah baris dalam kurung}
+	\label{tab:lr-kanal-lead}
+	\footnotesize
+	\setlength{\tabcolsep}{4pt}
+	\begin{tabular}{l c c c c c}
+		\toprule
+		\textbf{Kanal} & \textbf{0--7} & \textbf{8--30} & \textbf{31--90} & \textbf{91--180} & \textbf{$>$180} \\
+		\midrule
+		Airline & 22,2\% (54) & 38,9\% (18) & -- & -- & -- \\
+		Complimentary & 0,0\% (157) & 0,0\% (47) & 0,0\% (16) & 0,0\% (5) & 0,0\% (2) \\
+		Corporate & 8,3\% (556) & 8,4\% (379) & 18,0\% (150) & 43,8\% (64) & 80,0\% (10) \\
+		Offline Agent & 7,7\% (469) & 2,3\% (710) & 8,5\% (1.772) & 35,5\% (1.475) & 67,1\% (1.654) \\
+		Online Travel Agent & 11,2\% (2.028) & 23,4\% (2.776) & 33,4\% (4.357) & 49,6\% (2.873) & 80,9\% (1.400) \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+Fitur ini dievaluasi dengan \textit{stratified} 5-\textit{fold} CV (L1, $\lambda = 10^{-4}$, IRLS-CD). Macro F1 OOF naik dari 0,7766 ke 0,7822 dan ROC-AUC dari 0,8706 ke 0,8737. Pada tiga pembagian \textit{fold} lain (\textit{seed} 1, 7, dan 2024) kenaikannya +0,006 sampai +0,008 dan menang di 15 dari 15 \textit{fold}, sehingga kenaikan ini konsisten, bukan kebetulan pembagian data. Kandidat lain diuji dengan protokol yang sama dan \textbf{ditolak}:
+\begin{itemize}
+	\item bin \textit{lead time} tanpa interaksi: +0,003, sudah tercakup oleh interaksi;
+	\item interaksi kanal $\times$ \texttt{lead\_log} linear: $-0{,}001$;
+	\item tarif relatif terhadap median per \texttt{room\_category}: 0,000;
+	\item hari kedatangan dalam minggu: $-0{,}001$.
+\end{itemize}
+
+Interaksi ini punya dua kelemahan. Sel kecil seperti Corporate $>$180 hari (10 baris) memberi estimasi bobot yang tidak stabil. Selain itu, dua kolom (\texttt{lead\_bin3\_x\_Airline} dan \texttt{lead\_bin4\_x\_Airline}) selalu bernilai nol karena tidak ada pesanan Airline dengan \textit{lead time} di atas 30 hari, sehingga keduanya tidak membawa informasi apa pun.
+
+\paragraph{\textit{Encoding}.} LR membutuhkan masukan numerik, sehingga lima fitur kategorikal (\texttt{meal\_package}, \texttt{room\_category}, \texttt{booking\_channel}, \texttt{arrival\_ym}, \texttt{booking\_ym}) di-\textit{one-hot}. \textit{Ordinal encoding} tidak dipakai karena akan memaksakan urutan dan jarak yang tidak ada di antara kategori. Kategori dengan frekuensi di bawah 30 pada data latih (Full Board 4 baris, Type E 7 baris) digabung menjadi \texttt{lainnya}, dan kategori yang tidak dikenal di data uji juga dipetakan ke \texttt{lainnya}. Hasilnya 63 kolom \textit{one-hot}, sehingga matriks akhir berisi 100 kolom: 17 numerik, 20 interaksi, dan 63 \textit{one-hot}.
+
+Ada dua catatan kritis tentang \textit{encoding} ini:
+\begin{itemize}
+	\item \textbf{\textit{Dummy trap}.} Seluruh level setiap fitur kategorikal dipertahankan, tidak ada yang dibuang sebagai acuan. Kolom \textit{one-hot} setiap fitur selalu berjumlah 1, sehingga kolinear dengan bias. Matriks fitur ditambah kolom bias hanya ber-\textit{rank} 92 dari 101 kolom. Dengan regularisasi L2 atau \textit{Elastic Net}, solusi tetap unik. Namun model final tanpa penalti (Subbab~\ref{subsec:lr-validasi}) karenanya memiliki bobot yang \textbf{tidak unik}: prediksinya sama persis dengan \textit{scikit-learn}, tetapi bobot satu kategori (mis. Complimentary $-8{,}4$) hanya bermakna relatif terhadap kategori lain dalam fitur yang sama. Jika bobot ingin diinterpretasikan, satu level per fitur seharusnya dibuang, atau dipakai L2 kecil.
+	\item \textbf{Fitur periode.} \texttt{arrival\_ym} dan \texttt{booking\_ym} hanya sah karena data uji berasal dari periode yang sama dengan data latih. Kedatangan pada kedua data mencakup Juli 2023 sampai Desember 2024, dan tidak ada bulan uji yang menjadi \texttt{lainnya}. Untuk pesanan di masa depan, bulan baru akan jatuh ke \texttt{lainnya} dan fitur ini kehilangan maknanya, sehingga penerapan nyata perlu menggantinya dengan fitur musiman (mis. bulan dalam tahun) yang divalidasi secara temporal.
+\end{itemize}
 
 \subsubsection{Normalisasi dan Standarisasi}
-\todo{Penting agar \textit{gradient descent} konvergen dan penalti regularisasi adil antarfitur.}
+Rentang fitur mentah sangat timpang. Simpangan bakunya berkisar dari 0,52 (\texttt{num\_adults}) dan 0,79 (\texttt{special\_requests}) hingga 86 (\texttt{days\_before\_arrival}) dan sekitar 590.566 (\texttt{nightly\_rate\_idr}). Tanpa penskalaan, ada dua masalah:
+\begin{itemize}
+	\item \textit{gradient descent} dengan satu \textit{learning rate} akan didominasi fitur berskala besar dan berosilasi atau sangat lambat pada fitur berskala kecil;
+	\item penalti $\lambda\lVert w\rVert$ menjadi tidak adil, karena bobot fitur bersatuan rupiah otomatis sangat kecil dan hampir tidak terkena penalti.
+\end{itemize}
+Karena itu 37 kolom (17 numerik dan 20 interaksi) distandardisasi dengan \textit{z-score} $x' = (x - \mu)/s$, dengan $\mu$ dan $s$ dari data latih. Kolom dengan $s = 0$ dibagi 1 agar tidak terjadi pembagian dengan nol. Standardisasi dipilih daripada \textit{min-max} karena beberapa kolom miring dan tidak terbatas di atas. Dengan \textit{min-max}, satu nilai ekstrem (mis. tarif 9,17 juta) akan memampatkan hampir semua nilai lain ke dekat 0.
+
+Kolom \textit{one-hot} sengaja tidak diskalakan agar tetap bernilai 0/1 dan mudah dibaca. Akibatnya penalti memperlakukan kolom \textit{one-hot} dan kolom terstandardisasi dengan skala yang berbeda. Inkonsistensi ini tidak berdampak pada model final yang tanpa penalti, dan dampaknya kecil pada $\lambda = 10^{-4}$, tetapi akan relevan jika regularisasi yang kuat dipakai.
 
 \subsubsection{Penanganan \textit{Imbalanced Data}}
-\todo{Misalnya pembobotan kelas pada \textit{loss} atau penyesuaian \textit{threshold}.}
+Kelas batal mencakup 32,75\% data latih. Distribusi ini tidak seimbang, tetapi juga tidak ekstrem. Tidak dilakukan \textit{resampling}. \textit{Oversampling} hanya menduplikasi atau mensintesis contoh, dan untuk LR efek utamanya adalah menggeser bias $b$, padahal pergeseran yang sama dapat diperoleh langsung dengan menggeser \textit{threshold}. \textit{Undersampling} akan membuang data kelas mayoritas. Ketidakseimbangan karena itu ditangani di sisi keputusan: \textit{threshold} dipilih untuk memaksimumkan Macro F1 pada prediksi \textit{out-of-fold}, dan hasilnya konsisten di 0,44 sampai 0,47, di bawah 0,5 (Subbab~\ref{subsec:lr-validasi}). Ini masuk akal: Macro F1 memberi bobot yang sama pada F1 kelas batal yang lebih jarang, sehingga sedikit lebih mudah memprediksi batal menguntungkan metrik. Pembobotan kelas pada \textit{loss} (\texttt{class\_weight}) tersedia di implementasi, tetapi hanya dipakai untuk \textit{cost-sensitive classification} (Subbab~\ref{sec:cost-sensitive}), karena di sana tujuannya biaya, bukan Macro F1.
 
 \subsubsection{\textit{Feature Selection}}
-\todo{Regularisasi L1 menghasilkan bobot \textit{sparse} sehingga bisa menjadi seleksi fitur implisit. Sebutkan fitur akhir yang dipakai.}
+Tidak dilakukan seleksi fitur eksplisit. Seluruh 17 fitur asli dipakai (kecuali \texttt{id}), termasuk fitur yang lemah secara univariat seperti \texttt{room\_category}, karena fitur yang lemah sendirian dapat berguna bersama fitur lain. Seleksi fitur diserahkan ke regularisasi L1 dan \textit{Elastic Net} di dalam ruang \textit{tuning}. Dengan \textit{solver} IRLS-CD, L1 $\lambda = 10^{-4}$ membuang 16 dari 100 bobot menjadi tepat nol pada \texttt{train\_set}.
+
+Hasil \textit{tuning} justru memilih model tanpa penalti, sehinggaseluruh 100 kolom dipakai. Model L1 yang lebih jarang hanya kalah 0,0002 Macro F1 OOF. Ini menunjukkan bahwa pada 27 ribu baris dengan 100 kolom, model tidak kelebihan fitur: Macro F1 pada data latih penuh (0,7841) hampir sama dengan OOF (0,7824), sehingga tidak ada tanda \textit{overfitting} yang perlu diatasi dengan membuang fitur.
 
 \subsubsection{\textit{Dimensionality Reduction}}
-\todo{Jelaskan apakah PCA dipakai dan dampaknya (dekorelasi fitur vs kehilangan interpretabilitas bobot).}
+PCA tidak diterapkan, karena tiga alasan:
+\begin{itemize}
+	\item \textbf{Dimensinya kecil.} 100 kolom sudah kecil untuk 27 ribu baris, dan LR tidak menderita \textit{curse of dimensionality} seperti KNN.
+	\item \textbf{Informasi hilang.} Pada EDA, proyeksi PCA dua dimensi hanya menyimpan 25,7\% variansi dan memberi ROC-AUC 0,693, jauh di bawah fitur penuh (0,874).
+	\item \textbf{Kurang cocok untuk data ini.} PCA mengubah kolom \textit{one-hot} yang jarang (\textit{sparse}) menjadi kombinasi linear yang padat dan menghilangkan interpretasi bobot per fitur, padahal kolinearitas yang ada (\textit{dummy trap} di atas) lebih tepat diatasi dengan membuang satu level atau dengan regularisasi.
+\end{itemize}
