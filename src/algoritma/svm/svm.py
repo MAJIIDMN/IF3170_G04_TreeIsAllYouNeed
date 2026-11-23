@@ -4,14 +4,25 @@ from collections import OrderedDict
 
 import numpy as np
 
-KERNELS = ("linear", "poly", "rbf")
+KERNELS = ("linear", "poly", "rbf", "laplacian")
 
 # Sumber: C.-C. Chang & C.-J. Lin, "LIBSVM: A Library for Support Vector Machines", ACM TIST 2(3), 2011.
 TAU = 1e-12
 
 PREDICT_BATCH_ROWS = 4096
+LAPLACIAN_BATCH_ROWS = 256
 
 
+def _l1_distances(A, B):
+    if len(A) == 1:
+        return np.abs(B - A[0]).sum(axis=1)[None]
+    distances = np.zeros((len(A), len(B)))
+    for column in range(A.shape[1]):
+        distances += np.abs(A[:, column, None] - B[None, :, column])
+    return distances
+
+
+# Sumber: Chang & Lin, LIBSVM, 2011 (cache baris kernel).
 class _KernelRowCache:
     def __init__(self, compute_row, n_samples, cache_mb):
         self._compute_row = compute_row
@@ -71,11 +82,13 @@ class SVM:
         X = self._as_matrix(X)
         support_sq = np.einsum("ij,ij->i", self.support_vectors_, self.support_vectors_)
         scores = np.empty(len(X))
-        for start in range(0, len(X), PREDICT_BATCH_ROWS):
-            batch = slice(start, start + PREDICT_BATCH_ROWS)
+        batch_rows = LAPLACIAN_BATCH_ROWS if self.kernel == "laplacian" else PREDICT_BATCH_ROWS
+        for start in range(0, len(X), batch_rows):
+            batch = slice(start, start + batch_rows)
             scores[batch] = self._gram(X[batch], self.support_vectors_, support_sq) @ self.dual_coef_
         return scores + self.intercept_
 
+    # Sumber: C. Elkan, "The Foundations of Cost-Sensitive Learning", IJCAI 2001 (ambang keputusan digeser).
     def predict(self, X, threshold=0.0):
         scores = self.decision_function(X)
         return self.classes_[(scores > threshold).astype(int)]
@@ -150,6 +163,7 @@ class SVM:
             largest = score[can_rise].max()
             smallest = score[can_fall].min()
 
+        # Sumber: Chang & Lin, LIBSVM, 2011 (bias dari rata-rata support vector bebas).
         free = (alpha > 0) & (alpha < upper)
         bias = score[free].mean() if free.any() else (largest + smallest) / 2.0
         return alpha, bias
@@ -161,6 +175,9 @@ class SVM:
         return value + delta
 
     def _gram(self, A, B, B_squared_norms):
+        # Sumber: O. Chapelle, P. Haffner & V. Vapnik, IEEE Trans. Neural Networks 10, 1999 (kernel Laplacian).
+        if self.kernel == "laplacian":
+            return np.exp(-self.gamma_ * _l1_distances(A, B))
         dot = A @ B.T
         if self.kernel == "linear":
             return dot
@@ -177,6 +194,7 @@ class SVM:
             return (self.gamma_ * squared_norms + self.coef0) ** self.degree
         return np.ones_like(squared_norms)
 
+    # Sumber: dokumentasi scikit-learn, sklearn.svm.SVC (gamma="scale" dan "auto").
     def _resolve_gamma(self, X):
         if self.gamma == "scale":
             return 1.0 / (X.shape[1] * X.var())
@@ -184,6 +202,7 @@ class SVM:
             return 1.0 / X.shape[1]
         return float(self.gamma)
 
+    # Sumber: Chang & Lin, LIBSVM, 2011 (C berbeda per kelas).
     def _box_limits(self, y):
         if self.class_weight is None:
             return np.full(len(y), float(self.C))

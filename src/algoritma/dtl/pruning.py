@@ -123,7 +123,7 @@ def _add_errs(n: float, e: float, cf: float, coeff: float) -> float:
     return n * pr - e
 
 
-# Sumber: J. R. Quinlan, C4.5: Programs for Machine Learning, 1993, ch. 4.
+# Sumber: J. R. Quinlan, C4.5: Programs for Machine Learning, 1993, ch. 4; ambang 0.1 dari prune.c (Release 8).
 def pessimistic_prune(root, confidence: float = 0.25):
     if not 0.0 < confidence < 0.5:
         raise ValueError(f"confidence must be in (0, 0.5), got {confidence}")

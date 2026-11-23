@@ -146,6 +146,7 @@ class DTL:
         self.classes_ = np.unique(y_arr)
         y_idx = np.searchsorted(self.classes_, y_arr)
         w = np.ones(len(y_arr), dtype=float)
+        # Sumber: K. M. Ting, "An instance-weighting method to induce cost-sensitive trees", IEEE TKDE 14(3), 2002.
         if self.class_weight == "balanced":
             counts = np.bincount(y_idx, minlength=len(self.classes_))
             w = (len(y_arr) / (len(self.classes_) * counts))[y_idx]

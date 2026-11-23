@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 from sklearn.datasets import make_blobs, make_classification, make_moons
+from sklearn.metrics.pairwise import laplacian_kernel
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
@@ -63,6 +64,13 @@ class MatchesLibsvmTest(unittest.TestCase):
                 ours = SVM(tol=1e-5, **config).fit(X, y)
                 reference = SVC(tol=1e-5, **config).fit(X, y)
                 self.assertLessEqual(abs(len(ours.support_vectors_) - reference.n_support_.sum()), 2)
+
+    def test_laplacian_kernel_matches_sklearn(self):
+        X, y = noisy_data()
+        X_new, _ = noisy_data(n=200, seed=1)
+        ours = SVM(kernel="laplacian", gamma=0.1, C=2.0, tol=1e-5).fit(X, y).decision_function(X_new)
+        reference = SVC(kernel=lambda A, B: laplacian_kernel(A, B, gamma=0.1), C=2.0, tol=1e-5).fit(X, y)
+        np.testing.assert_allclose(ours, reference.decision_function(X_new), atol=5e-3)
 
     def test_gamma_scale_uses_feature_variance(self):
         X, y = noisy_data()
