@@ -22,6 +22,7 @@ def _l1_distances(A, B):
     return distances
 
 
+# Sumber: Chang & Lin, LIBSVM, 2011 (cache baris kernel).
 class _KernelRowCache:
     def __init__(self, compute_row, n_samples, cache_mb):
         self._compute_row = compute_row
@@ -87,6 +88,7 @@ class SVM:
             scores[batch] = self._gram(X[batch], self.support_vectors_, support_sq) @ self.dual_coef_
         return scores + self.intercept_
 
+    # Sumber: C. Elkan, "The Foundations of Cost-Sensitive Learning", IJCAI 2001 (ambang keputusan digeser).
     def predict(self, X, threshold=0.0):
         scores = self.decision_function(X)
         return self.classes_[(scores > threshold).astype(int)]
@@ -161,6 +163,7 @@ class SVM:
             largest = score[can_rise].max()
             smallest = score[can_fall].min()
 
+        # Sumber: Chang & Lin, LIBSVM, 2011 (bias dari rata-rata support vector bebas).
         free = (alpha > 0) & (alpha < upper)
         bias = score[free].mean() if free.any() else (largest + smallest) / 2.0
         return alpha, bias
@@ -172,7 +175,7 @@ class SVM:
         return value + delta
 
     def _gram(self, A, B, B_squared_norms):
-        # Sumber: B. Scholkopf & A. Smola, "Learning with Kernels", MIT Press, 2002 (kernel Laplacian).
+        # Sumber: O. Chapelle, P. Haffner & V. Vapnik, IEEE Trans. Neural Networks 10, 1999 (kernel Laplacian).
         if self.kernel == "laplacian":
             return np.exp(-self.gamma_ * _l1_distances(A, B))
         dot = A @ B.T
@@ -191,6 +194,7 @@ class SVM:
             return (self.gamma_ * squared_norms + self.coef0) ** self.degree
         return np.ones_like(squared_norms)
 
+    # Sumber: dokumentasi scikit-learn, sklearn.svm.SVC (gamma="scale" dan "auto").
     def _resolve_gamma(self, X):
         if self.gamma == "scale":
             return 1.0 / (X.shape[1] * X.var())
@@ -198,6 +202,7 @@ class SVM:
             return 1.0 / X.shape[1]
         return float(self.gamma)
 
+    # Sumber: Chang & Lin, LIBSVM, 2011 (C berbeda per kelas).
     def _box_limits(self, y):
         if self.class_weight is None:
             return np.full(len(y), float(self.C))

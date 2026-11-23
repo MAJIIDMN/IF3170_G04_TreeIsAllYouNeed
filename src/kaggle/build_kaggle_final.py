@@ -150,7 +150,7 @@ write_submission(labels, OUTPUT / "svm")""")
 
 section("Model 2: DTL C4.5", "5")
 
-md("""Pohon memakai gain ratio dan cost-complexity pruning. Fitur saudaranya memakai bobot kedekatan lead time
+md("""Pohon memakai gain ratio (materi kuliah) dan cost-complexity pruning (di luar materi kuliah). Fitur saudaranya memakai bobot kedekatan lead time
 saja. Booking diprediksi batal jika P(batal) minimal 0,4.""")
 
 code("""tree = DTL(max_depth=20, min_samples_leaf=2, pruning="cost_complexity", ccp_alpha=2.5).fit(X_dtl, y)
@@ -160,21 +160,32 @@ print("daun:", tree.n_leaves_, " kedalaman:", tree.depth_)
 tree.save(OUTPUT / "dtl" / "dtl_model.json")
 tree = DTL.load(OUTPUT / "dtl" / "dtl_model.json")
 
+# Sumber ambang: C. Elkan, "The Foundations of Cost-Sensitive Learning", IJCAI 2001
 labels = (tree.predict_proba(X_dtl_test)[:, 1] >= 0.4).astype(int)
 write_submission(labels, OUTPUT / "dtl")""")
 
 section("Referensi", "6")
 
-md("""1. B. Scholkopf dan A. Smola, *Learning with Kernels*, MIT Press, 2002.
-2. J. Platt, "Sequential Minimal Optimization", MSR-TR-98-14, 1998.
-3. R.-E. Fan, P.-H. Chen, dan C.-J. Lin, "Working Set Selection Using Second Order Information", JMLR 6, 2005.
-4. A. Radhakrishnan dkk., "Mechanism for feature learning in neural networks and backpropagation-free machine
-   learning models", Science 383, 2024.
-5. C. Williams dan M. Seeger, "Using the Nystrom Method to Speed Up Kernel Machines", NIPS 13, 2001.
-6. D. Micci-Barreca, SIGKDD Explorations 3(1), 2001.
-7. R. Jarvis dan E. Patrick, IEEE Transactions on Computers C-22, 1973.
-8. J. R. Quinlan, *C4.5: Programs for Machine Learning*, 1993, dan L. Breiman dkk., *Classification and
-   Regression Trees*, 1984.""")
+md("""Metode berikut tidak ada di materi kuliah (PPT Decision Tree, Issues in DTL, dan SVM).
+
+1. J. Platt, "Sequential Minimal Optimization", MSR-TR-98-14, 1998.
+2. R.-E. Fan, P.-H. Chen, dan C.-J. Lin, "Working Set Selection Using Second Order Information for Training
+   Support Vector Machines", JMLR 6, 2005.
+3. C.-C. Chang dan C.-J. Lin, "LIBSVM: A Library for Support Vector Machines", ACM TIST 2(3), 2011.
+4. O. Chapelle, P. Haffner, dan V. Vapnik, "Support Vector Machines for Histogram-Based Image Classification",
+   IEEE Transactions on Neural Networks 10, 1999 (kernel Laplacian).
+5. A. Radhakrishnan dkk., "Mechanism for feature learning in neural networks and backpropagation-free machine
+   learning models", Science, 2024, doi:10.1126/science.adi5639 (bobot fitur dari gradien).
+6. C. Saunders, A. Gammerman, dan V. Vovk, "Ridge Regression Learning Algorithm in Dual Variables", ICML 1998.
+7. C. Williams dan M. Seeger, "Using the Nystrom Method to Speed Up Kernel Machines", NIPS 13, 2001.
+8. L. Breiman dkk., *Classification and Regression Trees*, 1984 (cost-complexity pruning).
+9. C. Elkan, "The Foundations of Cost-Sensitive Learning", IJCAI 2001 (ambang keputusan 0,4).
+10. D. Micci-Barreca, "A preprocessing scheme for high-cardinality categorical attributes", SIGKDD
+    Explorations 3(1), 2001 (target encoding).
+11. F. Pargent dkk., "Regularized target encoding outperforms traditional methods", Computational Statistics 37,
+    2022.
+12. R. Jarvis dan E. Patrick, "Clustering Using a Similarity Measure Based on Shared Near Neighbors", IEEE
+    Transactions on Computers C-22(11), 1973.""")
 
 nb = {"nbformat": 4, "nbformat_minor": 5,
       "metadata": {"kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
