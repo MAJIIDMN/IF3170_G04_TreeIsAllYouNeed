@@ -1,10 +1,5 @@
-"""
-Referensi:
-- M. L. Khodra, "Logistic Regression: Stochastic Gradient Ascent," YouTube, 2021 (log-loss / LCL,
-     update gradien, inisialisasi parameter). https://www.youtube.com/watch?v=O5NSNMQO1yU
-- Matplotlib documentation, "matplotlib.pyplot.contour" dan "matplotlib.animation".
-     https://matplotlib.org/stable/api/animation_api.html
-"""
+# Sumber: M. L. Khodra, "Logistic Regression: Stochastic Gradient Ascent," YouTube, 2021.
+# Sumber: Matplotlib documentation, "matplotlib.pyplot.contour" dan "matplotlib.animation".
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import animation
@@ -21,18 +16,15 @@ PATH_COLOR = "#d62728"
 
 
 def train_2param(x, y, init, **kwargs):
-    #  train lr dgn satu fitur x (theta0 = bias, theta1 = bobot x) mulai dari init = (theta0, theta1)
     X = np.asarray(x, float).reshape(-1, 1)
     return LogisticRegression(**kwargs).fit(X, y, init=([init[1]], init[0]))
 
 
 def make_video(x, y, model, init, out_path, fps=12, max_frames=150, grid=90):
     X = np.asarray(x, float).reshape(-1, 1)
-    # lintasan (theta0, theta1): titik awal, lalu satu titik per epoch
     path = np.array([init] + [(b, w[0]) for w, b in model.path])
     loss = np.r_[model.loss(X, y, w=np.array([init[1]]), b=init[0]), model.loss_history]
 
-    # grid parameter yang mencakup seluruh lintasan, J dihitung dgn fungsi loss kelas yang sama
     lo, hi = path.min(0), path.max(0)
     pad = 0.25 * (hi - lo).max() + 0.2
     t0 = np.linspace(lo[0] - pad, hi[0] + pad, grid)

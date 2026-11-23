@@ -76,19 +76,16 @@ def best_threshold(y, proba):
     return float(THRESHOLDS[i]), float(scores[i])
 
 def total_cost(y, pred, c_fp=COST_FP, c_fn=COST_FN):
-    # total biaya salah klasifikasi = c_fp * FP + c_fn * FN
     _, fp, fn, _ = confusion(y, pred)
     return c_fp * fp + c_fn * fn
 
 
 def cost_threshold(c_fp=COST_FP, c_fn=COST_FN):
-    # threshold optimal Bayes (Elkan 2001): prediksi batal jika biaya harapannya lebih kecil,
-    # (1 - p) * c_fp < p * c_fn  <=>  p > c_fp / (c_fp + c_fn)
+    # Sumber: C. Elkan, "The Foundations of Cost-Sensitive Learning," IJCAI 2001.
     return c_fp / (c_fp + c_fn)
 
 
 def best_cost_threshold(y, proba, c_fp=COST_FP, c_fn=COST_FN):
-    # threshold empiris dengan total biaya terkecil
     costs = [total_cost(y, (proba >= t).astype(int), c_fp, c_fn) for t in COST_THRESHOLDS]
     i = int(np.argmin(costs))
     return float(COST_THRESHOLDS[i]), float(costs[i])
@@ -156,7 +153,6 @@ def cross_validate(train, y):
 
 
 def oof_proba(df, y, cfg, class_weight=None):
-    # probabilitas out-of-fold (stratified k-fold) untuk satu konfigurasi, dipakai memilih threshold
     oof = np.zeros(len(y))
     for fit_idx, val_idx in stratified_folds(y, N_FOLDS, SEED):
         prep = Preprocessor().fit(df.iloc[fit_idx])
