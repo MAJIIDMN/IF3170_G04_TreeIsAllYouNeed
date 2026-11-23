@@ -16,9 +16,11 @@ CONT_COLS = ["days_before_arrival", "nightly_rate_idr"]
 DATE_COLS = ["arrival_year", "arrival_month", "arrival_day"]
 FEATURES = COUNT_COLS + CONT_COLS + BIN_COLS + DATE_COLS + CAT_COLS
 
-MISSING = "kosong"  
-RARE = "lainnya"  
+MISSING = "kosong"
+RARE = "lainnya"
 
+# Statistical Learning, 2nd ed., Springer, 2009, Sec. 5.1; E. Ferdian, "Data Preparation" (Materi09).
+LEAD_BINS = [-1, 7, 30, 90, 180, np.inf]
 
 def load_data(data_dir):
     train = pd.read_csv(f"{data_dir}/train.csv", dtype={ID_COL: str})
@@ -27,21 +29,19 @@ def load_data(data_dir):
 
 
 def drop_duplicates(train):
-    """Buang baris duplikat penuh (di luar id) pada TRAIN saja. Test tidak disentuh."""
     return train.drop_duplicates(subset=FEATURES + [TARGET]).reset_index(drop=True)
 
 
 class Preprocessor:
-    def __init__(self, min_freq=30, clip_upper=None, scale=True):
+    def __init__(self, min_freq=30, invalid_upper=None, scale=True):
         self.min_freq = min_freq
-        self.clip_upper = clip_upper if clip_upper is not None else {
-            "num_children": 8, "nightly_rate_idr": 6_000_000}
+        self.invalid_upper = invalid_upper if invalid_upper is not None else {"num_children": 3}
         self.scale = scale
 
     def _base(self, df):
         out = df[FEATURES].copy()
-        for col, upper in self.clip_upper.items():
-            out[col] = out[col].clip(upper=upper)
+        for col, upper in self.invalid_upper.items():
+            out[col] = out[col].mask(out[col] > upper)
         out["special_requests_missing"] = out["special_requests"].isna().astype(float)
         out["rate_is_zero"] = out["nightly_rate_idr"].eq(0).astype(float)
 
@@ -79,6 +79,22 @@ class Preprocessor:
             out[col] = s.where(s.isin(self.categories_[col]), RARE)
         return out
 
+    def _add_interactions(self, out):
+        lead_bin = pd.cut(out["days_before_arrival"], LEAD_BINS, labels=False)
+        for c in self.categories_["booking_channel"]:
+            for k in range(1, len(LEAD_BINS) - 1):
+                out[f"lead_bin{k}_x_{c}"] = ((out["booking_channel"] == c) & (lead_bin == k)).astype(float)
+        return out
+
+    @property
+    def inter_cols(self):
+        return [f"lead_bin{k}_x_{c}" for c in self.categories_["booking_channel"]
+                for k in range(1, len(LEAD_BINS) - 1)]
+
+    @property
+    def scaled_cols(self):
+        return self.num_cols + self.inter_cols
+
     def fit(self, df):
         out = self._base(df)
         self.medians_ = out[COUNT_COLS + CONT_COLS + BIN_COLS + DATE_COLS].median()
@@ -89,19 +105,19 @@ class Preprocessor:
         for col in self.cat_cols:
             counts = out[col].astype(object).where(out[col].notna(), MISSING).value_counts()
             self.categories_[col] = sorted(counts[counts >= self.min_freq].index)
-        out = self._clean_cat(out)
+        out = self._add_interactions(self._clean_cat(out))
 
         X = self._to_matrix(out, fitting=True)
         if self.scale:
-            n_num = len(self.num_cols)
+            n_num = len(self.scaled_cols)
             self.mean_ = X[:, :n_num].mean(axis=0)
             std = X[:, :n_num].std(axis=0)
             self.std_ = np.where(std == 0, 1.0, std)
         return self
 
     def _to_matrix(self, out, fitting=False):
-        num = out[self.num_cols].to_numpy(float)
-        blocks, names = [num], list(self.num_cols)
+        num = out[self.scaled_cols].to_numpy(float)
+        blocks, names = [num], list(self.scaled_cols)
         if fitting:
             self.levels_ = {}
         for col in self.cat_cols:
@@ -114,10 +130,10 @@ class Preprocessor:
         return np.hstack(blocks)
 
     def transform(self, df):
-        out = self._clean_cat(self._impute_and_derive(self._base(df)))
+        out = self._add_interactions(self._clean_cat(self._impute_and_derive(self._base(df))))
         X = self._to_matrix(out)
         if self.scale:
-            n_num = len(self.num_cols)
+            n_num = len(self.scaled_cols)
             X[:, :n_num] = (X[:, :n_num] - self.mean_) / self.std_
         return X
 
