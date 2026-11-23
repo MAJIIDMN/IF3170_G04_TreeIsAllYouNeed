@@ -73,8 +73,7 @@ def _entropy(counts):
     p = counts[counts > 0] / total
     return float(-(p * np.log2(p)).sum())
 
-# Algoritma di bawah merupakan diskretisasi berbasis entropi dengan kriteria berhenti MDL.
-# Referensi: "Multi-Interval Discretization of Continuous-Valued Attributes for Classification Learning" (Fayyad, Irani, 1993)
+# diskretisasi berbasis entropi dengan kriteria berhenti MDL
 def mdl_cuts(values, labels, max_cuts=15):
     order = np.argsort(values, kind="mergesort")
     v, y = values[order], labels[order].astype(int)
@@ -104,7 +103,6 @@ def mdl_cuts(values, labels, max_cuts=15):
         left, right = cum[best] - cum[lo], cum[hi] - cum[best]
         k, k1, k2 = (total > 0).sum(), (left > 0).sum(), (right > 0).sum()
         delta = np.log2(3.0 ** k - 2.0) - (k * parent - k1 * _entropy(left) - k2 * _entropy(right))
-        # kriteria berhenti MDL (referensi di atas)
         if best_gain <= (np.log2(n - 1.0) + delta) / n:
             return
         cuts.append(float((distinct[best - 1] + distinct[best]) / 2.0))

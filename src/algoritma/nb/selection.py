@@ -37,8 +37,7 @@ class FoldCache:
             "roc_auc": roc_auc(self.y, odds),
         }
 
-# Algoritma di bawah merupakan forward selection untuk Naive Bayes.
-# Referensi: "Induction of Selective Bayesian Classifiers" (Langley, Sage, 1994)
+# forward selection untuk Naive Bayes
 def forward_selection(cache, candidates=None, start=(), max_features=None, min_gain=1e-4, alpha=1.0):
     pool = [n for n in (candidates or cache.names) if n not in start]
     chosen = list(start)

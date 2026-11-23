@@ -30,8 +30,7 @@ def pair_counts(a, b, index, n_classes, n_a, n_b):
     np.add.at(counts, (index[both], a[both].astype(int), b[both].astype(int)), 1.0)
     return counts
 
-# Algoritma di bawah merupakan bagian dari TAN (Tree-Augmented Naive Bayes).
-# Referensi: "Bayesian Network Classifiers" (Friedman, Geiger, Goldszmidt, 1997)
+# ATAN (Tree-Augmented Naive Bayes)
 def conditional_mutual_information(counts, alpha):
     smoothed = counts + alpha / (counts.shape[1] * counts.shape[2])
     joint = smoothed / smoothed.sum()
@@ -40,8 +39,7 @@ def conditional_mutual_information(counts, alpha):
     p_bc = joint.sum(axis=1, keepdims=True)
     return float((joint * np.log(joint * p_c / (p_ac * p_bc))).sum())
 
-# Algoritma di bawah merupakan algoritma Prim untuk maximum spanning tree.
-# Referensi: "Approximating Discrete Probability Distributions with Dependence Trees" (Chow, Liu, 1968)
+# algoritma Prim untuk maximum spanning tree
 def maximum_spanning_tree(weights, root):
     d = len(weights)
     parent = np.full(d, -1)
