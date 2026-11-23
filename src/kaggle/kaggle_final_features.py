@@ -1,4 +1,3 @@
-"""Fitur untuk DTL dan SVM di notebook kaggle_final. Semua statistik dihitung dari train saja."""
 import numpy as np
 import pandas as pd
 
@@ -59,7 +58,6 @@ def impute_and_flag(train, other):
 
 
 def sibling_pairs(reference, query, same=False):
-    """Untuk tiap baris query: indeks saudara di reference dan bobot kedekatan lead time."""
     vocab = {c: {v: float(i) for i, v in enumerate(sorted(reference[c].dropna().unique()))}
              for c in KEY + SOFT if c in CAT_COLS}
 
@@ -95,7 +93,6 @@ def sibling_pairs(reference, query, same=False):
 
 # Sumber: R. Jarvis & E. Patrick, IEEE Trans. Computers C-22(11), 1973 (kesamaan tetangga bersama).
 def shared_neighbour_weights(pairs, reference_sets, include_self):
-    """Bobot saudara dikali akar indeks Jaccard antara dua daftar saudara."""
     weights = []
     for i, (idx, w) in enumerate(pairs):
         mine = set(idx.tolist()) | ({i} if include_self else set())
@@ -105,7 +102,6 @@ def shared_neighbour_weights(pairs, reference_sets, include_self):
 
 
 def build_features(train, labels, other, shared_neighbours):
-    """Fitur train (saudara out-of-fold) dan fitur data lain (hanya memakai label train)."""
     labels = np.asarray(labels, dtype=float)
     prior = labels.mean()
     raw_train = train.drop(columns=[TARGET]).reset_index(drop=True)
@@ -148,7 +144,6 @@ def build_features(train, labels, other, shared_neighbours):
 
 
 def standardize(train, other):
-    """Standardisasi dengan statistik train. Lead time diakar, sib_te jadi logit, sib_n jadi log."""
     def logit(v):
         v = np.clip(v, 0.005, 0.995)
         return np.log(v / (1 - v))
@@ -177,7 +172,6 @@ def laplacian_gram(A, B, scale):
 # Sumber: A. Radhakrishnan dkk., Science, 2024, doi:10.1126/science.adi5639 (AGOP, di sini hanya diagonalnya);
 # C. Saunders dkk., ICML 1998 (kernel ridge); C. Williams & M. Seeger, NIPS 13, 2001 (Nystrom).
 def feature_weights(X, y, scale):
-    """Bobot fitur: akar dari RMS gradien regresi kernel ridge terhadap tiap fitur (AGOP diagonal)."""
     n, d = X.shape
     target, weights = y - 0.5, np.ones(d)
     centres = np.sort(np.random.default_rng(0).choice(n, CENTRES, replace=False))
