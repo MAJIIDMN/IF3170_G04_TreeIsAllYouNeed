@@ -1,28 +1,104 @@
 \subsection{Implementasi \textit{From Scratch}}
 \label{subsec:nb-implementasi}
 
+\textit{Naive Bayes} (NB) dan \textit{Tree-Augmented Naive Bayes} (TAN) ditulis dengan NumPy saja dan dipanggil langsung dari \textit{notebook}. \textit{scikit-learn} \cite{pedregosa2011sklearn} dipakai sebagai pembanding model pada Subbab~\ref{subsec:nb-hasil}, serta untuk metrik dan PCA.
+
+\subsubsection{Alur Implementasi}
+Alur kerja dari data mentah sampai analisis kesalahan ditunjukkan pada Gambar~\ref{fig:nb-workflow}.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.92\textwidth]{nb/workflow_nb.png}
+	\caption{Alur kerja \textit{Naive Bayes} dari data mentah sampai analisis kesalahan}
+	\label{fig:nb-workflow}
+\end{figure}
+
 \subsubsection{Landasan Teori}
-\todo{Jelaskan teorema Bayes, asumsi independensi bersyarat (\textit{Naive Bayes} sebagai \textit{Bayesian network} dengan kelas sebagai \textit{parent} semua fitur), \textit{likelihood} kategorikal dengan Laplace \textit{smoothing} dan numerik dengan Gaussian, serta perhitungan dalam ruang log. Acu \cite{slide-bayesnet}. Sertakan rumus utama dalam lingkungan \texttt{equation}/\texttt{align}.}
+Naive Bayes adalah \textit{Bayesian network} dengan kelas sebagai satu-satunya \textit{parent} semua fitur \cite{slide-bayesnet}, sehingga fitur dianggap independen jika kelas diketahui. Perhitungan dilakukan dalam ruang log, dan fitur yang kosong dilewati dalam penjumlahan.
+
+\begin{tcolorbox}[colback=gray!5, colframe=gray!60, title={\small\bfseries Rumus Utama}, fonttitle=\bfseries, fontupper=\footnotesize, top=2pt, bottom=2pt]
+\setlength{\abovedisplayskip}{2pt}\setlength{\belowdisplayskip}{2pt}
+\setlength{\abovedisplayshortskip}{0pt}\setlength{\belowdisplayshortskip}{0pt}
+\textbf{1. Teorema Bayes (ruang log).} Kelas dengan skor tertinggi dipilih, atau batal jika $\log P(1,\mathbf{x}) - \log P(0,\mathbf{x}) > t$ untuk \textit{threshold} $t$:
+\begin{equation}
+	\hat{y} = \arg\max_{c} \Big[ \log P(c) + \sum_{j} \log P(x_j \mid c) \Big]
+	\label{eq:nb-bayes}
+\end{equation}
+\textbf{2. \textit{Laplace smoothing}} untuk fitur dengan $K_j$ kategori ($N_{c,k}$: baris kelas $c$ berkategori $k$, $N_c$: baris kelas $c$ yang tidak kosong):
+\begin{equation}
+	P(x_j = k \mid c) = \frac{N_{c,k} + \alpha}{N_c + \alpha K_j}
+	\label{eq:nb-laplace}
+\end{equation}
+\textbf{3. Faktorisasi TAN.} Tiap fitur boleh punya satu \textit{parent} fitur ($r$ akar pohon, $\mathrm{pa}(j)$ \textit{parent} fitur $j$):
+\begin{equation}
+	P(\mathbf{x} \mid c) = P(x_r \mid c) \prod_{j \neq r} P\big(x_j \mid x_{\mathrm{pa}(j)}, c\big)
+	\label{eq:tan}
+\end{equation}
+\end{tcolorbox}
 
 \subsubsection{Struktur Kelas dan Fungsi}
-\todo{Deskripsikan kelas pada \texttt{src/algoritma/nb/nb.py}: \texttt{\_\_init\_\_}, \texttt{fit} (estimasi \textit{prior} dan \textit{likelihood}), \texttt{predict\_proba}, \texttt{predict}, \texttt{save}, \texttt{load}. Isi tabel di bawah, satu baris per fungsi/metode.}
+Model ada di \texttt{src/algoritma/nb/}, sedangkan \textit{preprocessing}, seleksi fitur, pipeline, dan penyimpanan model ditulis langsung di \textit{notebook}.
 
-\begin{table}[H]
-	\centering
-	\caption{Deskripsi kelas dan fungsi NB}
-	\label{tab:nb-fungsi}
-	\begin{tabularx}{\textwidth}{l Y}
-		\toprule
-		\textbf{Fungsi/Metode} & \textbf{Deskripsi} \\
-		\midrule
-		\texttt{nama\_fungsi} & \todo{deskripsi} \\
-		\bottomrule
-	\end{tabularx}
-\end{table}
+\begin{longtable}{@{}p{2.9cm} p{4.3cm} p{6.6cm}@{}}
+	\caption{Peta kode implementasi \textit{Naive Bayes}}
+	\label{tab:nb-fungsi}\\
+	\toprule
+	\textbf{Berkas} & \textbf{Kelas/Fungsi} & \textbf{Peran} \\*
+	\midrule
+	\endfirsthead
+	\toprule
+	\textbf{Berkas} & \textbf{Kelas/Fungsi} & \textbf{Peran} \\
+	\midrule
+	\endhead
+	\bottomrule
+	\endlastfoot
+	\texttt{nb.py} & \texttt{NaiveBayes.fit} & Menghitung \textit{prior}, tabel log peluang kategorikal (\textit{Laplace smoothing}), serta rata-rata dan variansi Gaussian \\
+	& \texttt{joint\_\allowbreak log\_\allowbreak likelihood} & Menjumlahkan log \textit{prior} dan log \textit{likelihood} tiap fitur, fitur kosong dilewati \\
+	& \texttt{predict\_\allowbreak proba}, \texttt{decision\_\allowbreak function}, \texttt{predict} & Peluang kelas, selisih skor dua kelas, dan label dengan \textit{threshold} \\
+	& \texttt{save}, \texttt{load} & Menyimpan dan memuat model sebagai JSON \\
+	\midrule
+	\texttt{tan.py} & \texttt{TANNaiveBayes} & Turunan \texttt{NaiveBayes} dengan satu \textit{parent} fitur per fitur (CMI dan algoritma Prim) \\
+	\midrule
+	\textit{Notebook} & \texttt{Preprocessor}, \texttt{mdl\_\allowbreak cuts} & Mempelajari kategori, titik potong (MDL, kuantil), dan batas dari data latih, lalu menerapkannya \\
+	& \texttt{cross\_\allowbreak validate}, \texttt{stratified\_\allowbreak folds} & Validasi silang berstrata dengan \textit{preprocessing} di-\textit{fit} ulang tiap \textit{fold} \\
+	& \texttt{FoldCache}, \texttt{forward\_\allowbreak selection} & Seleksi fitur satu per satu berdasarkan ROC-AUC \\
+	& \texttt{fit\_\allowbreak pipeline}, \texttt{train\_\allowbreak and\_\allowbreak save}, \texttt{load\_\allowbreak artifact}, \texttt{write\_\allowbreak submission} & Melatih, menyimpan, memuat model, dan menulis submisi Kaggle \\
+\end{longtable}
 
 \subsubsection{\textit{Source Code}}
-\todo{Sisipkan potongan kode inti (estimasi parameter dan perhitungan \textit{posterior}) dengan makro \texttt{\textbackslash kode}, lalu jelaskan alurnya. Cek ulang nomor baris jika kode berubah.}
-% \kode{../../src/algoritma/nb/nb.py}{1}{30}{Judul potongan kode}{lst:nb-inti}
+Potongan pertama menghitung tabel peluang kategorikal pada \texttt{fit}, dan potongan kedua menghitung skor gabungan tiap kelas.
+
+% sumber: src/algoritma/nb/nb.py baris 73-86 (indentasi dibuang agar muat)
+\begin{lstlisting}[caption={Estimasi peluang kategorikal dengan \textit{Laplace smoothing} (\texttt{fit})}, label={lst:nb-fit}]
+n_cat = int(codes.max()) + 1 if codes.size else 1
+counts = np.zeros((n_classes, n_cat))
+np.add.at(counts, (index[known], codes.astype(int)), 1.0)
+totals = counts.sum(axis=1, keepdims=True)
+denominator = totals + self.alpha * n_cat
+denominator = np.where(denominator > 0, denominator, 1.0)
+# Laplace smoothing.
+theta = (counts + self.alpha) / denominator
+with np.errstate(divide="ignore"):
+    self.log_theta_[j] = np.log(theta)
+self.n_categories_[j] = n_cat
+unseen = self.alpha / denominator[:, 0]
+with np.errstate(divide="ignore"):
+    self.unseen_log_[j] = np.log(unseen)
+\end{lstlisting}
+
+\texttt{np.add.at} menghitung $N_{c,k}$ untuk semua kelas dan kategori sekaligus, dan \texttt{theta} adalah Persamaan~\ref{eq:nb-laplace} yang disimpan dalam bentuk log. \texttt{unseen\_log} dipakai saat kategori muncul di data uji tetapi tidak ada di data latih.
+
+\kode{../../src/algoritma/nb/nb.py}{89}{111}{Skor gabungan tiap kelas (\texttt{joint\_log\_likelihood})}{lst:nb-jll}
+
+Skor awal tiap baris adalah log \textit{prior}, lalu ditambah log peluang tiap fitur yang nilainya tidak kosong. Baris dengan nilai kosong tidak ditambah apa pun, sehingga fitur itu dilewati.
 
 \subsubsection{\textit{Save} dan \textit{Load} Model}
-\todo{Format penyimpanan (JSON/\texttt{.npz}/\textit{pickle}), isi yang disimpan, dan contoh pemakaian.}
+Data uji harus diubah dengan \textit{preprocessor} yang sama dengan data latih, sehingga satu berkas \textit{artifact} JSON menyimpan \textit{preprocessor}, model, dan metadata (Gambar~\ref{fig:nb-artifact}). \texttt{load\_artifact} membacanya tanpa memanggil \texttt{fit}. Hasil pemuatan identik dengan pelatihan ulang untuk NB (10,9 KB) maupun TAN (226,8 KB), diperiksa dengan \texttt{np.array\_equal}.
+
+{\setlength{\intextsep}{2pt}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.6\textwidth]{nb/workflow_artifact.png}
+	\caption{Isi \textit{artifact} model dan alur penyimpanan serta pemuatannya}
+	\label{fig:nb-artifact}
+\end{figure}}

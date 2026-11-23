@@ -2,23 +2,78 @@
 \label{subsec:nb-validasi}
 
 \subsubsection{Skema Validasi}
-\todo{Skema validasi untuk NB (\textit{stratified k-fold} atau \textit{train-test split}), nilai $k$/rasio, dan \textit{seed}. Jika sama dengan kerangka umum (Subbab~\ref{sec:kerangka-umum}), cukup rujuk dan jelaskan perbedaannya saja, misalnya \textit{subsampling} karena waktu komputasi.}
+Validasi memakai \textit{Stratified 5-Fold} pada seluruh data latih (27.309 baris setelah duplikat dibuang), dengan \textit{preprocessing} dipelajari ulang di tiap \textit{fold}. Keputusan diambil dengan \textit{seed} 42, lalu model akhir dievaluasi ulang pada empat \textit{seed} (42, 7, 2026, dan 99). \textit{Threshold} pada log odds dipilih dari empat \textit{fold} lain dan dinilai pada \textit{fold} yang tidak ikut memilihnya.
 
-\subsubsection{\textit{Hyperparameter Tuning}}
-\todo{Ruang pencarian (\textit{smoothing} ($\alpha$ / \texttt{var\_smoothing}), skema diskretisasi, subset fitur), metode pencarian, dan hasilnya. Sertakan tabel atau grafik skor CV terhadap hiperparameter.}
+Karena seed lain memakai data yang sama dengan pemilihan fitur, 10\% data (2.732 baris, berstrata) disisihkan sebagai \textit{hold-out} sebelum apa pun dipelajari. Seleksi fitur diulang hanya pada 90\% sisanya, lalu model dinilai pada \textit{hold-out} itu (Gambar~\ref{fig:nb-validasi}).
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.75\textwidth]{nb/workflow_validation.png}
+	\caption{Protokol validasi \textit{Naive Bayes}}
+	\label{fig:nb-validasi}
+\end{figure}
 
 \begin{table}[H]
 	\centering
-	\caption{Hasil \textit{tuning} hiperparameter NB}
-	\label{tab:nb-tuning}
-	\begin{tabular}{l l c}
+	\caption{Hasil validasi \textit{Naive Bayes}}
+	\label{tab:nb-validasi}
+	\begin{tabular}{l r r r r}
 		\toprule
-		\textbf{Hiperparameter} & \textbf{Ruang pencarian} & \textbf{Terbaik} \\
+		\textbf{Skema} & \textbf{Macro F1} & \textbf{Std antar \textit{fold}} & \textbf{Macro F1 (\textit{threshold})} & \textbf{ROC-AUC} \\
 		\midrule
-		\todo{} & & \\
+		CV, \textit{seed} 42 & 0,7770 & 0,0051 & 0,7815 & 0,8636 \\
+		CV, \textit{seed} 7 & 0,7776 & 0,0041 & 0,7788 & 0,8639 \\
+		CV, \textit{seed} 2026 & 0,7782 & 0,0060 & 0,7823 & 0,8634 \\
+		CV, \textit{seed} 99 & 0,7786 & 0,0050 & 0,7815 & 0,8635 \\
+		\midrule
+		Rata-rata CV & 0,7778 & -- & 0,7810 & 0,8636 \\
+		\textit{Hold-out} 10\% & 0,7720 & -- & 0,7757 & 0,8584 \\
 		\bottomrule
 	\end{tabular}
 \end{table}
 
+{\small
+\insightkeputusan{Hasil stabil pada empat \textit{seed} (Macro F1 0,7770 sampai 0,7786, simpangan baku antar \textit{fold} 0,004 sampai 0,006). Kolom \textit{threshold} adalah Macro F1 dengan \textit{threshold} yang dipilih dari \textit{fold} lain (pada \textit{hold-out}, $-0{,}2$ tetap). \textit{Hold-out} sedikit di bawah validasi silang, wajar akibat derau satu \textit{hold-out} 10\%. Seleksi fitur pada 90\% data memilih delapan fitur yang sama ditambah \texttt{num\_children}, dan fitur inti tidak berubah.}{Estimasi skor yang jujur untuk data uji sekitar 0,775.}\par}
+
+\subsubsection{\textit{Hyperparameter Tuning}}
+Parameter Naive Bayes sedikit, sehingga sebagian besar keputusan ada pada \textit{preprocessing} dan \textit{threshold} (Tabel~\ref{tab:nb-tuning}).
+
+\begin{table}[H]
+	\centering
+	\caption{Hasil \textit{tuning} hiperparameter}
+	\label{tab:nb-tuning}
+	\begin{tabularx}{\textwidth}{l Y l}
+		\toprule
+		\textbf{Hiperparameter} & \textbf{Ruang pencarian} & \textbf{Terbaik} \\
+		\midrule
+		$\alpha$ NB & Tidak dicari (\textit{Laplace smoothing} standar) & 1,0 \\
+		$\alpha$ TAN & $\{0{,}5;\ 1{,}0;\ 2{,}0\}$ & 0,5 \\
+		\textit{Threshold} log odds & $-4$ sampai $4$, langkah 0,1 & $-0{,}2$ \\
+		Skema diskretisasi & Gaussian, kuantil 5/10/20, lebar sama, MDL & MDL (tarif), kuantil 5 (lead time) \\
+		Subset fitur & \textit{Forward selection} dari 40 kandidat & 8 fitur \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
 \subsubsection{Model Final}
-\todo{Konfigurasi final NB, skor CV (rata-rata $\pm$ simpangan baku), dan lokasi model tersimpan di \texttt{output/}.}
+Kedua model memakai delapan fitur kategorikal yang sama, dilatih pada seluruh data latih, lalu disimpan sebagai \textit{artifact} JSON di folder \texttt{output/}.
+
+\begin{table}[H]
+	\centering
+	\caption{Konfigurasi final dan skor NB dan TAN}
+	\label{tab:nb-final}
+	\begin{tabularx}{\textwidth}{l Y Y}
+		\toprule
+		\textbf{Komponen} & \textbf{\textit{Naive Bayes}} & \textbf{TAN} \\
+		\midrule
+		$\alpha$ & 1,0 & 0,5 \\
+		\textit{Threshold} & $-0{,}2$ & $-0{,}2$ \\
+		\textit{Parent} fitur & Hanya kelas & Satu fitur lain lewat pohon CMI \\
+		Macro F1 CV (rata-rata 4 \textit{seed}) & 0,7810 & 0,8094 \\
+		ROC-AUC CV (rata-rata 4 \textit{seed}) & 0,8636 & 0,9009 \\
+		Macro F1 \textit{hold-out} & 0,7757 & 0,8155 \\
+		ROC-AUC \textit{hold-out} & 0,8584 & 0,9063 \\
+		\textit{Artifact} & \texttt{nb\_artifact.json} (10,9 KB) & \texttt{tan\_artifact.json} (226,8 KB) \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
