@@ -1,17 +1,135 @@
 \subsection{Bonus SVM}
 \label{subsec:svm-bonus}
 
-\todo{Hapus subbab bonus yang tidak dikerjakan.}
+Tiga bonus dikerjakan untuk SVM: visualisasi bidang pemisah, margin, dan \textit{support vector} untuk tiap kernel wajib; algoritma optimasi di luar materi kelas (SMO dengan pemilihan pasangan orde kedua, kernel Laplacian, dan bobot fitur AGOP); serta \textit{cost-sensitive classification}. Bonus terakhir dibahas juga pada Bagian~\ref{sec:cost-sensitive}.
 
 \subsubsection{Visualisasi Bidang Pemisah}
-\todo{Gambar bidang pemisah, \textit{margin}, dan \textit{support vector} untuk tiap kernel pada dua fitur atau hasil reduksi ke 2D. Jelaskan fitur yang dipilih dan tampilkan tiga gambarnya.}
+\label{subsubsec:svm-bidang}
+Model final memiliki 46 fitur sehingga bidang pemisahnya tidak dapat digambar. Karena itu SVM dilatih ulang pada \textit{tepat dua fitur}: akar \textit{lead time} dan tarif per malam, keduanya terstandardisasi (kolom \texttt{days\_\allowbreak before\_\allowbreak arrival} dan \texttt{nightly\_\allowbreak rate\_\allowbreak idr} pada data pengembangan). Dua fitur asli dipilih, bukan proyeksi PCA, karena dua komponen utama pertama hanya menyimpan 15,0\% variansi (Subbab~\ref{subsec:svm-preprocessing}) sedangkan sumbu asli dapat dibaca langsung. Datanya 250 pesanan acak (\textit{seed} 7, proporsi batal 31,2\%) dengan $C = 1$ dan \texttt{tol} $10^{-3}$, memakai kelas \texttt{SVM} yang sama: \textit{linear}; \textit{polynomial} dengan \textit{degree} 3, \texttt{coef0} 1, dan $\gamma$ \texttt{"scale"}; serta \textit{Gaussian} dengan $\gamma$ \texttt{"scale"} ($\gamma = 0{,}512$ pada dua fitur ini). Gambar~\ref{fig:svm-bonus-0} menunjukkan garis penuh $f(x) = 0$ (bidang pemisah), garis putus-putus $f(x) = \pm 1$ (margin), dan lingkaran hitam di sekeliling \textit{support vector}.
 
 \begin{figure}[H]
 	\centering
-	\placeholdergambar{Visualisasi Bidang Pemisah}
-	\caption{Visualisasi Bidang Pemisah SVM}
+	\includegraphics[width=\textwidth]{svm_decision_boundary.png}
+	\caption{Bidang pemisah, margin, dan \textit{support vector} pada akar \textit{lead time} dan tarif per malam (250 pesanan, $C = 1$): kernel \textit{linear} (kiri), \textit{polynomial} (tengah), dan \textit{Gaussian} (kanan)}
 	\label{fig:svm-bonus-0}
 \end{figure}
 
+Lebar margin dihitung sebagai $2/\lVert w\rVert$ dengan $\lVert w\rVert^2 = \sum_i\sum_j \alpha_i\alpha_j y_i y_j K(x_i, x_j) = \sum_i \alpha_i y_i\,(f(x_i) - b)$, sehingga cukup memakai koefisien dual dan nilai keputusan pada \textit{support vector}. Jumlah \textit{support vector} dipisahkan menjadi yang tepat di batas margin ($0 < \alpha < C$, \textit{free}) dan yang di dalam margin atau salah sisi ($\alpha = C$).
+
+\begin{table}[H]
+	\centering
+	\caption{Margin dan \textit{support vector} tiap kernel pada dua fitur (250 pesanan, $C = 1$)}
+	\label{tab:svm-bidang}
+	\small
+	\begin{tabular}{l c c c c c}
+		\toprule
+		\textbf{Kernel} & \textbf{SV} & \textbf{SV \textit{free}} & \textbf{SV $\alpha = C$} & \textbf{Lebar margin} & \textbf{Akurasi latih} \\
+		\midrule
+		\textit{Linear} & 130 (52,0\%) & 3 & 127 & 1,7968 & 0,804 \\
+		\textit{Polynomial} & 117 (46,8\%) & 11 & 106 & 2,0145 & 0,808 \\
+		\textit{Gaussian} & 125 (50,0\%) & 17 & 108 & 0,5460 & 0,828 \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+Beberapa hal dapat dibaca dari Gambar~\ref{fig:svm-bonus-0} dan Tabel~\ref{tab:svm-bidang}.
+\begin{enumerate}
+	\item \textbf{Bentuk bidang.} Kernel \textit{linear} menghasilkan garis lurus dengan dua margin sejajar. Kernel \textit{polynomial} membengkokkan garis itu menjadi kurva. Kernel \textit{Gaussian} membentuk daerah batal yang tertutup di kanan atas. Arah umumnya konsisten pada ketiganya: pesanan dengan \textit{lead time} panjang dan tarif tinggi cenderung batal.
+	\item \textbf{Tumpang tindih.} Pada dua fitur ini kedua kelas saling menumpuk, sehingga sekitar separuh titik menjadi \textit{support vector} dan sebagian besar di antaranya berada di dalam margin ($\alpha = C$: 127, 106, dan 108 titik). Hanya 3 sampai 17 titik yang tepat di batas margin. Akurasi latih hanya 0,80 sampai 0,83, jauh di bawah hasil model 46 fitur (Tabel~\ref{tab:svm-hasil}), sehingga dua fitur ini memang tidak cukup.
+	\item \textbf{Fleksibilitas dan \textit{overfitting}.} \textit{Gaussian} memiliki akurasi latih tertinggi (0,828), tetapi menghasilkan pulau kecil di kiri atas yang ditopang hanya beberapa titik, contoh risiko \textit{overfitting} pada kernel yang fleksibel.
+	\item \textbf{Margin tidak dapat dibandingkan langsung.} Lebar margin diukur di ruang fitur masing-masing kernel (1,7968; 2,0145; dan 0,5460), sehingga angkanya tidak dapat dibandingkan antarkernel. Angka pada Tabel~\ref{tab:svm-bidang} hanya bermakna sebagai ukuran relatif di dalam satu kernel pada $C$ yang berbeda.
+\end{enumerate}
+
 \subsubsection{Algoritma Optimasi di Luar Materi Kelas}
-\todo{Jika ada: jelaskan algoritmanya, mengapa dapat mengoptimasi model, bukti perbaikannya (sebelum vs sesudah), dan \textbf{referensinya (tanpa referensi bonus dianulir)}. Misalnya SMO dengan pemilihan \textit{working set} orde kedua dan \textit{kernel cache} \cite{platt1998smo,chang2011libsvm}.}
+\label{subsubsec:svm-optimasi}
+Materi kelas memuat bentuk primal dan dual SVM serta \textit{kernel trick}, tetapi tidak memuat cara menyelesaikan masalah dual maupun kernel di luar \textit{linear}, \textit{polynomial}, \textit{Gaussian}, dan \textit{sigmoid} (Subbab~\ref{subsec:svm-implementasi}). Tiga komponen di luar materi dikerjakan, dan masing-masing diberi bukti perbaikan.
+
+\paragraph{(1) SMO dengan pemilihan pasangan orde kedua dan \textit{cache} kernel.} Algoritma ini adalah \textit{solver} masalah dual: SMO \cite{platt1998smo} mengubah dua variabel per langkah dengan solusi tertutup, pemilihan pasangan orde kedua \cite{fan2005wss} memilih pasangan yang paling menaikkan fungsi tujuan, dan \textit{cache} baris kernel serta bias dari \textit{free support vector} diambil dari LIBSVM \cite{chang2011libsvm} (rumus lengkap pada Subbab~\ref{subsec:svm-implementasi}). Cara kerjanya mengoptimasi model: pemilihan orde pertama memilih pasangan dengan selisih skor terbesar, tetapi langkahnya bisa pendek bila kelengkungan $a_{ij}$ besar; orde kedua memaksimumkan $g_t^2/a_{it}$, yaitu kenaikan tujuan yang sebenarnya, sehingga setiap iterasi lebih bermanfaat. \textit{Cache} tidak mengubah hasil tetapi menghindari penghitungan ulang baris kernel.
+
+Bukti dihitung dengan membandingkan kelas \texttt{SVM} dengan varian yang hanya mengganti pemilihan $j$ menjadi $j = \arg\max_{t \in I_{\text{turun}}} (s_i - s_t)$ (orde pertama, pasangan pelanggar maksimum), pada 6.000 baris latih, \texttt{tol} $10^{-3}$, dan konfigurasi Tabel~\ref{tab:svm-hasil}. Varian ini dibuat sementara untuk pengukuran dan tidak ada di repositori.
+
+\begin{table}[H]
+	\centering
+	\caption{Jumlah iterasi dan waktu pelatihan SMO dengan pemilihan pasangan orde pertama dan orde kedua (6.000 baris latih). Waktu hanya perkiraan kasar.}
+	\label{tab:svm-orde}
+	\small
+	\resizebox{\textwidth}{!}{%
+	\begin{tabular}{l c c c c c c}
+		\toprule
+		\textbf{Kernel} & \multicolumn{2}{c}{\textbf{Iterasi}} & \textbf{Rasio} & \multicolumn{2}{c}{\textbf{Waktu (s)}} \\
+		& orde 1 & orde 2 & orde 1 / orde 2 & orde 1 & orde 2 \\
+		\midrule
+		\textit{Linear} ($C = 8$) & 1.526.696 & 936.187 & 1,63 & 49,5 & 31,9 \\
+		\textit{Polynomial} ($C = 0{,}5$) & 2.043.214 & 10.336 & 197,7 & 63,2 & 0,57 \\
+		\textit{Gaussian} ($C = 2$) & 8.585 & 4.585 & 1,87 & 0,49 & 0,32 \\
+		Laplacian + bobot ($C = 2$) & 8.282 & 5.494 & 1,51 & 1,34 & 1,30 \\
+		\bottomrule
+	\end{tabular}}
+\end{table}
+
+Pemilihan orde kedua mengurangi jumlah iterasi pada keempat kernel, dari 1,5 kali lipat sampai hampir 200 kali lipat. Jumlah \textit{support vector} hampir sama pada kedua varian (selisih paling banyak 2: 2.193 terhadap 2.195 pada \textit{polynomial} dan 2.094 terhadap 2.096 pada \textit{linear}), sehingga model yang dihasilkan setara dan perbedaannya hanya pada kecepatan menuju solusi. Waktu mengikuti jumlah iterasi pada \textit{polynomial} (63,2 menjadi 0,57 detik), \textit{linear}, dan \textit{Gaussian}, tetapi pada Laplacian waktunya hampir sama (1,34 terhadap 1,30 detik) walaupun iterasinya turun 34\%, karena pemilihan orde kedua menambah beberapa operasi vektor per iterasi dan pemilihan orde pertama mungkin lebih sering memakai ulang baris di \textit{cache}; penyebab pastinya tidak diselidiki. Dugaan penyebab kenaikan terbesar pada \textit{polynomial}: $K_{ii} = (\gamma\lVert x\rVert^2 + 1)^3$ sangat bervariasi antartitik, sehingga kelengkungan $a_{ij}$ juga bervariasi, dan orde pertama yang mengabaikannya mungkin menghasilkan langkah yang jauh lebih pendek; ini tidak diuji lebih jauh.
+
+Bukti untuk \textit{cache}: pada kernel Laplacian dengan bobot ($C = 2$, 6.000 baris), \textit{cache} sekecil dua baris (\texttt{cache\_mb=0.01}) memerlukan 5,93 detik, sedangkan \textit{cache} 400 MB (cukup untuk semua 6.000 baris, kapasitas 8.333) 1,19 detik, atau 5,0 kali lipat lebih cepat, dengan jumlah iterasi yang sama (5.494). Pengujian otomatis memastikan hasilnya identik (Subbab~\ref{subsubsec:svm-uji}). Pada model akhir (27.309 baris, 400 MB), \textit{cache} hanya memuat 6,7\% baris, sehingga manfaatnya lebih kecil daripada pada contoh ini. Dampak langsungnya belum diukur pada ukuran data penuh.
+
+\paragraph{(2) Kernel Laplacian.} Kernel $\exp(-\gamma\lVert a-b\rVert_1)$ \cite{chapelle1999histogram} mengubah ruang hipotesis, bukan \textit{solver}: jarak L1 tidak memperbesar selisih ekstrem secara kuadratik (Subbab~\ref{subsec:svm-implementasi}). Buktinya pada protokol yang sama: Macro F1 CV 3-\textit{fold} 0,8384 untuk Laplacian dibandingkan 0,8161 untuk \textit{Gaussian} dan 0,8178 untuk \textit{polynomial} (Tabel~\ref{tab:svm-tuning-cv}), dan Macro F1 \textit{hold-out} 0,8488 dibandingkan 0,8244 dan 0,8251 (Tabel~\ref{tab:svm-hasil}). Kenaikan ini tidak seluruhnya berasal dari jarak L1, karena \textit{Gaussian} juga naik bila fiturnya diberi bobot (Subbab~\ref{subsec:svm-hasil}).
+
+\paragraph{(3) Bobot fitur AGOP.} Bobot fitur diadaptasi dari AGOP pada \textit{Recursive Feature Machine} \cite{radhakrishnan2024rfm} dengan model pengganti \textit{kernel ridge} \cite{saunders1998ridge} dan pendekatan Nystr\"om \cite{williams2001nystrom} (Persamaan~\eqref{eq:svm-nystrom}--\eqref{eq:svm-bobot}). Cara kerjanya mengoptimasi model: jarak kernel dibuat peka terhadap fitur yang benar-benar mengubah prediksi dan tidak peka terhadap yang tidak. Hasilnya adalah ukuran kemiripan antar-pesanan yang lebih relevan, tanpa menambah parameter pada SVM. Bukti: Macro F1 CV 3-\textit{fold} naik dari 0,8384 menjadi 0,8499 pada $C = 2$, dengan kenaikan di semua $C$ (0,0593 pada $C = 0{,}1$; 0,0237 pada 0,5; 0,0115 pada 2; 0,0092 pada 8; Tabel~\ref{tab:svm-tuning-cv}), dan Macro F1 \textit{hold-out} naik dari 0,8488 menjadi 0,8561 (Tabel~\ref{tab:svm-hasil}), dengan jumlah \textit{support vector} turun dari 2.429 menjadi 2.248. Pada \textit{Gaussian}, bobot yang sama menaikkan Macro F1 \textit{hold-out} dari 0,8244 menjadi 0,8444 sampai 0,8502 (Subbab~\ref{subsec:svm-hasil}). Konfigurasinya dirinci pada Tabel~\ref{tab:svm-ablasi}: pangkat 0,5 dan dua putaran dipilih lewat CV 5-\textit{fold}.
+
+Rangkuman bukti ketiga komponen dalam Macro F1 \textit{hold-out} (6.000 baris latih) ada pada Tabel~\ref{tab:svm-optimasi-bukti}.
+
+\begin{table}[H]
+	\centering
+	\caption{Kenaikan Macro F1 \textit{hold-out} (6.000 baris latih) akibat komponen di luar materi kelas}
+	\label{tab:svm-optimasi-bukti}
+	\small
+	\begin{tabularx}{\textwidth}{l c c Y}
+		\toprule
+		\textbf{Perubahan} & \textbf{Sebelum} & \textbf{Sesudah} & \textbf{Catatan} \\
+		\midrule
+		\textit{Gaussian} $\to$ Laplacian & 0,8244 & 0,8488 & kernel; $+0{,}0244$ \\
+		Laplacian $\to$ Laplacian + bobot AGOP & 0,8488 & 0,8561 & bobot fitur; $+0{,}0073$ \\
+		\textit{Gaussian} $\to$ Laplacian + bobot & 0,8244 & 0,8561 & total; $+0{,}0317$ \\
+		Orde 1 $\to$ orde 2 & -- & -- & hasil sama, iterasi turun 1,5 sampai 198 kali lipat (Tabel~\ref{tab:svm-orde}) \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+\paragraph{Analisis kritis.} Kenaikan dari kernel dan bobot dihitung pada satu \textit{hold-out} yang bukan estimasi independen, tetapi arahnya sama pada CV 3-\textit{fold} dan pada \textit{hold-out}, dan selisihnya jauh lebih besar daripada simpangan baku antar-\textit{fold} (0,0028 sampai 0,0049). Bobot AGOP dihitung dengan kernel Laplacian sehingga menguntungkan Laplacian. Komponen (1) tidak mengubah akurasi, hanya kecepatan menuju solusi yang sama. Tidak ada klaim bahwa tiga komponen ini lebih baik daripada algoritma optimasi lain di luar yang diuji.
+
+\subsubsection{\textit{Cost-Sensitive Classification}}
+\label{subsubsec:svm-cost}
+Skenario dan matriks biaya dijelaskan pada Bagian~\ref{sec:cost-sensitive}: \textit{false positive} (diprediksi batal padahal datang, mengakibatkan \textit{overbooking}) dua kali lebih mahal daripada \textit{false negative}, sehingga biaya total adalah $2 \cdot FP + FN$. Dua penanganan diuji terhadap model biasa (ambang 0, $C$ sama).
+\begin{enumerate}
+	\item \textbf{Geser ambang.} Ambang pada nilai keputusan dipilih dari \textit{grid} $-1{,}0$ sampai $1{,}5$ (langkah 0,05) yang meminimumkan biaya pada prediksi \textit{out-of-fold} CV 3-\textit{fold} pada data pengembangan. Ambang terpilih 0,45, lalu diterapkan pada nilai keputusan model biasa di \textit{hold-out}. Pada kasus ini nilai keputusan SVM bukan peluang, sehingga ambang teoretis $C_{FP}/(C_{FP}+C_{FN}) = 2/3$ untuk peluang terkalibrasi \cite{elkan2001cost} tidak dapat dipakai langsung dan ambang dicari secara empiris.
+	\item \textbf{Bobot kelas.} Batas atas $\alpha$ kelas tidak batal dikali 2 ($C_0 = 4$, $C_1 = 2$), lewat \texttt{class\_weight=\{0: 2.0, 1: 1.0\}} (fungsi \texttt{\_box\_limits}, Kode~\ref{lst:svm-box}), sehingga kesalahan pada kelas itu dihukum dua kali lebih berat saat pelatihan. Berbeda dengan geser ambang, bobot kelas mengubah bidang pemisah itu sendiri.
+\end{enumerate}
+
+\kode{../../src/algoritma/svm/svm.py}{206}{217}{Batas atas $C_i$ per titik dari \texttt{class\_weight}}{lst:svm-box}
+
+\begin{table}[H]
+	\centering
+	\caption{Hasil \textit{cost-sensitive} pada \textit{hold-out} (5.462 baris; biaya $= 2 \cdot FP + FN$). \textit{Precision} dan \textit{recall} untuk kelas batal.}
+	\label{tab:svm-cost}
+	\small
+	\resizebox{\textwidth}{!}{%
+	\begin{tabular}{l c c c c c c c}
+		\toprule
+		\textbf{Penanganan} & \textbf{FP} & \textbf{FN} & \textbf{Biaya} & \textbf{Biaya/pesanan} & \textbf{Macro F1} & \textbf{Prec.} & \textbf{Recall} \\
+		\midrule
+		Biasa (ambang 0) & 246 & 390 & 882 & 0,1615 & 0,8649 & 0,8505 & 0,7820 \\
+		Geser ambang (0,45) & 153 & 505 & 811 & 0,1485 & 0,8553 & 0,8935 & 0,7177 \\
+		Bobot kelas 2:1 & 97 & 569 & 763 & 0,1397 & 0,8502 & 0,9263 & 0,6819 \\
+		\bottomrule
+	\end{tabular}}
+\end{table}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{svm_cost_sensitive.png}
+	\caption{Kiri: biaya \textit{out-of-fold} menurut ambang (garis putus-putus oranye: ambang terpilih 0,45; garis titik-titik: ambang 0). Kanan: biaya \textit{hold-out} tiap penanganan, dipecah menjadi biaya FP ($2 \times FP$) dan biaya FN}
+	\label{fig:svm-cost}
+\end{figure}
+
+Dari Tabel~\ref{tab:svm-cost}: biaya turun dari 882 menjadi 811 dengan geser ambang (turun 8,0\%) dan 763 dengan bobot kelas (turun 13,5\%). $FP$ turun dari 246 menjadi 153 dan 97, dengan imbalan $FN$ naik dari 390 menjadi 505 dan 569. \textit{Precision} kelas batal naik dari 0,8505 menjadi 0,8935 dan 0,9263, sedangkan \textit{recall} turun dari 0,7820 menjadi 0,7177 dan 0,6819. Macro F1 ikut turun (0,8649 menjadi 0,8553 dan 0,8502) karena metrik itu tidak membedakan biaya kedua kesalahan. Bobot kelas lebih baik daripada geser ambang pada data ini: ia mengubah bentuk bidang pemisah saat pelatihan, sedangkan geser ambang hanya menggeser bidang yang sama. Pada penginapan yang \textit{overbooking}-nya mahal, bobot kelas 2:1 adalah pilihan yang lebih menguntungkan daripada model biasa, dengan imbalan turunnya \textit{recall} kelas batal sebesar 10,0 poin persentase (0,7820 menjadi 0,6819).
+
+\paragraph{Keterbatasan.} (i) Hanya satu \textit{hold-out}; selisih biaya 119 (882 terhadap 763) dari 5.462 pesanan tidak diuji signifikansinya. (ii) Model biasa pada tabel dilatih dengan \texttt{tol} $10^{-3}$, sedangkan model bobot kelas dan model \textit{out-of-fold} untuk pemilihan ambang dilatih dengan \texttt{tol} $10^{-2}$, sehingga ada perbedaan toleransi yang pengaruhnya tidak diukur. (iii) Ambang dipilih dari model yang dilatih pada dua pertiga data pengembangan, tetapi dipakai pada model dari seluruh data pengembangan, dengan asumsi skala nilai keputusannya serupa. (iv) Bobot kelas 2:1 diturunkan dari rasio biaya dan tidak di-\textit{tuning}. (v) Berkas \textit{submission} Kaggle tetap memakai model biasa, karena dinilai dengan Macro F1.

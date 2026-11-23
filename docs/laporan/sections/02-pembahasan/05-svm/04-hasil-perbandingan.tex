@@ -1,33 +1,117 @@
 \subsection{Hasil dan Perbandingan dengan \textit{Scikit-learn}}
 \label{subsec:svm-hasil}
 
-\todo{Bandingkan dengan \texttt{sklearn.svm.SVC} untuk tiap kernel dengan $C$, $\gamma$, dan \textit{degree} yang sama. Pakai \textit{preprocessing} dan \textit{fold} yang sama agar perbedaan hanya berasal dari implementasi \cite{pedregosa2011sklearn}.}
+Implementasi \textit{from scratch} dibandingkan dengan \texttt{sklearn.svm.SVC} \cite{pedregosa2011sklearn} untuk tiga kernel wajib, ditambah ``\textit{Gaussian} + PCA'', Laplacian, dan Laplacian dengan bobot fitur. Setiap kernel memakai $C$ terbaik dari CV 3-\textit{fold} (Tabel~\ref{tab:svm-tuning-cv}). Agar perbedaan hanya berasal dari implementasi, kedua model memakai fitur, bobot, 6.000 baris latih yang sama (diambil acak dari 21.847 baris data pengembangan dengan \textit{seed} 42), dan \textit{hold-out} yang sama (5.462 baris). Batas 6.000 baris dipakai karena \texttt{SVC} dengan kernel Laplacian harus menerima fungsi kernel dan menyimpan seluruh matriks kernel. Setelan \textit{scikit-learn} yang setara:
+\begin{itemize}
+	\item \texttt{SVC(C=C,} \texttt{tol=1e-3,} \texttt{cache\_size=500,} \texttt{...)} dengan \texttt{tol} yang sama dengan \texttt{SVM} ($10^{-3}$);
+	\item \textit{linear}: \texttt{kernel="linear"};
+	\item \textit{polynomial}: \texttt{kernel="poly"}, \texttt{degree=3}, \texttt{gamma="scale"}, \texttt{coef0=1.0};
+	\item \textit{Gaussian}: \texttt{kernel="rbf"}, \texttt{gamma="scale"}. Rumus \texttt{"scale"} dan kernelnya sama dengan implementasi \textit{scratch} (Subbab~\ref{subsubsec:svm-uji});
+	\item Laplacian: \texttt{kernel=lambda A, B:} \texttt{laplacian\_kernel(A, B,} \texttt{gamma=1/20)} dari \nolinkurl{sklearn.metrics.pairwise}.
+\end{itemize}
 
 \begin{table}[H]
 	\centering
-	\caption{Perbandingan SVM \textit{from scratch} dan \textit{scikit-learn}}
+	\caption{Perbandingan SVM \textit{from scratch} dan \textit{scikit-learn} pada \textit{hold-out} (6.000 baris latih, \texttt{tol} $10^{-3}$, ambang 0). \textit{Precision} dan \textit{recall} untuk kelas batal. SV adalah jumlah \textit{support vector}. Waktu adalah waktu pelatihan satu model pada komputer yang dipakai bersama (nilai kasar, lihat analisis).}
 	\label{tab:svm-hasil}
-	\begin{tabular}{l c c c c c}
+	\small
+	\resizebox{\textwidth}{!}{%
+	\begin{tabular}{l c c c c c c c}
 		\toprule
-		\textbf{Implementasi} & \textbf{Macro F1} & \textbf{Accuracy} & \textbf{Precision} & \textbf{Recall} & \textbf{Waktu (s)} \\
+		\textbf{Implementasi} & \textbf{$C$} & \textbf{Macro F1} & \textbf{Acc.} & \textbf{Prec.} & \textbf{Recall} & \textbf{SV} & \textbf{Waktu (s)} \\
 		\midrule
-		\textit{Scratch} -- \textit{Linear} & & & & & \\
-		\textit{Sklearn} -- \textit{Linear} & & & & & \\
-		\textit{Scratch} -- \textit{Polynomial} & & & & & \\
-		\textit{Sklearn} -- \textit{Polynomial} & & & & & \\
-		\textit{Scratch} -- \textit{Gaussian} & & & & & \\
-		\textit{Sklearn} -- \textit{Gaussian} & & & & & \\
+		\textit{Scratch} -- \textit{Linear} & 8 & 0,8235 & 0,8510 & 0,8209 & 0,6970 & 2.094 & 164,4 \\
+		\textit{Sklearn} -- \textit{Linear} & 8 & 0,8232 & 0,8506 & 0,8199 & 0,6970 & 2.095 & 4,0 \\
+		\midrule
+		\textit{Scratch} -- \textit{Polynomial} & 0,5 & 0,8251 & 0,8519 & 0,8194 & 0,7026 & 2.193 & 2,6 \\
+		\textit{Sklearn} -- \textit{Polynomial} & 0,5 & 0,8251 & 0,8519 & 0,8194 & 0,7026 & 2.193 & 0,8 \\
+		\midrule
+		\textit{Scratch} -- \textit{Gaussian} & 2 & 0,8244 & 0,8524 & 0,8296 & 0,6914 & 2.460 & 0,8 \\
+		\textit{Sklearn} -- \textit{Gaussian} & 2 & 0,8244 & 0,8524 & 0,8296 & 0,6914 & 2.461 & 0,8 \\
+		\midrule
+		\textit{Scratch} -- \textit{Gaussian} + PCA & 2 & 0,8224 & 0,8508 & 0,8273 & 0,6881 & 2.435 & 0,9 \\
+		\textit{Sklearn} -- \textit{Gaussian} + PCA & 2 & 0,8224 & 0,8508 & 0,8273 & 0,6881 & 2.435 & 0,6 \\
+		\midrule
+		\textit{Scratch} -- Laplacian & 2 & 0,8488 & 0,8702 & 0,8333 & 0,7546 & 2.429 & 1,8 \\
+		\textit{Sklearn} -- Laplacian & 2 & 0,8488 & 0,8702 & 0,8333 & 0,7546 & 2.428 & 0,8 \\
+		\midrule
+		\textit{Scratch} -- Laplacian + bobot & 2 & 0,8561 & 0,8761 & 0,8390 & 0,7691 & 2.248 & 1,4 \\
+		\textit{Sklearn} -- Laplacian + bobot & 2 & 0,8561 & 0,8761 & 0,8390 & 0,7691 & 2.248 & 0,9 \\
 		\bottomrule
-	\end{tabular}
+	\end{tabular}}
+\end{table}
+
+Tabel~\ref{tab:svm-ekuivalen} mengukur kesetaraan langsung. Kolom iterasi adalah pengukuran ulang terpisah (komputer yang sama, jalan terpisah dari tabel di atas) yang dilakukan untuk menjelaskan waktu; iterasi \textit{scikit-learn} adalah atribut \texttt{n\_iter\_} dari \texttt{SVC}.
+
+\begin{table}[H]
+	\centering
+	\caption{Kesetaraan label dan nilai keputusan, serta jumlah iterasi dan waktu per iterasi (pengukuran ulang pada 6.000 baris latih)}
+	\label{tab:svm-ekuivalen}
+	\small
+	\resizebox{\textwidth}{!}{%
+	\begin{tabular}{l c c c c c c c}
+		\toprule
+		\textbf{Kernel} & \textbf{Label sama} & \textbf{Selisih nilai} & \multicolumn{2}{c}{\textbf{Iterasi}} & \multicolumn{2}{c}{\textbf{ms per iterasi}} \\
+		& & \textbf{keputusan maks.} & \textit{scratch} & \textit{sklearn} & \textit{scratch} & \textit{sklearn} \\
+		\midrule
+		\textit{Linear} & 99,93\% & 0,0176 & 936.187 & 2.002.499 & 0,032 & 0,001 \\
+		\textit{Polynomial} & 100\% & 0,0007 & 10.336 & 11.306 & 0,054 & 0,037 \\
+		\textit{Gaussian} & 100\% & 0,0010 & 4.585 & 4.588 & 0,084 & 0,091 \\
+		\textit{Gaussian} + PCA & 100\% & 0,0012 & -- & -- & -- & -- \\
+		Laplacian & 100\% & 0,0007 & 5.591 & 5.620 & 0,229 & 0,116 \\
+		Laplacian + bobot & 100\% & 0,0008 & 5.494 & 5.280 & 0,213 & 0,106 \\
+		\bottomrule
+	\end{tabular}}
 \end{table}
 
 \begin{figure}[H]
 	\centering
-	\placeholdergambar{\textit{Confusion matrix} \textit{from scratch} vs \textit{scikit-learn}}
-	\caption{\textit{Confusion matrix} SVM}
+	\includegraphics[width=\textwidth]{svm_comparison.png}
+	\caption{Kiri: Macro F1 \textit{hold-out} \textit{from scratch} dan \textit{scikit-learn} per kernel. Kanan: nilai keputusan \textit{from scratch} terhadap \textit{scikit-learn} pada \textit{hold-out}; seluruh titik berada pada garis $y = x$}
+	\label{fig:svm-comparison}
+\end{figure}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.45\textwidth]{svm_confusion_matrix.png}
+	\caption{\textit{Confusion matrix} model akhir (Laplacian + bobot, $C = 2$, dilatih pada seluruh data pengembangan) pada \textit{hold-out}. Gambar ini hanya memuat implementasi \textit{from scratch}}
 	\label{fig:svm-cm}
 \end{figure}
 
-
 \subsubsection{Analisis}
-\todo{Bandingkan juga jumlah \textit{support vector} dan nilai \texttt{decision\_function}. Jelaskan selisih akibat toleransi, pemilihan \textit{working set}, dan \textit{shrinking} pada LIBSVM.}
+\paragraph{Kesetaraan numerik.} Pada lima dari enam konfigurasi, label \textit{hold-out} sama pada 100\% baris dan Macro F1 sama sampai empat desimal. Jumlah \textit{support vector} berbeda paling banyak satu. Selisih nilai keputusan terbesar 0,0007 sampai 0,0012, jauh lebih kecil daripada rentang nilai keputusan (sekitar $-4$ sampai $4$ pada Gambar~\ref{fig:svm-comparison}). Satu-satunya perbedaan nyata adalah kernel \textit{linear} dengan $C = 8$: label berbeda pada 4 dari 5.462 baris (99,93\%), nilai keputusan berbeda sampai 0,0176, dan Macro F1 berbeda 0,0003. Kesetaraan ini sesuai dengan pengujian pada data buatan (Subbab~\ref{subsubsec:svm-uji}) dan berlaku juga untuk kernel Laplacian dengan bobot fitur, yang tidak ada di \textit{scikit-learn} dan hanya dapat dibandingkan lewat fungsi kernel.
+
+\paragraph{Sebab selisih kecil.} Kedua implementasi berhenti ketika pelanggaran KKT terbesar di bawah \texttt{tol} $= 10^{-3}$, bukan ketika solusi tepat dicapai, sehingga solusi dual mereka hanya sama dalam batas toleransi itu. Perbedaan kecil lain berasal dari urutan pemilihan pasangan pada saat nilai sama, dari \textit{shrinking} pada LIBSVM yang mengubah himpunan variabel yang diperiksa, dan dari urutan penjumlahan bilangan desimal. Pada kernel \textit{linear} dengan $C = 8$, masalah dual paling lambat konvergen (936.187 iterasi untuk \textit{scratch}, 2.002.499 untuk \textit{scikit-learn}), sehingga jarak solusi yang masih lolos toleransi lebih besar dan selisih nilai keputusan membesar. Pada pengukuran ulang, Macro F1 \textit{linear scratch} 0,8233 (bukan 0,8235 pada tabel), tanda bahwa hasilnya bergantung pada urutan penjumlahan pada jutaan iterasi. Dugaan ini konsisten dengan data tetapi tidak diuji lebih jauh.
+
+\paragraph{Waktu pelatihan.} Waktu pada Tabel~\ref{tab:svm-hasil} hanya perkiraan kasar karena komputer dipakai bersama pekerjaan lain dan memorinya penuh. Waktu \textit{linear scratch} berkisar 37 sampai 164 detik antarjalan, sedangkan \textit{scikit-learn} 2 sampai 4 detik. Tiga pola terlihat.
+\begin{itemize}
+	\item \textbf{Linear.} \textit{Scikit-learn} lebih cepat sekitar satu orde besaran, walaupun jumlah iterasinya 2,1 kali lipat lebih banyak. Waktu per iterasinya 0,001 ms terhadap 0,032 ms (pengukuran ulang: 1,6 terhadap 29,8 detik). Penyebabnya \textit{shrinking}: LIBSVM menyaring variabel yang sudah berada di batas setiap sekitar 1.000 iterasi, sehingga pada jutaan iterasi setiap langkah hanya memeriksa sebagian kecil dari $n$. Implementasi \textit{scratch} tidak memakai \textit{shrinking} (Subbab~\ref{subsec:svm-implementasi}), sehingga tiap iterasi selalu mengerjakan beberapa operasi vektor sepanjang $n = 6.000$.
+	\item \textbf{Polynomial dan Gaussian.} Jumlah iterasi hanya 4.585 sampai 11.306, sehingga \textit{shrinking} belum sempat bekerja, dan waktu per iterasinya setara (0,054 terhadap 0,037 ms dan 0,084 terhadap 0,091 ms). Waktu totalnya sama atau berbeda kurang dari dua kali lipat.
+	\item \textbf{Laplacian.} Waktu per iterasi \textit{scratch} sekitar dua kali lipat (0,229 terhadap 0,116 ms). Jarak L1 tidak dapat memakai perkalian matriks BLAS, dan kode \textit{scratch} menghitungnya dengan operasi \textit{array} NumPy biasa (Kode~\ref{lst:svm-l1}).
+\end{itemize}
+Perbandingan ini adil hanya secara kasar: jumlah baris 6.000 diambil agar \texttt{SVC} dengan kernel Laplacian dapat menyimpan matriks kernel penuh, dan pada data yang lebih besar perbedaan akan berubah.
+
+\paragraph{Mengapa Laplacian lebih baik daripada Gaussian.} Pada protokol yang sama, Laplacian (0,8488) mengungguli \textit{Gaussian} (0,8244) sebesar 0,0244 pada \textit{hold-out}, dan pada CV 3-\textit{fold} 0,0223 (0,8384 terhadap 0,8161). Penjelasan yang diajukan (Subbab~\ref{subsec:svm-implementasi}) adalah jarak L2 kuadrat memperbesar selisih ekstrem pada fitur berekor panjang dan penanda langka, sedangkan jarak L1 menjumlahkannya secara linear. Penjelasan ini tidak diuji terpisah, kecuali oleh satu diagnosis tambahan pada protokol yang sama: \textit{Gaussian} pada fitur yang sudah dikalikan bobot AGOP mencapai Macro F1 0,8444 ($C = 2$) dan 0,8502 ($C = 8$), dibandingkan 0,8244 tanpa bobot dan 0,8561 untuk Laplacian dengan bobot. Dua hal terbaca. Pertama, bobot sendiri menaikkan \textit{Gaussian} sekitar 0,02 sampai 0,026, sebanding dengan keunggulan Laplacian atas \textit{Gaussian} tanpa bobot (0,0244). Ini menunjukkan bahwa skala relatif antarfitur sama pentingnya dengan bentuk jarak. Kedua, setelah bobot diterapkan, Laplacian masih lebih tinggi 0,006 sampai 0,012, sehingga jarak L1 memberi keuntungan tersendiri yang lebih kecil. Catatan: bobot dipelajari dengan kernel Laplacian sehingga menguntungkan Laplacian, dan $C = 8$ pada diagnosis ini tidak dipilih lewat CV, sehingga selisihnya adalah gambaran kasar. Dugaan lain adalah bahwa puncak Laplacian yang tajam di sekitar titik (berbeda dengan puncak datar \textit{Gaussian}) menguntungkan data yang memiliki gugusan hampir-kembar seperti rombongan pemesanan; dugaan ini tidak diuji.
+
+\paragraph{Analisis per wilayah saudara.} Pada \textit{seed} 42, 1, dan 7, Macro F1 dihitung di dalam dua wilayah: baris yang memiliki saudara di data latih (\texttt{sib\_n} $> 0$, sekitar 39\% baris) dan yang tidak (sekitar 61\%), untuk konfigurasi $C = 2$.
+\begin{table}[H]
+	\centering
+	\caption{Macro F1 di dalam wilayah, rata-rata \textit{seed} 42, 1, 7 (CV 5-\textit{fold}). SVM terhadap pohon keputusan pembanding (Subbab~\ref{subsec:svm-validasi}).}
+	\label{tab:svm-wilayah}
+	\small
+	\begin{tabular}{l c c c}
+		\toprule
+		\textbf{Wilayah} & \textbf{SVM} & \textbf{Pohon} & \textbf{Selisih} \\
+		\midrule
+		Ada saudara (sekitar 39\%) & 0,9442 & 0,9372 & $+0{,}0070$ \\
+		Tanpa saudara (sekitar 61\%) & 0,8099 & 0,8114 & $-0{,}0015$ \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+Keunggulan SVM terhadap pohon pembanding seluruhnya berasal dari baris dengan saudara, tempat SVM menggunakan \texttt{sib\_te} lewat kernel; pada baris tanpa saudara, kedua model setara, bahkan pohon sedikit lebih tinggi. Baris tanpa saudara juga adalah hambatan utama: Macro F1 di wilayah itu sekitar 0,81 untuk kedua model, jauh di bawah 0,94 pada wilayah dengan saudara.
+
+\paragraph{Analisis kesalahan.} Pada \textit{hold-out}, model akhir (Gambar~\ref{fig:svm-cm}) menghasilkan $TN = 3.427$, $FP = 246$, $FN = 390$, dan $TP = 1.399$. Dari matriks ini: kelas batal memiliki \textit{precision} 0,8505, \textit{recall} 0,7820, dan F1 0,8148; kelas tidak batal memiliki \textit{precision} 0,8978, \textit{recall} 0,9330, dan F1 0,9151 (rata-ratanya adalah Macro F1 0,8649). Kesalahan didominasi $FN$ (390) yang 1,6 kali lebih banyak daripada $FP$ (246): model memprediksi 1.645 pesanan batal (30,1\%), lebih sedikit daripada jumlah sebenarnya 1.789 (32,8\%), jadi kelas batal yang lebih jarang lebih sering terlewat. Penyebabnya diduga dua: $C$ sama untuk kedua kelas sehingga kelas mayoritas lebih berpengaruh, dan ambang 0 tidak di-\textit{tuning}. Bonus \textit{cost-sensitive} (Subbab~\ref{subsubsec:svm-cost}) menunjukkan bahwa menggeser ambang ke arah memprediksi lebih sedikit pesanan batal menurunkan Macro F1 (0,8649 menjadi 0,8553); arah sebaliknya (lebih banyak batal) tidak diuji, sehingga tidak diketahui apakah ambang 0 sudah optimal untuk Macro F1. Karena dua jenis kesalahan berbiaya berbeda pada penginapan, kebijakan yang tepat bergantung pada biaya itu, bukan hanya pada Macro F1 (Bagian~\ref{sec:cost-sensitive}).
+
+\paragraph{Pengaruh jumlah data.} Model dengan fitur berbobot yang sama mencapai Macro F1 0,8561 pada 6.000 baris latih dan 0,8649 pada seluruh 21.847 baris data pengembangan (keduanya \texttt{tol} $10^{-3}$, \textit{hold-out} sama), sehingga data tambahan masih membantu, dan $C$ yang dipilih pada 3.000 baris belum tentu optimal untuk data penuh.
+
+\paragraph{Keterbatasan.} (i) Perbandingan memakai satu pembagian \textit{hold-out} yang bukan estimasi independen (Subbab~\ref{subsec:svm-validasi}). (ii) Kesetaraan diukur pada 6.000 baris latih, bukan data penuh, dan waktu hanya pengukuran kasar. (iii) Fitur dan bobot sama pada kedua implementasi, sehingga perbandingan ini tidak menguji kualitas \textit{preprocessing}. (iv) Waktu \textit{scikit-learn} untuk Laplacian mencakup penghitungan matriks kernel penuh dari fungsi Python, sehingga kemungkinan tidak mencerminkan kecepatan kernel bawaan C++. (v) Diagnosis \textit{Gaussian} berbobot dan seluruh penjelasan tentang jarak L1 adalah dugaan yang didukung satu percobaan tambahan, bukan bukti kausal.
