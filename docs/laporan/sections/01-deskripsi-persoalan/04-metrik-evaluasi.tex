@@ -1,14 +1,25 @@
 \section{Metrik Evaluasi}
 \label{sec:metrik}
 
-\todo{Metrik yang dipakai kompetisi Kaggle (\textit{macro F1}) beserta rumusnya, dan alasan
-metrik ini sesuai untuk data tidak seimbang. Sebutkan juga metrik pendukung yang dilaporkan
-(\textit{accuracy}, \textit{precision}, \textit{recall}, \textit{confusion matrix}).}
+\paragraph{Metrik utama: \textit{Macro F1}.} Kompetisi Kaggle menilai \textit{submission} dengan \textit{Macro F1-score}, yaitu rata-rata F1 kelas tidak batal dan F1 kelas batal. F1 suatu kelas adalah rata-rata harmonik \textit{precision} dan \textit{recall} kelas tersebut:
+\begin{equation}
+	\text{F1}_c = \frac{2 \cdot \text{Precision}_c \cdot \text{Recall}_c}{\text{Precision}_c + \text{Recall}_c},
+	\qquad
+	\text{Macro F1} = \frac{1}{|C|} \sum_{c \in C} \text{F1}_c,
+	\label{eq:macro-f1}
+\end{equation}
+dengan $C = \{0, 1\}$ himpunan kelas, $\text{Precision}_c = TP_c / (TP_c + FP_c)$, dan $\text{Recall}_c = TP_c / (TP_c + FN_c)$. Kedua kelas berbobot sama pada rata-rata, tanpa memandang jumlah barisnya.
 
-% Contoh rumus:
-% \begin{equation}
-% \text{F1}_c = \frac{2 \cdot \text{Precision}_c \cdot \text{Recall}_c}{\text{Precision}_c + \text{Recall}_c},
-% \qquad
-% \text{Macro F1} = \frac{1}{|C|} \sum_{c \in C} \text{F1}_c
-% \label{eq:macro-f1}
-% \end{equation}
+Metrik ini sesuai untuk data yang tidak seimbang (Subbab~\ref{subsec:target}) karena \textit{accuracy} dapat menyesatkan. Model yang selalu memprediksi ``tidak batal'' mencapai \textit{accuracy} 0,6723, tetapi \textit{Macro F1}-nya hanya 0,4020 karena F1 kelas batal bernilai nol; model yang selalu memprediksi ``batal'' hanya mencapai 0,2468. Nilai 0,4020 adalah \textit{baseline} yang harus dilampaui setiap model. Menurut halaman kompetisi, papan peringkat publik memakai sekitar 30\% data uji dan peringkat akhir memakai 70\% sisanya, sehingga keputusan pemilihan model didasarkan pada validasi silang pada data latih, bukan pada skor publik.
+
+\paragraph{Metrik pendukung.} Selain \textit{Macro F1}, dilaporkan:
+\begin{itemize}
+	\item \textit{Accuracy}, yaitu proporsi prediksi yang benar, $(TP + TN) / n$. Dilaporkan sebagai gambaran umum, bukan sebagai dasar pemilihan model;
+	\item \textit{Precision} dan \textit{recall} kelas batal. \textit{Precision} menjawab ``dari pesanan yang diprediksi batal, berapa yang benar-benar batal'', dan \textit{recall} menjawab ``dari pesanan yang batal, berapa yang berhasil ditemukan''. Keduanya penting karena memiliki konsekuensi bisnis yang berbeda (lihat di bawah);
+	\item \textit{Confusion matrix}, yang menunjukkan jumlah $TN$, $FP$, $FN$, dan $TP$ sehingga jenis kesalahan model terlihat langsung;
+	\item \textit{ROC-AUC}, yaitu luas di bawah kurva ROC. Metrik ini menilai kualitas peringkat peluang atau skor model tanpa bergantung pada \textit{threshold}, sehingga berguna untuk membandingkan model sebelum \textit{threshold} dipilih.
+\end{itemize}
+
+\paragraph{Validasi dan \textit{threshold}.} Model yang menghasilkan peluang (misalnya \textit{logistic regression}) mengubah peluang menjadi label dengan \textit{threshold}. \textit{Macro F1} bergantung pada \textit{threshold} ini, sehingga \textit{threshold} dipilih pada prediksi \textit{out-of-fold} dari \textit{stratified k-fold cross validation}, bukan pada data uji. Hasil pada data latih dilaporkan sebagai rata-rata dan simpangan baku antar-\textit{fold}, karena selisih antarkonfigurasi sering lebih kecil daripada variasi antar-\textit{fold} dan perlu dibaca dengan hati-hati.
+
+\paragraph{Biaya kesalahan.} \textit{Macro F1} memperlakukan \textit{false positive} dan \textit{false negative} sama. Pada kenyataan di penginapan, keduanya tidak sama: pesanan yang diprediksi batal padahal tamu datang ($FP$) dapat menyebabkan \textit{overbooked}, sedangkan pesanan yang diprediksi datang padahal batal ($FN$) hanya menyisakan kamar kosong. Untuk bonus \textit{cost-sensitive classification}, dipakai total biaya $2 \cdot FP + 1 \cdot FN$, yang dibahas pada Bagian~\ref{sec:cost-sensitive}. Metrik ini hanya dipakai pada bagian tersebut, sedangkan perbandingan antarmodel dan \textit{submission} Kaggle tetap memakai \textit{Macro F1}.

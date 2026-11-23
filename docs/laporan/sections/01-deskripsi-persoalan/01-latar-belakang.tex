@@ -1,14 +1,22 @@
 \section{Latar Belakang}
 \label{sec:latar-belakang}
 
-\todo{Jelaskan konteks persoalan: penginapan ingin mengestimasi pemesanan yang akan dibatalkan
-agar perencanaan kapasitas lebih akurat. Mengapa dipilih pembelajaran mesin klasik
-(tanpa \textit{deep learning}) dan mengapa ini dirumuskan sebagai klasifikasi biner \cite{slide-intro}.}
+Pembatalan pesanan adalah masalah nyata bagi penginapan. Kamar yang sudah dipesan lalu dibatalkan terlambat menjadi kamar kosong yang tidak sempat dijual kembali. Sebaliknya, jika penginapan menerima pesanan melebihi kapasitas dengan harapan sebagian akan batal, ia berisiko \textit{overbooked} ketika ternyata semua tamu datang. Pada kedua kasus, perencanaan kapasitas menjadi lebih akurat jika penginapan dapat memperkirakan pesanan mana yang kemungkinan besar dibatalkan.
+
+Pada studi kasus tugas ini, Cristiano Ronaldo memiliki penginapan bernama Ronaldo Hotel\texttrademark{} dan membutuhkan sistem klasifikasi yang mengestimasi pengunjung yang akan membatalkan pesanan. Sistem ini harus memakai pembelajaran mesin klasik, tanpa sumber daya komputasi besar seperti \textit{deep learning}. Pembelajaran mesin klasik dipilih karena datanya berupa tabel dengan sekitar 27 ribu baris dan 17 fitur. Pada data sekecil dan sestruktur ini, model klasik dapat dilatih dalam hitungan detik sampai menit pada komputer biasa, hasilnya mudah ditafsirkan (misalnya bobot \textit{logistic regression} atau percabangan pohon keputusan), dan algoritmanya dapat diimplementasikan sendiri dari dasar sebagai bagian dari pembelajaran.
+
+Persoalan ini adalah masalah \textit{supervised learning}: tersedia data pesanan lampau beserta label yang menyatakan apakah pesanan tersebut akhirnya dibatalkan, dan model belajar memetakan fitur pesanan ke label itu \cite{slide-intro}. Karena label hanya memiliki dua nilai (batal atau tidak batal), persoalannya dirumuskan sebagai \textbf{klasifikasi biner}.
 
 \section{Rumusan Persoalan}
 \label{sec:rumusan-persoalan}
 
-\todo{Rumuskan tugas: diberikan fitur sebuah pemesanan, prediksi apakah pemesanan tersebut
-dibatalkan (target). Sebutkan lima algoritma yang diimplementasikan \textit{from scratch}
-(KNN, DTL, \textit{Logistic Regression}, SVM, \textit{Naive Bayes}) dan pembandingnya dari
-\textit{scikit-learn}.}
+Diberikan fitur sebuah pemesanan penginapan (jumlah tamu, lama menginap, paket makan, kategori kamar, selisih hari antara pemesanan dan kedatangan, tanggal kedatangan, kanal pemesanan, riwayat tamu, tarif, dan jumlah permintaan khusus), tugasnya adalah memprediksi apakah pemesanan tersebut dibatalkan. Secara formal, dicari fungsi $f : \mathbb{X} \to \{0, 1\}$ dengan $\mathbb{X}$ ruang 17 fitur pemesanan dan $f(x) = 1$ jika pemesanan diprediksi batal. Fungsi ini dipelajari dari data latih berlabel dan dinilai pada data uji yang labelnya tidak diberikan, melalui kompetisi Kaggle.
+
+Untuk menjawab persoalan tersebut, lima algoritma pembelajaran mesin diimplementasikan \textit{from scratch}, yaitu \textit{K-Nearest Neighbors} (KNN), \textit{Decision Tree Learning} (DTL), \textit{Logistic Regression}, \textit{Support Vector Machine} (SVM), dan \textit{Naive Bayes}. Pustaka hanya diperbolehkan untuk perhitungan matematika (misalnya NumPy). Setiap algoritma kemudian dibandingkan dengan implementasi \textit{scikit-learn} yang setara, baik dari sisi metrik maupun dari sisi perilaku modelnya. Hal-hal lain yang dikerjakan adalah:
+\begin{itemize}
+	\item tahap pengolahan data yang meliputi \textit{data cleaning}, \textit{data transformation}, \textit{feature selection}, dan \textit{dimensionality reduction}, di mana data latih dan data uji diproses terpisah dan tidak digabung;
+	\item validasi model dengan \textit{stratified k-fold cross validation} dan pembagian latih/validasi;
+	\item penyimpanan dan pemuatan model;
+	\item minimal satu \textit{submission} pada kompetisi Kaggle, dengan \textit{notebook} yang dapat dijalankan ulang dan menghasilkan nilai yang sama (\textit{reproducible});
+	\item bonus yang dipilih kelompok, antara lain visualisasi tiap algoritma, algoritma optimasi di luar materi kelas, dan \textit{cost-sensitive classification} (Bagian~\ref{sec:cost-sensitive}).
+\end{itemize}

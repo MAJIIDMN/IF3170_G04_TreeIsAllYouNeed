@@ -1,7 +1,10 @@
 \section{\textit{Logistic Regression}}
 \label{sec:lr}
 
-\todo{Satu paragraf pengantar: peran LR dalam tugas ini dan ringkasan hasil terbaiknya.}
+\textit{Logistic regression} (LR) adalah model linear probabilistik: model ini menghasilkan peluang pembatalan $P(\text{batal} \mid x)$, bukan hanya label, sehingga \textit{threshold} keputusan dapat disesuaikan dengan metrik (Macro F1) ataupun dengan biaya kesalahan (Subbab~\ref{sec:cost-sensitive}). Karena batas keputusannya berupa \textit{hyperplane}, kualitas LR sangat bergantung pada \textit{preprocessing}: hubungan nonlinear harus dibuat eksplisit sebagai fitur. 
+Implementasi mendukung regularisasi L1, L2, dan \textit{Elastic Net}, dengan dua \textit{solver}: \textit{mini-batch gradient descent} sesuai materi kelas \cite{khodra-lr-sga} dan IRLS + \textit{coordinate descent} \cite{friedman2010glmnet} sebagai bonus algoritma optimasi.
+
+Konfigurasi terbaik hasil \textit{stratified} 5-\textit{fold cross validation} adalah LR tanpa penalti dengan \textit{solver} IRLS-CD, 100 fitur (termasuk 20 fitur interaksi kanal pemesanan $\times$ rentang \textit{lead time}), dan \textit{threshold} 0,46. Konfigurasi ini mencapai Macro F1 \textit{out-of-fold} 0,7824 (rata-rata per \textit{fold} $0{,}7823 \pm 0{,}0073$) dan ROC-AUC 0,8739. Selisihnya dengan enam konfigurasi berikutnya hanya 0,0002 sampai 0,0011, jauh di bawah variasi antar-\textit{fold}, sehingga performa LR di data ini praktis dibatasi oleh fitur, bukan oleh pilihan regularisasi atau \textit{solver}.
 
 \input{sections/02-pembahasan/04-logistic-regression/01-implementasi}
 \input{sections/02-pembahasan/04-logistic-regression/02-cleaning-preprocessing}
