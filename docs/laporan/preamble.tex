@@ -21,6 +21,14 @@
 \usepackage{booktabs}
 \usepackage{tabularx}
 \usepackage{multirow}
+\usepackage{etoolbox}
+
+\captionsetup{font=footnotesize}
+\newif\iftabelkecil
+\AtBeginEnvironment{table}{\tabelkeciltrue}
+\AtBeginEnvironment{longtable}{\tabelkeciltrue\footnotesize}
+\AtBeginEnvironment{tabular}{\iftabelkecil\footnotesize\fi}
+\AtBeginEnvironment{tabularx}{\iftabelkecil\footnotesize\fi}
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
 \usepackage[table]{xcolor}
 
