@@ -73,6 +73,7 @@ def _entropy(counts):
     p = counts[counts > 0] / total
     return float(-(p * np.log2(p)).sum())
 
+# diskretisasi berbasis entropi dengan kriteria berhenti MDL
 def mdl_cuts(values, labels, max_cuts=15):
     order = np.argsort(values, kind="mergesort")
     v, y = values[order], labels[order].astype(int)

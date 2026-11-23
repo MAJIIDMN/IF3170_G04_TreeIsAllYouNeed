@@ -51,6 +51,7 @@ class NaiveBayes:
         gaussian_columns = [j for j, kind in enumerate(feature_types) if kind == GAUSSIAN]
         if gaussian_columns:
             variances = np.nanvar(X[:, gaussian_columns], axis=0)
+            # Batas bawah variansi mengikuti GaussianNB milik scikit-learn
             epsilon = self.var_smoothing * float(np.max(variances))
         self.epsilon_ = epsilon
 
@@ -75,6 +76,7 @@ class NaiveBayes:
                 totals = counts.sum(axis=1, keepdims=True)
                 denominator = totals + self.alpha * n_cat
                 denominator = np.where(denominator > 0, denominator, 1.0)
+                # Laplace smoothing.
                 theta = (counts + self.alpha) / denominator
                 with np.errstate(divide="ignore"):
                     self.log_theta_[j] = np.log(theta)
