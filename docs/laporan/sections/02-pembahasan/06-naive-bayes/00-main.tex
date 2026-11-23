@@ -1,7 +1,9 @@
 \section{\textit{Bayesian Network} (\textit{Naive Bayes})}
 \label{sec:nb}
 
-\todo{Satu paragraf pengantar: peran NB dalam tugas ini dan ringkasan hasil terbaiknya.}
+\textit{Naive Bayes} (NB) adalah \textit{Bayesian network} paling sederhana, yaitu kelas sebagai satu-satunya \textit{parent} semua fitur. Modelnya cepat dilatih, dapat menangani nilai kosong tanpa imputasi, dan hasilnya mudah ditelusuri, sehingga cocok dijadikan pembanding bagi algoritma lain pada data pembatalan pesanan ini. Karena asumsi independensinya mudah dilanggar, bab ini menitikberatkan pada \textit{preprocessing} yang sesuai untuk NB: nilai kosong dimarginalkan, fitur numerik didiskretisasi, dan fitur yang saling bergantung digabung atau dibuang lewat seleksi fitur.
+
+Pada validasi silang, NB mencapai Macro F1 0,7810 dan ROC-AUC 0,8636, dengan Macro F1 0,7757 pada \textit{hold-out} dan skor Kaggle 0,79404. Optimasi \textit{Tree-Augmented Naive Bayes} (TAN) menaikkan hasil tersebut menjadi Macro F1 0,8094, ROC-AUC 0,9009, dan skor Kaggle 0,80986. Bab ini juga memuat graf \textit{Bayesian network} dan analisis \textit{cost-sensitive classification} sebagai bonus.
 
 \input{sections/02-pembahasan/06-naive-bayes/01-implementasi}
 \input{sections/02-pembahasan/06-naive-bayes/02-cleaning-preprocessing}

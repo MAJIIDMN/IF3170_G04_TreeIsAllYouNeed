@@ -1,17 +1,104 @@
 \subsection{Bonus NB}
 \label{subsec:nb-bonus}
 
-\todo{Hapus subbab bonus yang tidak dikerjakan.}
-
 \subsubsection{Graf \textit{Bayesian Network}}
-\todo{Gambar graf hubungan antarfitur dan variabel kelas. Jelaskan struktur grafnya dan cara pembuatannya.}
+Naive Bayes adalah \textit{Bayesian network} berbentuk bintang: variabel kelas \texttt{is\_canceled} menjadi \textit{parent} semua fitur, tanpa sisi antarfitur. Graf TAN menambahkan pohon antarfitur di atasnya (Gambar~\ref{fig:nb-vs-tan}). Pohon dibuat dengan menghitung \textit{conditional mutual information} (CMI) untuk 28 pasangan dari delapan fitur akhir, mencari \textit{maximum spanning tree} dengan algoritma Prim, lalu mengarahkannya dari akar \texttt{x\_lead5\_period}.
 
 \begin{figure}[H]
 	\centering
-	\placeholdergambar{Graf \textit{Bayesian Network}}
-	\caption{Graf \textit{Bayesian Network} NB}
-	\label{fig:nb-bonus-0}
+	\includegraphics[width=0.85\textwidth]{nb/workflow_graphs.png}
+	\caption{Struktur graf \textit{Naive Bayes} dan TAN}
+	\label{fig:nb-vs-tan}
 \end{figure}
 
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.85\textwidth]{nb/nb_tan_tree.png}
+	\caption{Graf TAN: variabel kelas dan hubungan antarfitur}
+	\label{fig:nb-tan-tree}
+\end{figure}
+
+Pada Gambar~\ref{fig:nb-tan-tree}, panah putus-putus dari \texttt{is\_canceled} adalah struktur Naive Bayes, sedangkan busur tebal adalah pohon TAN dengan angka CMI di tiap busur (Tabel~\ref{tab:nb-tan-sisi}).
+
+\begin{table}[H]
+	\centering
+	\caption{Sisi pohon TAN dan CMI-nya}
+	\label{tab:nb-tan-sisi}
+	\begin{tabular}{l l r}
+		\toprule
+		\textbf{\textit{Parent}} & \textbf{Anak} & \textbf{CMI} \\
+		\midrule
+		\texttt{x\_lead5\_period} & \texttt{arrival\_day} & 0,4500 \\
+		\texttt{x\_lead5\_period} & \texttt{rate\_mdl} & 0,2982 \\
+		\texttt{x\_lead5\_period} & \texttt{x\_sr\_channel} & 0,2604 \\
+		\texttt{rate\_mdl} & \texttt{room\_category} & 0,1489 \\
+		\texttt{x\_lead5\_period} & \texttt{weekend\_nights} & 0,0645 \\
+		\texttt{x\_sr\_channel} & \texttt{prior\_completed\_bookings} & 0,0472 \\
+		\texttt{x\_sr\_channel} & \texttt{needs\_parking} & 0,0126 \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+{\small
+\textbf{Insight.} \texttt{x\_lead5\_period} menjadi \textit{parent} bagi empat dari tujuh sisi, dengan ketergantungan terkuat pada \texttt{arrival\_day} (CMI 0,450). Pasangan seperti ini yang dirusak oleh asumsi Naive Bayes: skor keduanya dikalikan seolah independen padahal sebagian informasinya sama. Pohon hanya menyimpan 7 dari 28 pasangan karena tiap fitur hanya boleh punya satu \textit{parent}.\par}
+
 \subsubsection{Algoritma Optimasi di Luar Materi Kelas}
-\todo{Jika ada: jelaskan algoritmanya, mengapa dapat mengoptimasi model, bukti perbaikannya (sebelum vs sesudah), dan \textbf{referensinya (tanpa referensi bonus dianulir)}. Misalnya \textit{feature weighting}, \textit{Tree-Augmented Naive Bayes}, atau diskretisasi berbasis entropi.}
+Optimasi yang dipakai adalah \textit{Tree-Augmented Naive Bayes} (TAN) \cite{friedman1997bayesian}. Pohon ketergantungannya dibangun dengan cara \cite{chow1968dependence}: hitung CMI antar pasangan fitur, cari \textit{maximum spanning tree}, lalu arahkan dari satu akar. Setiap fitur kemudian punya satu fitur lain sebagai \textit{parent} selain kelas, dan peluangnya dihitung dari tabel $P(x_j \mid x_{\mathrm{pa}(j)}, c)$ dengan \textit{smoothing} add-$\alpha$ (Persamaan~\ref{eq:tan}). Kodenya ada di \texttt{tan.py} (kelas \texttt{TANNaiveBayes}) dan hanya menerima fitur kategorikal.
+
+TAN mengoptimasi model karena Naive Bayes menghitung dua fitur yang saling bergantung seolah independen (Cram\'er's V pada subbab \textit{preprocessing}). Dengan mengondisikan satu fitur pada \textit{parent}-nya, informasi bersama tidak lagi dihitung dua kali, tanpa membuang fitur apa pun. Harganya adalah tabel peluang yang lebih besar (226,8 KB dibanding 10,9 KB).
+
+\begin{table}[H]
+	\centering
+	\caption{NB dan TAN pada empat \textit{seed} (Macro F1 dengan \textit{threshold} dari \textit{fold} lain)}
+	\label{tab:nb-tan-seed}
+	\begin{tabular}{r r r r r}
+		\toprule
+		\textbf{\textit{Seed}} & \textbf{Macro F1 NB} & \textbf{Macro F1 TAN} & \textbf{ROC-AUC NB} & \textbf{ROC-AUC TAN} \\
+		\midrule
+		42 & 0,7815 & 0,8103 & 0,8636 & 0,9009 \\
+		7 & 0,7788 & 0,8099 & 0,8639 & 0,9014 \\
+		2026 & 0,7823 & 0,8087 & 0,8634 & 0,9010 \\
+		99 & 0,7815 & 0,8088 & 0,8635 & 0,9005 \\
+		\midrule
+		Rata-rata & 0,7810 & 0,8094 & 0,8636 & 0,9009 \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+{\small
+\textbf{Insight.} TAN lebih baik pada keempat \textit{seed}: Macro F1 naik 0,028 dan ROC-AUC naik 0,037, dengan variasi antar \textit{seed} kurang dari 0,002. Pada \textit{hold-out}, selisihnya 0,040 dan 0,048 (Tabel~\ref{tab:nb-tan}). Pilihan $\alpha$ (0,5; 1,0; 2,0) hanya mengubah Macro F1 paling besar 0,003, jauh lebih kecil daripada selisih terhadap Naive Bayes.
+\par\smallskip
+\textbf{Keputusan.} TAN dipilih sebagai optimasi karena lebih baik daripada Naive Bayes biasa, dengan $\alpha = 0{,}5$ dan \textit{threshold} $-0{,}2$.\par}
+
+\subsubsection{\textit{Cost-Sensitive Classification}}
+\textit{False Positive} (diprediksi batal, tamu datang) membuat kamar dijual ulang sehingga hotel \textit{overbooked}, sedangkan \textit{False Negative} hanya membuat kamar kosong. Dengan $C_{FP} = 2$ dan $C_{FN} = 1$ (Bab~\ref{sec:cost-sensitive}), keputusan batal hanya diambil jika $P(\text{batal} \mid \mathbf{x}) > C_{FP}/(C_{FP} + C_{FN}) = 2/3$. Pada log odds, itu berarti \textit{threshold} $\log 2 \approx 0{,}693$ (bukan 0), dan hanya aturan keputusan yang bergeser, bukan modelnya. Tiga aturan dibandingkan pada Naive Bayes: \textit{threshold} untuk Macro F1 ($-0{,}2$), \textit{threshold} teoretis $\log 2$, dan \textit{threshold} yang meminimalkan biaya rata-rata per baris (Tabel~\ref{tab:nb-cost}).
+
+\figpenuh{nb/nb_cost_sensitive.png}{Biaya, Macro F1, serta FP dan FN terhadap \textit{threshold} (\textit{seed} 42)}{fig:nb-cost}{%
+\textbf{Insight.} Kurva biaya datar di sekitar minimum, sehingga \textit{threshold} teoretis $\log 2$ hampir optimal tanpa perlu dituning.}
+
+\begin{table}[H]
+	\centering
+	\caption{Perbandingan aturan keputusan standar dan \textit{cost-sensitive}}
+	\label{tab:nb-cost}
+	\begin{tabular}{l r r r r r}
+		\toprule
+		\textbf{Aturan} & \textbf{\textit{Threshold}} & \textbf{Biaya} & \textbf{Macro F1} & \textbf{FP} & \textbf{FN} \\
+		\midrule
+		\multicolumn{6}{l}{\textit{Out-of-fold, rata-rata empat \textit{seed}}} \\
+		\textit{Threshold} Macro F1 & $-0{,}2$ & 0,2769 & 0,7819 & 2.380 & 2.802 \\
+		\textit{Threshold} teoretis $\log 2$ & 0,693 & 0,2470 & 0,7269 & 1.011 & 4.723 \\
+		\textit{Threshold} biaya terbaik & 0,8 & 0,2460 & 0,7147 & 858 & 5.002 \\
+		\midrule
+		\multicolumn{6}{l}{\textit{Hold-out} 2.732 baris} \\
+		\textit{Threshold} Macro F1 & $-0{,}2$ & 0,2881 & 0,7757 & 252 & 283 \\
+		\textit{Threshold} teoretis $\log 2$ & 0,693 & 0,2504 & 0,7280 & 109 & 466 \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+{\small
+\textbf{Insight.} Dengan \textit{threshold} $\log 2$, biaya rata-rata turun dari 0,2769 menjadi 0,2470 (sekitar 10,8\% lebih murah). FP turun dari sekitar 2.380 menjadi 1.011, sedangkan FN naik dari sekitar 2.802 menjadi 4.723, yaitu lebih banyak kamar kosong dengan harga lebih sedikit kamar yang dijual ulang secara keliru. Pada \textit{hold-out} polanya sama (biaya turun sekitar 13\%).
+\par\smallskip
+\textbf{Trade-off.} Macro F1 turun dari 0,7819 menjadi 0,7269. \textit{Threshold} yang meminimalkan biaya (0,6 sampai 0,9) hanya 0,0010 lebih murah dengan Macro F1 yang lebih rendah lagi.
+\par\smallskip
+\textbf{Keputusan.} Dipakai \textit{threshold} teoretis $\log 2$ supaya tidak ada penyesuaian ke data. Berkas submisinya (\texttt{submission\_nb\_cost\_sensitive.csv}) tidak dimaksudkan untuk \textit{leaderboard}, karena menurunkan Macro F1 yang dinilai Kaggle. Jika kerugian \textit{overbooking} memang dua kali kerugian kamar kosong, pakai \textit{threshold} $\log 2$; untuk skor Kaggle, pakai $-0{,}2$.\par}
