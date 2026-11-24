@@ -77,7 +77,7 @@
 % ---------- Penanda bagian yang belum ditulis ----------
 % Ubah \toggletodotrue menjadi \toggletodofalse untuk menyembunyikan semua TODO saat final.
 \newif\iftoggletodo
-\toggletodotrue
+\toggletodofalse
 \newcommand{\todo}[1]{\iftoggletodo\textcolor{red}{\textbf{[TODO:} #1\textbf{]}}\fi}
 % Kotak pengganti gambar yang belum ada. Ganti dengan \includegraphics saat gambar tersedia.
 \newcommand{\placeholdergambar}[1]{\fbox{\parbox[c][4cm][c]{0.8\textwidth}{\centering\todo{Gambar: #1}}}}
