@@ -1,0 +1,451 @@
+\subsection{Implementasi \textit{From Scratch}}
+\label{subsec:svm-implementasi}
+
+\subsubsection{Landasan Teori}
+
+\paragraph{\textit{Hyperplane} dan margin.} Misalkan data latih $\{(x_i, y_i)\}_{i=1}^{n}$ dengan $x_i \in \mathbb{R}^d$ dan label $y_i \in \{-1, +1\}$. Pada implementasi, kelas batal diberi label $+1$ dan kelas tidak batal $-1$. SVM mencari \textit{hyperplane} $w \cdot x + b = 0$ yang memisahkan kedua kelas. Jarak titik $x$ ke \textit{hyperplane} adalah $|w \cdot x + b| / \lVert w\rVert$. Jika titik terdekat dari kedua kelas dinormalkan sehingga memenuhi $y_i(w \cdot x_i + b) = 1$, lebar margin antara kedua kelas adalah $2 / \lVert w\rVert$, sehingga memaksimumkan margin sama dengan meminimumkan $\lVert w\rVert$ \cite{ruskanda-svm-what,ruskanda-svm-linear}. Titik yang berada tepat di batas margin disebut \textit{support vector}.
+
+\paragraph{\textit{Soft margin} dan parameter $C$.} Data nyata tidak dapat dipisahkan sempurna, sehingga setiap titik diberi variabel kendur (\textit{slack}) $\xi_i \ge 0$ yang mengukur seberapa jauh titik itu melanggar margin \cite{ruskanda-svm-nonlinear}. Masalah primalnya adalah
+\begin{equation}
+	\min_{w,\,b,\,\xi}\ \tfrac{1}{2}\lVert w\rVert^2 + \sum_{i=1}^{n} C_i\,\xi_i
+	\quad \text{dengan} \quad y_i\big(w \cdot \varphi(x_i) + b\big) \ge 1 - \xi_i,\ \ \xi_i \ge 0,
+	\label{eq:svm-primal}
+\end{equation}
+dengan $\varphi$ pemetaan fitur ke ruang berdimensi lebih tinggi (dipakai secara implisit lewat kernel). Pada implementasi $C_i = C$ untuk semua titik, kecuali jika \texttt{class\_weight} diberikan: $C_i = C \cdot c_{y_i}$ dengan $c_{y_i}$ bobot kelas titik tersebut (dipakai pada bonus \textit{cost-sensitive}, Subbab~\ref{subsubsec:svm-cost}). $C$ besar menghukum pelanggaran margin dengan keras sehingga margin menyempit dan model cenderung \textit{overfit}; $C$ kecil membiarkan lebih banyak pelanggaran sehingga margin lebar dan model cenderung \textit{underfit}. Pengaruh ini terlihat langsung pada hasil \textit{tuning} (Subbab~\ref{subsec:svm-validasi}).
+
+\paragraph{Lagrangian dan bentuk dual.} Dengan pengali Lagrange $\alpha_i \ge 0$ untuk kendala margin dan $\mu_i \ge 0$ untuk $\xi_i \ge 0$,
+\begin{equation}
+	\mathcal{L}(w, b, \xi, \alpha, \mu) = \tfrac{1}{2}\lVert w\rVert^2 + \sum_i C_i\xi_i - \sum_i \alpha_i\big[y_i(w \cdot \varphi(x_i) + b) - 1 + \xi_i\big] - \sum_i \mu_i\xi_i .
+	\label{eq:svm-lagrangian}
+\end{equation}
+Menurunkan $\mathcal{L}$ terhadap variabel primal dan menyamakannya dengan nol memberi
+\begin{align}
+	\frac{\partial \mathcal{L}}{\partial w} = 0 &\Rightarrow w = \sum_i \alpha_i y_i\,\varphi(x_i), \\
+	\frac{\partial \mathcal{L}}{\partial b} = 0 &\Rightarrow \sum_i \alpha_i y_i = 0, \\
+	\frac{\partial \mathcal{L}}{\partial \xi_i} = 0 &\Rightarrow \alpha_i = C_i - \mu_i .
+\end{align}
+Karena $\mu_i \ge 0$, diperoleh kotak batas $0 \le \alpha_i \le C_i$. Substitusi ke $\mathcal{L}$ menghilangkan $w$, $b$, dan $\xi$, sehingga tersisa masalah dual yang hanya bergantung pada $\alpha$ dan hasil kali dalam $K(x_i, x_j) = \varphi(x_i)\cdot\varphi(x_j)$:
+\begin{equation}
+	\max_{\alpha}\ \sum_{i} \alpha_i - \tfrac{1}{2}\sum_{i}\sum_{j} \alpha_i\alpha_j\,y_i y_j\,K(x_i, x_j)
+	\quad \text{dengan} \quad 0 \le \alpha_i \le C_i,\ \ \sum_i \alpha_i y_i = 0 .
+	\label{eq:svm-dual}
+\end{equation}
+Fungsi keputusan model hanya melibatkan titik dengan $\alpha_i > 0$ (\textit{support vector}):
+\begin{equation}
+	f(x) = \sum_{i} \alpha_i y_i\,K(x_i, x) + b, \qquad \hat{y} = \begin{cases} +1 & f(x) > t \\ -1 & \text{lainnya,} \end{cases}
+	\label{eq:svm-decision}
+\end{equation}
+dengan $t$ ambang keputusan (\texttt{threshold} pada \texttt{predict}, bawaan 0). Nilai $f(x)$ juga disebut skor keputusan, dan $|f(x)|/\lVert w\rVert$ adalah jarak $x$ ke \textit{hyperplane} di ruang fitur kernel.
+
+\paragraph{Kondisi KKT.} Solusi optimum memenuhi kondisi \textit{Karush-Kuhn-Tucker} berikut, yang menjadi dasar kriteria berhenti SMO:
+\begin{equation}
+	\alpha_i = 0 \Rightarrow y_i f(x_i) \ge 1, \qquad
+	0 < \alpha_i < C_i \Rightarrow y_i f(x_i) = 1, \qquad
+	\alpha_i = C_i \Rightarrow y_i f(x_i) \le 1 .
+	\label{eq:svm-kkt}
+\end{equation}
+Titik dengan $\alpha_i = 0$ berada di luar margin dan tidak memengaruhi model. Titik dengan $0 < \alpha_i < C_i$ (\textit{free support vector}) tepat di batas margin. Titik dengan $\alpha_i = C_i$ berada di dalam margin atau salah sisi.
+
+\paragraph{\textit{Kernel trick} dan empat kernel.} Persamaan \eqref{eq:svm-dual} dan \eqref{eq:svm-decision} hanya memakai $K(a, b) = \varphi(a)\cdot\varphi(b)$, sehingga $\varphi$ tidak pernah dihitung. Cukup mengganti $K$ untuk mendapatkan batas keputusan nonlinear \cite{ruskanda-svm-nonlinear}. Tabel~\ref{tab:svm-kernel} merangkum empat kernel yang diimplementasikan. Kernel \textit{sigmoid} pada materi kelas tidak diimplementasikan karena spesifikasi hanya mewajibkan tiga kernel pertama.
+
+\begin{table}[H]
+	\centering
+	\caption{Kernel yang diimplementasikan pada \texttt{SVM}}
+	\label{tab:svm-kernel}
+	\small
+	\begin{tabularx}{\textwidth}{l l Y}
+		\toprule
+		\textbf{\texttt{kernel}} & $K(a, b)$ & \textbf{Parameter dan catatan} \\
+		\midrule
+		\texttt{"linear"} & $a \cdot b$ & Tanpa parameter. Koefisien $w = \sum_i \alpha_i y_i x_i$ tersedia pada atribut \texttt{coef\_}. \\
+		\texttt{"poly"} & $(\gamma\,a \cdot b + r)^{p}$ & $\gamma$ (\texttt{gamma}), $r$ (\texttt{coef0}), derajat $p$ (\texttt{degree}). \\
+		\texttt{"rbf"} (\textit{Gaussian}) & $\exp\!\big(-\gamma\lVert a - b\rVert_2^2\big)$ & $\gamma$ (\texttt{gamma}). Jarak L2 kuadrat. \\
+		\texttt{"laplacian"} & $\exp\!\big(-\gamma\lVert a - b\rVert_1\big)$ & $\gamma$ (\texttt{gamma}). Jarak L1 (jumlah selisih mutlak per fitur). \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+Nilai \texttt{gamma="scale"} (bawaan) berarti $\gamma = 1/(d \cdot \operatorname{Var}(X))$ dengan $\operatorname{Var}(X)$ variansi seluruh elemen matriks latih, dan \texttt{gamma="auto"} berarti $\gamma = 1/d$, sama seperti pada \textit{scikit-learn} \cite{pedregosa2011sklearn}. Pada data yang sudah distandardisasi, $\operatorname{Var}(X) \approx 1$ sehingga \texttt{"scale"} kira-kira $1/d$. Kernel \textit{Gaussian} dan Laplacian memenuhi $K(a, a) = 1$, sedangkan kernel \textit{linear} dan \textit{polynomial} tidak. Karena itu implementasi menghitung diagonal kernel secara terpisah (\texttt{\_gram\_diagonal} pada Tabel~\ref{tab:svm-fungsi}), tanpa membentuk seluruh matriks.
+
+\paragraph{Kernel Laplacian dan alasan jarak L1.} Kernel Laplacian termasuk keluarga kernel $\exp(-\rho\sum_k |a_k - b_k|^{\beta})$ yang dipakai untuk klasifikasi histogram citra oleh \cite{chapelle1999histogram}, dengan $\beta = 1$. Perbedaannya dengan \textit{Gaussian} hanya pada jarak: Gaussian memakai jumlah kuadrat selisih, Laplacian memakai jumlah selisih mutlak. Pada data ini ada dua alasan jarak L1 lebih sesuai. Pertama, jarak L2 kuadrat memperbesar selisih ekstrem secara kuadratik. Setelah standardisasi, satu penanda kosong dengan prevalensi 4,0\% (\texttt{missing\_needs\_parking}) bernilai 4,88 simpangan baku saat bernilai 1, sehingga ketidakcocokannya menyumbang 23,8 pada jarak L2 kuadrat tetapi 4,88 pada jarak L1. Nilai ekstrem juga ada pada fitur numerik: nilai maksimum \texttt{prior\_completed\_bookings} berada 36 simpangan baku dari rata-rata dan \texttt{num\_children} 24,9 simpangan baku (data pengembangan). Pada L2 kuadrat sumbangan keduanya masing-masing sekitar 1.300 dan 620, pada L1 hanya 36 dan 25. Kedua, jarak L1 menjumlahkan sumbangan tiap fitur tanpa saling memperkuat, sehingga pembobotan per fitur (Subbab~\ref{subsubsec:svm-agop-teori}) bekerja langsung sebagai skala tiap sumbu. Kedua alasan ini adalah penjelasan yang masuk akal, bukan bukti. Buktinya adalah hasil empiris pada Subbab~\ref{subsec:svm-validasi} dan \ref{subsec:svm-hasil}. Karena bentuk eksponensial dari jarak L1 adalah kernel positif semidefinit, masalah dual \eqref{eq:svm-dual} tetap konkaf dan SMO konvergen. Implementasi \texttt{"laplacian"} tidak dapat memakai trik $\lVert a-b\rVert^2 = \lVert a\rVert^2 + \lVert b\rVert^2 - 2a\cdot b$ (perkalian matriks) seperti \textit{Gaussian}, sehingga jaraknya dihitung per kolom fitur (Kode~\ref{lst:svm-l1}) dan lebih lambat per baris kernel.
+
+\subsubsection{Algoritma SMO}
+Masalah dual \eqref{eq:svm-dual} adalah \textit{quadratic programming} dengan $n$ variabel, satu kendala persamaan, dan kendala kotak. \textit{Sequential Minimal Optimization} (SMO) \cite{platt1998smo} menyelesaikannya dengan mengubah dua variabel $\alpha_i, \alpha_j$ pada setiap langkah. Dua adalah jumlah paling sedikit yang memungkinkan kendala $\sum_k \alpha_k y_k = 0$ tetap terpenuhi, dan masalah dua variabel memiliki solusi tertutup, sehingga tidak diperlukan \textit{solver} QP. Implementasi mengikuti bentuk SMO pada LIBSVM \cite{chang2011libsvm} dengan pemilihan pasangan orde kedua \cite{fan2005wss}. Notasinya sebagai berikut.
+
+\paragraph{Skor.} Untuk setiap titik $t$ didefinisikan
+\begin{equation}
+	s_t = y_t - \sum_{k}\alpha_k y_k K(x_k, x_t) = y_t - \big(f(x_t) - b\big),
+	\label{eq:svm-score}
+\end{equation}
+yang pada kode adalah larik \texttt{score}. Pada awal pelatihan $\alpha = 0$ sehingga $s = y$. Gradien fungsi tujuan dual terhadap $\alpha_t$ sama dengan $y_t s_t$, sehingga $s_t$ cukup untuk memantau optimalitas. Selama pelatihan hanya vektor $s$, vektor $\alpha$, dan baris kernel yang sedang dipakai yang disimpan, bukan seluruh matriks kernel.
+
+\paragraph{Himpunan indeks dan kondisi optimalitas.} Titik yang $\alpha$-nya masih boleh naik atau turun dikelompokkan menurut arah geraknya terhadap kendala $\sum\alpha_k y_k = 0$:
+\begin{align}
+	I_{\text{naik}} &= \{t : (y_t = +1,\ \alpha_t < C_t) \lor (y_t = -1,\ \alpha_t > 0)\}, \nonumber\\
+	I_{\text{turun}} &= \{t : (y_t = +1,\ \alpha_t > 0) \lor (y_t = -1,\ \alpha_t < C_t)\},
+	\label{eq:svm-indeks}
+\end{align}
+yang pada kode adalah \texttt{can\_rise} dan \texttt{can\_fall}. Menerapkan Persamaan~\eqref{eq:svm-kkt} pada $s_t = y_t - f(x_t) + b$ menunjukkan bahwa solusi optimum ada jika dan hanya jika terdapat $b$ dengan $s_t \le b$ untuk $t \in I_{\text{naik}}$ dan $s_t \ge b$ untuk $t \in I_{\text{turun}}$. Titik \textit{free support vector} memenuhi keduanya sehingga $s_t = b$. Dengan demikian optimalitas setara dengan
+\begin{equation}
+	m(\alpha) - M(\alpha) \le 0, \qquad m(\alpha) = \max_{t \in I_{\text{naik}}} s_t, \quad M(\alpha) = \min_{t \in I_{\text{turun}}} s_t .
+\end{equation}
+Pada praktiknya pelatihan berhenti jika $m(\alpha) - M(\alpha) < \tau$ dengan $\tau$ = \texttt{tol} (bawaan $10^{-3}$, sama dengan \textit{scikit-learn}), atau jika \texttt{n\_iter\_} mencapai \texttt{max\_iter}. Pada kasus kedua, \texttt{fit} mengeluarkan peringatan dan tetap mengembalikan model yang dapat dipakai.
+
+\paragraph{Pemilihan pasangan orde kedua.} Titik pertama dipilih sebagai pelanggar terbesar, $i = \arg\max_{t \in I_{\text{naik}}} s_t$. Titik kedua dipilih dari $I_{\text{turun}}$ dengan menimbang kenaikan fungsi tujuan yang sebenarnya, bukan hanya selisih skor. Jika $\alpha_i y_i$ naik sebesar $\delta$ dan $\alpha_j y_j$ turun sebesar $\delta$ (kendala persamaan tetap terjaga), fungsi tujuan dual berubah menurut
+\begin{equation}
+	\Delta D(\delta) = \delta\,(s_i - s_j) - \tfrac{1}{2}\,a_{ij}\,\delta^2, \qquad a_{ij} = K_{ii} + K_{jj} - 2K_{ij},
+\end{equation}
+dengan $a_{ij} \ge 0$ kelengkungan di sepanjang arah tersebut. Parabola ini mencapai puncak di $\delta^{*} = (s_i - s_j)/a_{ij}$ dengan kenaikan $(s_i - s_j)^2 / (2a_{ij})$. Karena itu
+\begin{equation}
+	g_t = s_i - s_t, \qquad a_{it} = \max\big(K_{ii} + K_{tt} - 2K_{it},\ \tau_a\big), \qquad
+	j = \arg\max_{t \in I_{\text{turun}},\ g_t > 0}\ \frac{g_t^{2}}{a_{it}},
+	\label{eq:svm-pasangan}
+\end{equation}
+dengan $\tau_a = 10^{-12}$ (konstanta \texttt{TAU}, mengikuti LIBSVM) agar tidak terjadi pembagian dengan nol bila kelengkungan nol atau sedikit negatif akibat pembulatan. Bandingkan dengan pemilihan orde pertama yang hanya mengambil $t$ dengan $s_t$ terkecil: pasangan itu memiliki selisih skor terbesar, tetapi bisa memiliki kelengkungan besar sehingga langkahnya pendek dan kenaikan tujuannya kecil.
+
+\paragraph{Langkah dan pemotongan ke kotak.} Langkah tanpa kendala adalah $\delta^{*}$. Langkah tersebut dipotong oleh sisa ruang di dalam kotak $[0, C_t]$ untuk kedua variabel:
+\begin{equation}
+	r_i = \begin{cases} C_i - \alpha_i & y_i = +1 \\ \alpha_i & y_i = -1 \end{cases}, \qquad
+	r_j = \begin{cases} \alpha_j & y_j = +1 \\ C_j - \alpha_j & y_j = -1 \end{cases}, \qquad
+	\delta = \min\{\delta^{*},\ r_i,\ r_j\},
+\end{equation}
+dan pembaruannya
+\begin{equation}
+	\alpha_i \leftarrow \alpha_i + y_i\,\delta, \qquad \alpha_j \leftarrow \alpha_j - y_j\,\delta, \qquad
+	s_t \leftarrow s_t - \delta\,\big(K_{it} - K_{jt}\big)\quad \forall t .
+	\label{eq:svm-update}
+\end{equation}
+Karena $y_i \cdot y_i\delta + y_j\cdot(-y_j\delta) = 0$, kendala $\sum\alpha_k y_k = 0$ tidak pernah dilanggar. Pembaruan skor muncul dari Persamaan~\eqref{eq:svm-score}: perubahan $\alpha_i y_i$ sebesar $+\delta$ dan $\alpha_j y_j$ sebesar $-\delta$ mengubah $f(x_t) - b$ sebesar $\delta(K_{it} - K_{jt})$. Jika langkah terpotong oleh batas (\texttt{step == room}), variabel yang bersangkutan langsung diset tepat ke $0$ atau $C_t$ oleh fungsi \texttt{\_move}, bukan hasil penjumlahan, agar galat pembulatan tidak membuat $\alpha$ berada sedikit di dalam atau di luar kotak. Setelah itu keanggotaan $i$ dan $j$ pada $I_{\text{naik}}$ dan $I_{\text{turun}}$ diperbarui.
+
+\paragraph{Bias.} Titik \textit{free support vector} memenuhi $s_t = b$, sehingga
+\begin{equation}
+	b = \frac{1}{|F|}\sum_{t \in F} s_t, \qquad F = \{t : 0 < \alpha_t < C_t\},
+\end{equation}
+mengikuti LIBSVM \cite{chang2011libsvm}. Jika tidak ada \textit{free support vector}, bias diambil dari titik tengah $(m + M)/2$.
+
+\subsubsection{Bobot Fitur dengan AGOP}
+\label{subsubsec:svm-agop-teori}
+Kernel Laplacian pada model terbaik tidak memakai fitur standar secara langsung, melainkan $K(a, b) = \exp\big(-\sum_k w_k|a_k - b_k| / L\big)$ dengan $L = 20$ (jadi $\gamma = 1/L = 0{,}05$) dan bobot $w_k \ge 0$ per fitur. Memakai bobot ini setara dengan mengalikan setiap kolom fitur dengan $w_k$ sebelum dimasukkan ke \texttt{SVM}, dan itulah yang dilakukan kode (\texttt{A * w}). Bobot dipelajari dari data latih dengan prosedur yang diadaptasi dari \textit{Average Gradient Outer Product} (AGOP) pada \textit{Recursive Feature Machine} \cite{radhakrishnan2024rfm}. Versi di sini disederhanakan: hanya diagonal AGOP yang dipakai, jaraknya L1, dan bobot adalah akar dari RMS gradien. Prosedur ini bukan replikasi penuh makalah tersebut. Satu putaran terdiri atas langkah berikut, dengan $X$ fitur terstandardisasi ($n \times d$) dan target $t_i = y_i - \tfrac12 \in \{\pm\tfrac12\}$. Pada putaran pertama $w = \mathbf{1}$, dan putaran dilakukan dua kali (\texttt{ROUNDS = 2}).
+
+\begin{enumerate}
+	\item \textbf{Model pengganti.} Dipilih $m = 1.500$ pusat acak $z_c$ dari baris latih (\texttt{CENTRES}), dan dipasang model $f(x) = \sum_{c=1}^{m} \beta_c\,K_w(x, z_c)$ dengan $K_w$ kernel Laplacian berbobot $w$ saat ini. Model ini adalah \textit{kernel ridge regression} \cite{saunders1998ridge} yang disederhanakan dengan pendekatan Nystr\"om \cite{williams2001nystrom}, yaitu pusat dibatasi pada himpunan bagian $m \ll n$ baris:
+	\begin{equation}
+		\min_{\beta}\ \sum_{i=1}^{n}\big(f(x_i) - t_i\big)^2 + \lambda\,\beta^{\top}K_{ZZ}\beta
+		\ \Longrightarrow\
+		\big(K_{XZ}^{\top}K_{XZ} + \lambda K_{ZZ} + \epsilon I\big)\beta = K_{XZ}^{\top}t,
+		\label{eq:svm-nystrom}
+	\end{equation}
+	dengan $\lambda = 0{,}3$ (\texttt{RIDGE}) dan $\epsilon = 10^{-6}$ kali rata-rata diagonal matriks sistem (penstabil numerik). $K_{XZ}^{\top}K_{XZ}$ dijumlahkan per blok 2.000 baris agar memori tidak bergantung pada $n$.
+	\item \textbf{Gradien.} Turunan model terhadap fitur ke-$k$ pada titik $x$ (turunan $|u|$ adalah $\operatorname{sign}(u)$, terdefinisi hampir di mana-mana) adalah
+	\begin{equation}
+		\frac{\partial f}{\partial x_k}(x) = -\frac{w_k}{L}\sum_{c=1}^{m}\beta_c\,K_w(x, z_c)\,\operatorname{sign}\big(x_k - z_{ck}\big).
+		\label{eq:svm-gradien}
+	\end{equation}
+	Gradien dihitung pada $q = 4.000$ baris acak (\texttt{GRADIENT\_ROWS}). Pada kode, jumlahnya dihitung pada koordinat yang sudah berbobot, lalu dikalikan $w_k$ sesuai aturan rantai.
+	\item \textbf{Diagonal AGOP dan bobot baru.} Rata-rata kuadrat gradien per fitur adalah diagonal AGOP,
+	\begin{equation}
+		G_k = \frac{1}{q}\sum_{r=1}^{q}\Big(\frac{\partial f}{\partial x_k}(x_r)\Big)^{2}, \qquad
+		w_k^{\text{baru}} \propto \sqrt{\sqrt{G_k}} = G_k^{1/4}, \qquad \sum_{k=1}^{d} \big(w_k^{\text{baru}}\big)^2 = d .
+		\label{eq:svm-bobot}
+	\end{equation}
+	Fitur yang membuat prediksi model pengganti berubah banyak ketika digeser mendapat bobot besar. Pangkat $1/4$ pada $G_k$ (akar dari RMS gradien) dipilih lewat validasi silang (pangkat 0,35 dan 0,7 pada RMS lebih rendah, Tabel~\ref{tab:svm-ablasi}). Normalisasi $\sum_k w_k^2 = d$ menjaga rata-rata kuadrat bobot tetap 1, sehingga skala jarak keseluruhan tidak berubah dan $L = 20$ tetap bermakna. Bobot akhir dibulatkan ke tiga desimal.
+\end{enumerate}
+
+Bobot ini bekerja sebagai pemilihan fitur yang halus: fitur tidak relevan tidak dibuang tetapi diperkecil pengaruhnya pada jarak (Tabel~\ref{tab:svm-bobot}). Prosedur ini jauh lebih mahal daripada standardisasi. Pada $n = 27.309$, $m = 1.500$, dan $d = 46$, pembentukan $K_{XZ}^{\top}K_{XZ}$ membutuhkan sekitar $n m^2 \approx 6{,}1 \times 10^{10}$ operasi kali-tambah (BLAS), jarak L1 antara seluruh baris dan pusat membutuhkan $n m d \approx 1{,}9 \times 10^{9}$ operasi, dan penyelesaian sistem $m \times m$ sekitar $m^3 \approx 3{,}4 \times 10^{9}$ operasi, semuanya per putaran. Bobot dihitung ulang dari awal untuk setiap pembagian data, sehingga tidak bocor dari data validasi (Subbab~\ref{subsec:svm-preprocessing}).
+
+\subsubsection{Kernel Termometer yang Dipelajari}
+\label{subsubsec:svm-kernel-belajar}
+Bobot AGOP memberi satu angka per fitur. Itu berarti jarak pada fitur $f$ selalu linear terhadap selisih nilainya, padahal pengaruh sebuah fitur pada pembatalan bisa terkonsentrasi di satu ambang tertentu (misalnya \textit{lead time} di atas batas tertentu), seperti pada pohon keputusan. Model submission mengganti bobot tunggal itu dengan satu bobot per ambang. Gagasan ini memakai pengodean numerik berbasis ambang pada \textit{deep learning} tabular \cite{gorishniy2022embeddings} dan prosedur pembelajaran kernel dari galat validasi \cite{chapelle2002multiparam,owhadi2019kernelflows,lanckriet2004kernel}.
+
+\paragraph{Kode termometer.} Fitur yang dipakai sama dengan model Laplacian (46 kolom dari \texttt{build\_features}, dengan $\sqrt{\cdot}$, logit, dan $\log(1+x)$ pada tiga kolom yang sama seperti pada \texttt{standardize}), tetapi sebelum standardisasi. Tiap kolom $f$ diubah menjadi bit $b_{k}(x) = \mathbb{1}[\,t_f(x) > c_k\,]$ untuk setiap ambang $c_k$ milik kolom itu. Jika kolom memiliki paling banyak 128 nilai unik, ambangnya adalah titik tengah setiap dua nilai unik berurutan. Jika lebih banyak, ambangnya adalah titik di kuantil ke-$1/128$, $2/128$, \dots, $127/128$ yang digeser ke titik tengah dengan nilai unik berikutnya (ambang kembar dibuang). Seluruhnya dihitung dari data latih, sehingga kolom yang sama pada data uji hanya dibandingkan dengan ambang itu. Hasilnya sekitar \SVMBaruJumlahBit{} bit, dan disebut termometer karena bit yang menyala selalu berupa deretan dari ambang terendah sampai ambang terakhir yang dilewati nilai itu.
+
+\paragraph{Kernel Hamming berbobot.} Dengan $b(x) \in \{0,1\}^{B}$ ($B \approx \SVMBaruJumlahBit{}$), kernelnya adalah campuran $M = 2$ komponen:
+\begin{equation}
+	K(x, z) = \sum_{m=1}^{M} a_m \exp\Big(-\sum_{k=1}^{B} w_{mk}\,\big|b_k(x) - b_k(z)\big|\Big), \qquad a_m \ge 0,\ \ \sum_m a_m = 1,\ \ w_{mk} \ge 0 .
+	\label{eq:svm-kernel-termometer}
+\end{equation}
+Jumlah di dalam eksponen adalah jarak Hamming berbobot. Kernel ini positif semidefinit: $\exp(-w|b - b'|)$ adalah kernel Laplacian satu dimensi, hasil kali kernel positif semidefinit tetap positif semidefinit, dan jumlah dengan koefisien $a_m \ge 0$ juga demikian. Jadi masalah SVM pada bagian berikut tetap konveks untuk semua nilai $w$ dan $a$ yang dipelajari.
+
+Karena bit termometer bersifat monoton, jarak Hamming pada satu fitur sama dengan selisih fungsi kumulatif, $\sum_{k \in f} w_{mk}|b_k(x) - b_k(z)| = |F_{mf}(x) - F_{mf}(z)|$ dengan $F_{mf}(x) = \sum_{k \in f,\ c_k < t_f(x)} w_{mk}$. $F_{mf}$ adalah fungsi naik yang bentuknya dipelajari: bobot kecil pada rentang tertentu membuat rentang itu hampir tidak dibedakan, dan satu bobot besar pada satu ambang membuat lompatan tajam di ambang itu. Dengan kata lain, setiap komponen adalah kernel Laplacian pada fitur yang telah ``dilenturkan'' secara monoton. Bobot AGOP adalah kasus khusus dengan $F_{mf}$ linear.
+
+\paragraph{Titik awal.} Bobot awal dibuat agar kernel awal hampir sama dengan kernel Laplacian berbobot AGOP. Untuk ambang $k$ milik fitur $f$,
+\begin{equation}
+	w_{mk}^{(0)} = c_m\ \frac{g_k\,\max(w_f^{\text{AGOP}},\ 0{,}05)}{L\,s_f}\ e^{\varepsilon_{mk}},
+\end{equation}
+dengan $c_m \in \{0{,}9;\ 2{,}5\}$, $\varepsilon_{mk} \sim \mathcal{N}(0,\ 0{,}5^2)$, $L = 20$, $g_k$ selisih rata-rata nilai pada dua kelompok yang bersebelahan di ambang itu, dan $s_f$ simpangan baku kolom (setelah transformasi). Dua nilai $c_m$ memberi dua komponen dengan skala jarak berbeda, dan derau pada $\log w$ membedakan keduanya. Komponen pertama setara dengan kernel Laplacian lama dengan $L = 20/0{,}9$ dan komponen kedua dengan $L = 20/2{,}5$, keduanya pada nilai yang dikelompokkan per ambang. Campuran awalnya seimbang ($a_m = \tfrac12$) dan regularisasi awalnya $\lambda = 0{,}6$.
+
+\paragraph{Pembelajaran bobot dengan gradien galat \textit{holdout}.} Parameter $\theta = (\log w, \log a, \log \lambda)$ dipelajari agar kernel memprediksi baris yang tidak dipakai melatih. Pada setiap langkah diambil acak $n_A = 4.000$ baris latih (himpunan $A$) dan $n_B = 3.000$ baris lain (himpunan $B$) dari data latih. Pada $A$ dipasang \textit{kernel ridge} dengan target $\pm 1$, dan galat kuadratnya dihitung pada $B$:
+\begin{equation}
+	\alpha = (K_{AA} + \lambda I)^{-1}(y_A - \bar{y}_A\mathbf{1}), \qquad
+	\mathcal{L}(\theta) = \frac{1}{n_B}\big\lVert K_{BA}\,\alpha + \bar{y}_A\mathbf{1} - y_B\big\rVert^2 .
+	\label{eq:svm-holdout}
+\end{equation}
+Sistem linearnya diselesaikan dengan faktorisasi Cholesky $K_{AA} + \lambda I = LL^{\top}$ (\texttt{numpy.linalg.cholesky}, lalu dua penyelesaian segitiga dengan SciPy). Turunan $\mathcal{L}$ terhadap parameter kernel tidak memerlukan penurunan melalui $(K_{AA}+\lambda I)^{-1}$ secara langsung. Dengan $p = \tfrac{2}{n_B}(K_{BA}\alpha + \bar{y}_A\mathbf{1} - y_B)$ dan variabel \textit{adjoint} $v = (K_{AA} + \lambda I)^{-1}K_{BA}^{\top}p$ (satu \textit{solve} Cholesky lagi),
+\begin{equation}
+	\frac{\partial \mathcal{L}}{\partial \theta_i} = p^{\top}\frac{\partial K_{BA}}{\partial \theta_i}\,\alpha - v^{\top}\frac{\partial K_{AA}}{\partial \theta_i}\,\alpha, \qquad
+	\frac{\partial \mathcal{L}}{\partial \lambda} = -v^{\top}\alpha .
+	\label{eq:svm-adjoint}
+\end{equation}
+Untuk bobot, $\partial K_m(x,z)/\partial w_{mk} = -a_m K_m(x,z)\,|b_k(x) - b_k(z)|$ (di sini $K_m$ adalah komponen ke-$m$ tanpa $a_m$), sehingga gradien seluruh $B$ bobot per komponen dihitung dengan beberapa perkalian matriks. Parameter dioptimasi dengan Adam \cite{kingma2015adam} pada $\log w$, $\log a$, dan $\log\lambda$ (menjaga semuanya positif), selama 100 langkah dengan laju 0,07 untuk $\log w$. Laju ini naik bertahap selama 5 langkah pertama dan menjadi 0,4 kali mulai langkah ke-60. Laju untuk $\log a$ (0,03) dan $\log\lambda$ (0,02) tetap. Karena setiap langkah memakai sampel acak yang berbeda, gradiennya berisik dan hasil akhirnya adalah rata-rata $\log w$, $\log a$, dan $\log \lambda$ pada 40 langkah terakhir (pengambilan sampel acak per langkah mengikuti \textit{Kernel Flows} \cite{owhadi2019kernelflows}). Campuran $a$ dinormalkan agar jumlahnya 1. Satu kali pembelajaran dilakukan per pembagian data, termasuk pada tiap \textit{fold} validasi silang.
+
+\subsubsection{L2-SVM dengan Newton di Primal}
+\label{subsubsec:svm-l2svm}
+SVM klasik pada Persamaan~\eqref{eq:svm-primal} menghukum pelanggaran margin secara linear ($\xi_i$). L2-SVM menghukumnya secara kuadratik, sehingga fungsi tujuannya terdiferensialkan dua kali sepotong-sepotong. Dengan $f(x) = \sum_i \beta_i K(x_i, x) + b$ dan $\lVert f\rVert^2 = \beta^{\top}K\beta$, masalahnya adalah
+\begin{equation}
+	\min_{\beta,\,b}\ \frac{\lambda}{2}\,\beta^{\top}K\beta + \frac{1}{2}\sum_{i=1}^{n} \max\big(0,\ 1 - y_i f(x_i)\big)^{2},
+	\label{eq:svm-l2}
+\end{equation}
+yang setara dengan Persamaan~\eqref{eq:svm-primal} dengan $\xi_i^2$ pada suku galat dan $\lambda = 1/C$ \cite{chapelle2007primal}. Perbedaan dengan SMO: tidak ada kotak $\alpha_i \le C$, karena hukuman kuadrat sudah membatasi koefisien secara halus, dan titik dengan $y_i f(x_i) \ge 1$ tetap tidak berpengaruh ($\beta_i = 0$) seperti pada \textit{hinge}.
+
+\paragraph{Langkah Newton.} Misalkan $S = \{i : y_i f(x_i) < 1\}$ himpunan titik yang melanggar margin. Menyamakan gradien Persamaan~\eqref{eq:svm-l2} dengan nol memberi $\beta_i = 0$ untuk $i \notin S$, dan untuk $i \in S$
+\begin{equation}
+	(K_{SS} + \lambda I)\,\beta_S = y_S - b\mathbf{1}, \qquad \mathbf{1}^{\top}\beta_S = 0,
+	\label{eq:svm-newton}
+\end{equation}
+dengan syarat kedua berasal dari turunan terhadap $b$. Dengan kata lain $\beta_i = y_i\max(0, 1 - y_i f(x_i))/\lambda$ (koefisien sebanding dengan besar pelanggaran, pada kode disimpan di \texttt{dual\_coef\_}). Karena fungsi tujuannya kuadratik sepotong-sepotong, menyelesaikan Persamaan~\eqref{eq:svm-newton} pada $S$ yang sedang berlaku adalah satu langkah Newton penuh \cite{chapelle2007primal}. Algoritmanya:
+\begin{enumerate}
+	\item mulai dengan $S$ berisi semua titik. Iterasi pertama sekaligus menyelesaikan \textit{least-squares SVM}, yaitu regresi kuadrat terkecil pada target $\pm 1$ \cite{suykens1999lssvm}. Versi \textit{least-squares} pada bab ini adalah iterasi pertama tersebut;
+	\item selesaikan dua sistem $(K_{SS}+\lambda I)t = y_S$ dan $(K_{SS}+\lambda I)u = \mathbf{1}$, lalu $b = \mathbf{1}^{\top}t / \mathbf{1}^{\top}u$ dan $\beta_S = t - bu$, yang memenuhi $\mathbf{1}^{\top}\beta_S = 0$;
+	\item hitung ulang $f(x_i)$ untuk semua titik dan bentuk $S$ baru dari titik yang memenuhi $y_i f(x_i) < 1$;
+	\item berhenti jika paling banyak 0,02\% dari $n$ titik berganti keanggotaan $S$, atau setelah 30 iterasi. Pada kasus pertama, $S$ yang baru tidak dipakai dan model tetap berasal dari $S$ iterasi itu. Jika tidak, ulangi dari langkah 2.
+\end{enumerate}
+
+\paragraph{\textit{Conjugate gradient}.} Matriks $K_{SS} + \lambda I$ simetris dan positif definit, dan berukuran sampai $n \times n$. Kedua sistem pada Persamaan~\eqref{eq:svm-newton} diselesaikan sekaligus sebagai dua kolom ruas kanan dengan \textit{conjugate gradient} \cite{hestenes1952cg}, masing-masing kolom dengan ukuran langkahnya sendiri. Metode ini hanya memerlukan perkalian matriks dengan matriks itu, tanpa memfaktorkannya. Perkalian dengan $K_{SS}$ pada kode dilakukan dengan memegang matriks kernel penuh dan mengalikan vektor yang entri di luar $S$ diset nol. Iterasi dimulai dari solusi Newton sebelumnya (\textit{warm start}; pada iterasi pertama dari nol), berhenti jika galat sisa relatif semua kolom di bawah $10^{-5}$ atau setelah 500 iterasi.
+
+\paragraph{Mengapa tidak SMO.} Pada \textit{fold} 0 dengan kernel hasil belajar versi awal (satu komponen, 64 bin), SVM \textit{hinge} dengan SMO ($C = 2$) memberi Macro F1 \SVMHingeFoldF{} dan AUC \SVMHingeFoldAUC{}, sedangkan loss kuadrat (\textit{least-squares}) pada kernel yang sama memberi \SVMKuadratFoldF{} pada ambang 0 dan AUC \SVMKuadratFoldAUC{}. Jadi pada ambang 0 Macro F1 keduanya setara, tetapi urutan skor loss kuadrat lebih baik, sehingga Macro F1-nya masih bisa naik sampai \SVMKuadratFoldFTerbaik{} bila ambang digeser (ambang terbaik pada \textit{fold} itu sendiri, jadi angka ini optimistis). Penjelasan yang masuk akal adalah koefisien pada \textit{hinge} dipotong pada $C$ sehingga banyak titik di dalam margin mendapat bobot yang sama, sedangkan pada \textit{slack} kuadrat bobotnya mengikuti besar pelanggaran. Penjelasan ini tidak diuji terpisah. Ambang keputusan model dipilih dari prediksi \textit{out-of-fold} (Subbab~\ref{subsec:svm-validasi}).
+
+\subsubsection{Struktur Kelas dan Fungsi}
+Kelas \texttt{SVM} berada pada \nolinkurl{src/algoritma/svm/svm.py} dan hanya memakai NumPy. Fitur dibangun oleh fungsi pada \nolinkurl{src/kaggle/booking_features.py} (pandas dan NumPy). Tabel~\ref{tab:svm-fungsi} merangkum fungsi dan metode pada \texttt{svm.py}, dan Tabel~\ref{tab:svm-fitur-fungsi} merangkum fungsi pada \texttt{booking\_features.py}.
+
+\begin{table}[H]
+	\centering
+	\caption{Deskripsi kelas dan fungsi SVM (\texttt{src/algoritma/svm/svm.py})}
+	\label{tab:svm-fungsi}
+	\small
+	\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.8cm} Y}
+		\toprule
+		\textbf{Fungsi/Metode} & \textbf{Deskripsi} \\
+		\midrule
+		\texttt{KERNELS}, \texttt{TAU} & Tuple nama kernel yang sah (\texttt{linear}, \texttt{poly}, \texttt{rbf}, \texttt{laplacian}) dan batas bawah kelengkungan $\tau_a = 10^{-12}$. \\
+		\texttt{PREDICT\_BATCH\_ROWS}, \texttt{LAPLACIAN\_BATCH\_ROWS} & Jumlah baris data uji yang diproses sekaligus oleh \texttt{decision\_function} (4.096; 256 untuk Laplacian) agar memori matriks kernel terbatas. \\
+		\texttt{\_l1\_distances(A, B)} & Matriks jarak L1 antara baris \texttt{A} dan \texttt{B}, dijumlahkan per kolom fitur agar tidak membentuk larik tiga dimensi. Kasus satu baris dihitung langsung. \\
+		\texttt{\_KernelRowCache.\_\_init\_\_} & Menyimpan fungsi penghitung baris kernel dan kapasitas \textit{cache} $\max\big(2, \lfloor \texttt{cache\_mb}\cdot 10^6 / (8n)\rfloor\big)$ baris. \\
+		\texttt{\_KernelRowCache.\_\_getitem\_\_} & Mengembalikan baris kernel ke-$i$ dari \textit{cache} (kebijakan \textit{least recently used} dengan \texttt{OrderedDict}), atau menghitungnya dan membuang baris terlama jika \textit{cache} penuh. \\
+		\texttt{SVM.\_\_init\_\_(...)} & Menyimpan hiperparameter: \texttt{C}, \texttt{kernel}, \texttt{degree}, \texttt{gamma}, \texttt{coef0}, \texttt{tol}, \texttt{max\_iter}, \texttt{class\_weight}, dan \texttt{cache\_mb}. Kernel yang tidak dikenal ditolak dengan \texttt{ValueError}. \\
+		\texttt{fit(X, y)} & Memvalidasi masukan (dua kelas, tanpa \texttt{NaN}), memetakan label ke $\pm 1$, menghitung batas kotak $C_i$ dan $\gamma$, memanggil \texttt{\_solve}, lalu menyimpan \texttt{support\_}, \texttt{support\_vectors\_}, \texttt{dual\_coef\_} ($\alpha_i y_i$), \texttt{intercept\_}, dan \texttt{coef\_} (hanya kernel \textit{linear}). \\
+		\texttt{decision\_function(X)} & Skor $f(x)$ menurut Persamaan~\eqref{eq:svm-decision}, dihitung per kelompok baris. \\
+		\texttt{predict(X, threshold)} & Mengembalikan label kelas positif jika skor lebih besar dari \texttt{threshold} (bawaan 0). Label asli (bukan hanya $\pm 1$) dikembalikan. \\
+		\texttt{save(path)} & Menyimpan seluruh objek model dengan \texttt{pickle}. \\
+		\texttt{load(path)} & \textit{Class method} yang memuat model dari berkas \textit{pickle}. \\
+		\texttt{\_solve(X, sign, upper)} & Inti SMO: memilih pasangan, memperbarui $\alpha$ dan skor, memeriksa kriteria berhenti, dan menghitung bias. Mengembalikan $(\alpha, b)$ dan mengisi \texttt{n\_iter\_}. \\
+		\texttt{\_move(value, delta, hits\_bound, upper)} & Memperbarui satu $\alpha$; jika langkah terpotong batas, nilainya diset persis ke $0$ atau \texttt{upper}. \\
+		\texttt{\_gram(A, B, B\_squared\_norms)} & Matriks kernel antara baris \texttt{A} dan \texttt{B} untuk kernel yang dipilih. \\
+		\texttt{\_gram\_diagonal\allowbreak(squared\_norms)} & Diagonal matriks kernel, $K_{ii}$, tanpa membentuk seluruh matriks. \\
+		\texttt{\_resolve\_gamma(X)} & Mengubah \texttt{"scale"} dan \texttt{"auto"} menjadi nilai $\gamma$ numerik. \\
+		\texttt{\_box\_limits(y)} & Batas atas $C_i$ tiap titik dari \texttt{class\_weight} (\texttt{None}, \texttt{"balanced"}, atau kamus). \\
+		\texttt{\_check\_fitted()} & Melempar \texttt{RuntimeError} jika \texttt{predict} dipanggil sebelum \texttt{fit}. \\
+		\texttt{\_as\_matrix(X)} & Mengubah masukan menjadi larik \texttt{float64} \textit{contiguous} dan menolak \texttt{NaN} atau tak hingga. \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+	\centering
+	\caption{Fungsi pembangun fitur dan bobot (\texttt{src/kaggle/booking\_features.py})}
+	\label{tab:svm-fitur-fungsi}
+	\small
+	\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.8cm} Y}
+		\toprule
+		\textbf{Fungsi} & \textbf{Deskripsi} \\
+		\midrule
+		\texttt{load\_data(data\_dir)} & Membaca \texttt{train.csv} dan \texttt{test.csv} dengan \texttt{id} sebagai teks. \\
+		\texttt{clean(train)} & Membuang kolom \texttt{id} lalu baris duplikat (data latih saja). \\
+		\texttt{add\_booking\_dates(df)} & Menambahkan \texttt{arr\_ord} (hari sejak 2023-01-01), \texttt{book\_ord} (\texttt{arr\_ord} dikurangi \textit{lead time}), dan \texttt{arr\_dow} (hari dalam minggu). \\
+		\texttt{impute\_and\_flag(train, other)} & Imputasi median atau modus yang dipelajari dari data latih, dan penanda \texttt{missing\_*} untuk setiap kolom yang punya nilai kosong di data latih. \\
+		\texttt{sibling\_pairs(reference, query, same)} & Mencari saudara tiap baris \texttt{query} pada \texttt{reference} (kunci keras, toleransi, kolom lunak) beserta bobot kedekatan \textit{lead time}. \\
+		\texttt{shared\_neighbour\_weights(...)} & Mengalikan bobot pasangan dengan akar indeks Jaccard antar-himpunan saudara. \\
+		\texttt{build\_features(train, labels, other, shared\_neighbours)} & Membangun seluruh fitur: tanggal, imputasi, fitur saudara (\texttt{sib\_te}, \texttt{sib\_n}) secara \textit{out-of-fold}, lama menginap, dan \textit{one-hot}. Kolom \texttt{other} disejajarkan dengan kolom data latih. \\
+		\texttt{standardize(train, other)} & Transformasi akar, logit, dan $\log(1+x)$ pada tiga kolom, lalu \textit{z-score}; kolom dengan simpangan baku nol dibuang. Mengembalikan nama kolom. \\
+		\texttt{laplacian\_gram(A, B, scale)} & Matriks kernel Laplacian $\exp(-\lVert a-b\rVert_1/L)$ untuk penghitungan bobot fitur. \\
+		\texttt{feature\_weights(X, y, scale)} & Bobot fitur AGOP diagonal (Persamaan~\eqref{eq:svm-nystrom}--\eqref{eq:svm-bobot}). \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+Konstanta yang dipakai pembangun fitur dan bobot ditunjukkan pada Tabel~\ref{tab:svm-konstanta}.
+
+\begin{table}[H]
+	\centering
+	\caption{Konstanta pada \texttt{booking\_features.py}}
+	\label{tab:svm-konstanta}
+	\small
+	\begin{tabularx}{\textwidth}{l c Y}
+		\toprule
+		\textbf{Konstanta} & \textbf{Nilai} & \textbf{Arti} \\
+		\midrule
+		\texttt{LEAD\_TOLERANCE} & 10 & Selisih \textit{lead time} paling besar antara dua saudara (hari). \\
+		\texttt{RATE\_TOLERANCE} & 0,05 & Selisih tarif paling besar, sebagai pecahan dari tarif yang lebih besar. \\
+		\texttt{MISSING\_LEAD\_WEIGHT} & 0,1 & Bobot pasangan jika salah satu \textit{lead time} kosong. \\
+		\texttt{INNER\_FOLDS} & 5 & Jumlah kelompok acak untuk fitur saudara \textit{out-of-fold}. \\
+		\texttt{CENTRES} & 1.500 & Jumlah pusat Nystr\"om untuk bobot fitur. \\
+		\texttt{GRADIENT\_ROWS} & 4.000 & Jumlah baris untuk menghitung gradien. \\
+		\texttt{RIDGE} & 0,3 & Kekuatan regularisasi $\lambda$ pada Persamaan~\eqref{eq:svm-nystrom}. \\
+		\texttt{ROUNDS} & 2 & Jumlah putaran pembaruan bobot. \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+\subsubsection{Struktur Kelas dan Fungsi Model \textit{Submission}}
+Model \textit{submission} berada pada dua berkas baru: \nolinkurl{src/algoritma/svm/l2_svm.py} (NumPy) dan \nolinkurl{src/kaggle/kernel_learning.py} (NumPy dan SciPy). Alurnya dijalankan oleh notebook \nolinkurl{src/kaggle/svm_kaggle_notebook.ipynb} yang dibangun dari \nolinkurl{src/kaggle/build_svm_kaggle.py}. Tabel~\ref{tab:svm-fungsi-l2} dan~\ref{tab:svm-fungsi-kl} merangkum fungsinya dan Tabel~\ref{tab:svm-konstanta-baru} konstantanya.
+
+\begin{table}[H]
+	\centering
+	\caption{Deskripsi kelas dan fungsi L2-SVM (\texttt{src/algoritma/svm/l2\_svm.py})}
+	\label{tab:svm-fungsi-l2}
+	\small
+	\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.8cm} Y}
+		\toprule
+		\textbf{Fungsi/Metode} & \textbf{Deskripsi} \\
+		\midrule
+		\texttt{hamming\_gram(A, B, weights, mixture)} & Matriks kernel Persamaan~\eqref{eq:svm-kernel-termometer} antara baris bit \texttt{A} dan \texttt{B}. Jarak Hamming berbobot dihitung dari satu perkalian matriks (BLAS), berbeda dengan jarak L1 per kolom pada \texttt{svm.py}. \\
+		\texttt{blocked\_gram(A, B, weights, mixture)} & Memanggil \texttt{hamming\_gram} per 1.500 baris \texttt{A} (\texttt{BLOCK\_ROWS}) agar memori sementara terbatas, lalu menyusun matriks \texttt{float32}. \\
+		\texttt{conjugate\_gradient(multiply, rhs, x, tol, max\_iter)} & \textit{Conjugate gradient} \cite{hestenes1952cg} dari tebakan awal \texttt{x} untuk beberapa ruas kanan sekaligus (satu kolom satu sistem). Berhenti jika untuk setiap kolom kuadrat norma sisa lebih kecil daripada $\texttt{tol}^2$ kali kuadrat norma ruas kanan. \\
+		\texttt{L2SVM.\_\_init\_\_(...)} & Menyimpan bobot kernel (\texttt{weights}), campuran (\texttt{mixture}), regularisasi $\lambda$ (\texttt{reg}), jenis \textit{loss} (\texttt{"squared\_hinge"} atau \texttt{"least\_squares"}), \texttt{tol} CG ($10^{-5}$), \texttt{cg\_iter} (500), dan \texttt{max\_iter} Newton (30). \\
+		\texttt{fit(X, y, gram)} & Memetakan label ke $\pm 1$, membentuk matriks kernel penuh (atau memakai \texttt{gram}), lalu iterasi Newton Persamaan~\eqref{eq:svm-newton} dengan dua sistem diselesaikan sekaligus. Menyimpan \texttt{support\_}, \texttt{support\_vectors\_} (bit), \texttt{dual\_coef\_} ($\beta_i$), dan \texttt{intercept\_}. \\
+		\texttt{decision\_function(X)} & Skor $f(x)$, dihitung per 1.500 baris terhadap \textit{support vector} saja. \\
+		\texttt{predict(X, threshold)} & Mengembalikan kelas positif jika skor lebih besar dari \texttt{threshold} (bawaan 0). \\
+		\texttt{save(path)}, \texttt{load(path)} & Menyimpan dan memuat objek dengan \texttt{pickle}. \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+	\centering
+	\caption{Deskripsi fungsi pembelajaran kernel (\texttt{src/kaggle/kernel\_learning.py})}
+	\label{tab:svm-fungsi-kl}
+	\small
+	\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.8cm} Y}
+		\toprule
+		\textbf{Fungsi/Kelas} & \textbf{Deskripsi} \\
+		\midrule
+		\texttt{\_thresholds(values)} & Ambang satu kolom: titik tengah nilai unik jika paling banyak 128 nilai unik, selain itu titik kuantil yang digeser ke titik tengah dengan nilai unik berikutnya. \\
+		\texttt{\_bin\_centres(values, cuts)} & Rata-rata nilai pada tiap kelompok antar-ambang (kelompok kosong diinterpolasi), dipakai untuk $g_k$. \\
+		\texttt{thermometer(train, other, feature\_weight)} & Mengubah kolom data latih dan data lain menjadi bit, dan menghitung bobot awal per bit. Kolom dengan simpangan baku nol dilewati. Mengembalikan bit latih, bit lain, bobot awal, dan nama bit. \\
+		\texttt{\_cholesky\_solve(factor, rhs)} & Menyelesaikan $LL^{\top}x = \text{rhs}$ dengan dua penyelesaian segitiga (\texttt{scipy.linalg.solve\_triangular}). \\
+		\texttt{\_Adam.direction(gradient, step, eps)} & Arah pembaruan Adam \cite{kingma2015adam} dengan koreksi bias ($\beta_1 = 0{,}9$, $\beta_2 = 0{,}99$). \\
+		\texttt{learn\_kernel(X, y, start, seed, steps)} & Pembelajaran kernel: 100 langkah Cholesky dan \textit{adjoint}, lalu mengembalikan bobot tiap komponen, campuran, dan $\lambda$ hasil rata-rata 40 langkah terakhir. \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+	\centering
+	\caption{Konstanta pada \texttt{kernel\_learning.py} dan \texttt{l2\_svm.py}}
+	\label{tab:svm-konstanta-baru}
+	\small
+	\begin{tabularx}{\textwidth}{l c Y}
+		\toprule
+		\textbf{Konstanta} & \textbf{Nilai} & \textbf{Arti} \\
+		\midrule
+		\texttt{BINS} & 128 & Batas nilai unik untuk ambang titik tengah, dan jumlah kelompok kuantil. \\
+		\texttt{SCALE} & 20 & Skala $L$ pada bobot awal (dipakai juga oleh bobot AGOP). \\
+		\texttt{MIN\_WEIGHT} & 0,05 & Bobot AGOP terkecil yang dipakai pada bobot awal. \\
+		\texttt{FIT\_ROWS}, \texttt{HOLD\_ROWS} & 4.000; 3.000 & Ukuran himpunan $A$ dan $B$ pada tiap langkah. \\
+		\texttt{STEPS} & 100 & Jumlah langkah Adam; 40 langkah terakhir dirata-ratakan. \\
+		\texttt{LEARNING\_RATE} & 0,07 & Laju pada $\log w$. \\
+		\texttt{MIX\_RATE}, \texttt{REG\_RATE} & 0,03; 0,02 & Laju pada $\log a$ dan $\log \lambda$. \\
+		\texttt{START\_SCALES} & 0,9; 2,5 & Pengali $c_m$ bobot awal tiap komponen. \\
+		\texttt{START\_NOISE} & 0,5 & Simpangan baku derau pada $\log w$ awal. \\
+		\texttt{START\_REG} & 0,6 & Regularisasi awal $\lambda$. \\
+		\texttt{CHANGE\_TOL} & $2 \times 10^{-4}$ & Pecahan titik yang boleh berganti keanggotaan $S$ pada kriteria berhenti Newton. \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+\subsubsection{\textit{Source Code}}
+Nomor baris yang disebut pada teks adalah nomor baris di dalam masing-masing potongan kode (dimulai dari 1), bukan nomor baris pada berkas aslinya.
+
+Kode~\ref{lst:svm-fit} adalah \texttt{fit}. Label dipetakan ke $\pm 1$ dengan kelas berlabel lebih besar (\texttt{classes\_[1]}) sebagai kelas positif, sehingga skor positif berarti kelas batal. Hanya titik dengan $\alpha > 0$ yang disimpan sebagai \textit{support vector}, dan \texttt{dual\_coef\_} menyimpan $\alpha_i y_i$ yang langsung dipakai pada Persamaan~\eqref{eq:svm-decision}.
+
+\kode{../../src/algoritma/svm/svm.py}{59}{78}{Metode \texttt{fit}: validasi, pemetaan label, SMO, dan penyimpanan \textit{support vector}}{lst:svm-fit}
+
+Kode~\ref{lst:svm-l1} dan~\ref{lst:svm-gram} menghitung matriks kernel. Jarak L1 dihitung per kolom fitur: untuk $d = 46$ kolom, satu matriks berukuran $|A| \times |B|$ ditambahkan per kolom, sehingga memori hanya $O(|A||B|)$ dan bukan $O(|A||B|d)$. Kernel \textit{linear}, \textit{polynomial}, dan \textit{Gaussian} memakai perkalian matriks \texttt{A @ B.T} yang dioptimalkan BLAS; pada \textit{Gaussian} jarak kuadrat dihitung dari $\lVert a\rVert^2 + \lVert b\rVert^2 - 2a\cdot b$ lalu dipotong ke nol untuk menghindari nilai negatif kecil akibat pembulatan.
+
+\kode{../../src/algoritma/svm/svm.py}{16}{22}{Jarak L1 per kolom fitur}{lst:svm-l1}
+
+\kode{../../src/algoritma/svm/svm.py}{177}{195}{Matriks kernel dan diagonalnya untuk keempat kernel}{lst:svm-gram}
+
+Kode~\ref{lst:svm-smo-a} adalah awal SMO. Larik \texttt{score}, \texttt{can\_rise}, dan \texttt{can\_fall} berturut-turut adalah $s$, $I_{\text{naik}}$, dan $I_{\text{turun}}$ pada Persamaan~\eqref{eq:svm-score} dan \eqref{eq:svm-indeks}. Pada $\alpha = 0$, \texttt{can\_rise} adalah titik berlabel $+1$ dan \texttt{can\_fall} berlabel $-1$. Setiap iterasi memilih $i$ (baris~10), menghentikan pelatihan jika $m - M < \tau$ (baris~13), lalu memilih $j$ dengan kenaikan $g_t^2/a_{it}$ terbesar (baris~19--23) sesuai Persamaan~\eqref{eq:svm-pasangan}. Baris kernel $i$ diambil dari \textit{cache}.
+
+\kode{../../src/algoritma/svm/svm.py}{117}{139}{SMO: inisialisasi, kriteria berhenti, dan pemilihan pasangan orde kedua}{lst:svm-smo-a}
+
+Kode~\ref{lst:svm-smo-b} menerapkan Persamaan~\eqref{eq:svm-update}: langkah dipotong ke ruang yang tersisa dalam kotak (baris~3--6), kedua $\alpha$ digerakkan ke arah yang menjaga $\sum\alpha_k y_k = 0$, skor seluruh titik diperbarui dengan selisih dua baris kernel (baris~10), dan keanggotaan himpunan indeks kedua titik dihitung ulang. Per iterasi hanya dua baris kernel yang diperlukan, dan seluruh operasi lain berupa operasi vektor sepanjang $n$.
+
+\kode{../../src/algoritma/svm/svm.py}{141}{159}{SMO: langkah, pemotongan ke kotak, dan pembaruan skor}{lst:svm-smo-b}
+
+Kode~\ref{lst:svm-smo-c} menangani kasus \texttt{max\_iter} tercapai sebelum konvergen (peringatan, model tetap dipakai) lalu menghitung bias dari rata-rata \textit{free support vector}, dan memuat fungsi \texttt{\_move}.
+
+\kode{../../src/algoritma/svm/svm.py}{161}{175}{SMO: peringatan, bias, dan \texttt{\_move}}{lst:svm-smo-c}
+
+Kode~\ref{lst:svm-agop} adalah penghitungan bobot fitur. Setiap putaran membentuk $K_{XZ}^{\top}K_{XZ}$ dan $K_{XZ}^{\top}t$ per blok (baris~10--13), menyelesaikan sistem Nystr\"om (baris~14--16), menghitung gradien Persamaan~\eqref{eq:svm-gradien} per fitur (baris~19--23), lalu memperbarui bobot menurut Persamaan~\eqref{eq:svm-bobot} (baris~24--25). Dua generator acak ber-\textit{seed} tetap (0 untuk pusat dan 1 untuk baris gradien) membuat hasilnya \textit{reproducible}.
+
+\kode{../../src/kaggle/booking_features.py}{174}{199}{Bobot fitur AGOP diagonal dengan model pengganti Nystr\"om}{lst:svm-agop}
+
+Kode untuk model \textit{submission} berikut berasal dari \texttt{kernel\_learning.py} dan \texttt{l2\_svm.py}. Kode~\ref{lst:svm-ambang} menentukan ambang termometer (baris~4 untuk kolom dengan paling banyak 128 nilai unik, baris~5--8 untuk kuantil), dan Kode~\ref{lst:svm-termometer} membentuk bit (baris~15--16) dan bobot awal (baris~11 dan 17). Bobot awal sebanding dengan $\max(w_f^{\text{AGOP}}, 0{,}05)/(L s_f)$ dan selisih rata-rata antar-kelompok pada baris~14.
+
+\kode{../../src/kaggle/kernel_learning.py}{26}{33}{Ambang termometer satu kolom}{lst:svm-ambang}
+
+\kode{../../src/kaggle/kernel_learning.py}{44}{63}{Kode termometer dan bobot awal per bit}{lst:svm-termometer}
+
+Kode~\ref{lst:svm-hamming} menghitung kernel Hamming berbobot: baris~5--8 membentuk $-\sum_k w_k|a_k - b_k| = 2\,(a \odot w)\cdot b - \sum_k w_k a_k - \sum_k w_k b_k$ yang berlaku karena $a_k, b_k \in \{0,1\}$, sehingga seluruh matriks jarak berasal dari satu perkalian matriks. Baris~9 membatasi eksponen paling besar nol (menghindari nilai positif kecil akibat pembulatan) dan baris~10--12 menjumlahkan komponen dengan bobot campurannya.
+
+\kode{../../src/algoritma/svm/l2_svm.py}{9}{21}{Kernel Hamming berbobot sebagai perkalian matriks}{lst:svm-hamming}
+
+Kode~\ref{lst:svm-pembelajaran} adalah awal satu langkah pembelajaran kernel: pengambilan himpunan $A$ dan $B$ (baris~2--4), matriks kernel tiap komponen (baris~9--10), Cholesky (baris~11--13), $\alpha$ dan galat \textit{holdout} Persamaan~\eqref{eq:svm-holdout} (baris~15--18), dan \textit{adjoint} Persamaan~\eqref{eq:svm-adjoint} (baris~19--20). Kode~\ref{lst:svm-pembaruan} menentukan laju dan tanda rata-rata (baris~1--2), menghitung gradien campuran (baris~6) dan gradien bobot tiap komponen (baris~7--12), lalu memperbarui parameter dengan Adam (baris~13, 17, dan 18).
+
+\kode{../../src/kaggle/kernel_learning.py}{98}{117}{Satu langkah pembelajaran kernel: sampel, Cholesky, galat \textit{holdout}, dan \textit{adjoint}}{lst:svm-pembelajaran}
+
+\kode{../../src/kaggle/kernel_learning.py}{119}{136}{Gradien bobot, campuran, dan regularisasi, lalu pembaruan Adam}{lst:svm-pembaruan}
+
+Kode~\ref{lst:svm-cg} adalah \textit{conjugate gradient} untuk beberapa kolom: baris~7 berhenti jika semua kolom sudah di bawah target, baris~9--12 melangkah sepanjang arah konjugat, dan baris~14 memperbarui arah. Kode~\ref{lst:svm-newton} adalah iterasi Newton pada \texttt{fit}: perkalian dengan $K_{SS} + \lambda I$ (baris~6--7), dua sistem CG sekaligus dari solusi sebelumnya (baris~9--10), bias dari syarat $\mathbf{1}^{\top}\beta_S = 0$ (baris~11), $\beta$ yang nol di luar $S$ (baris~12), $S$ baru dari $y_i f(x_i) < 1$ (baris~15--16), kriteria berhenti (baris~17--19), dan pembaruan $S$ (baris~20). Pada baris~13--14, versi \textit{least-squares} berhenti setelah iterasi pertama.
+
+\kode{../../src/algoritma/svm/l2_svm.py}{32}{47}{\textit{Conjugate gradient}}{lst:svm-cg}
+
+\kode{../../src/algoritma/svm/l2_svm.py}{75}{101}{L2-SVM: iterasi Newton pada himpunan titik yang melanggar margin}{lst:svm-newton}
+
+\subsubsection{Kompleksitas dan \textit{Cache}}
+\paragraph{Waktu.} Satu iterasi SMO mengerjakan beberapa operasi vektor sepanjang $n$ (pencarian $i$, $j$, dan pembaruan skor), sehingga $O(n)$, ditambah penghitungan baris kernel jika tidak ada di \textit{cache}, yaitu $O(nd)$ per baris. Total waktu adalah jumlah iterasi dikali biaya itu. Jumlah iterasi tidak memiliki batas yang rapat: pada model akhir ($n = 27.309$) SMO membutuhkan 22.302 iterasi (0,82$n$), sedangkan kernel \textit{linear} pada data yang sama dengan $C = 8$ membutuhkan 936.187 iterasi untuk hanya 6.000 baris latih (Subbab~\ref{subsec:svm-hasil}). Implementasi tidak memakai \textit{shrinking}, yaitu membuang sementara titik yang sudah pasti berada di batas, sehingga setiap iterasi tetap memeriksa seluruh $n$ titik.
+
+\paragraph{Memori dan \textit{cache}.} Menyimpan seluruh matriks kernel membutuhkan $8n^2$ byte: 5,97 GB untuk $n = 27.309$, 3,82 GB untuk data pengembangan ($n = 21.847$), dan 288 MB untuk 6.000 baris. Karena itu hanya baris yang dipakai yang disimpan dalam \textit{cache} \textit{least recently used} dengan kapasitas $\lfloor \texttt{cache\_mb}\cdot 10^6 / (8n)\rfloor$ baris. Pada model akhir (\texttt{cache\_mb=400}, $n = 27.309$), kapasitasnya 1.830 baris, atau 6,7\% dari seluruh baris. \textit{Cache} hanya memengaruhi kecepatan, bukan hasil: baris yang dihitung ulang identik dengan baris yang disimpan, dan pengujian memastikan \textit{cache} sekecil dua baris menghasilkan \texttt{n\_iter\_} dan skor yang sama persis dengan \textit{cache} besar (Subbab~\ref{subsubsec:svm-optimasi} memuat pengukuran waktunya).
+
+\paragraph{Model \textit{submission}.} Membentuk matriks kernel penuh $n \times n$ dalam \texttt{float32} membutuhkan $4n^2$ byte, yaitu 2,98 GB untuk $n = 27.309$ (tanpa \textit{cache}, berbeda dengan SMO yang hanya menyimpan baris yang dipakai). Setiap iterasi \textit{conjugate gradient} mengalikan matriks ini dengan dua vektor, sehingga $O(n^2)$ per iterasi, paling banyak 500 iterasi per langkah Newton dan 30 langkah Newton. Satu langkah pembelajaran kernel membutuhkan sekitar $10^{11}$ operasi kali-tambah (matriks kernel $4.000 \times 4.000$ dan $3.000 \times 4.000$ untuk dua komponen pada $\approx 780$ bit, gradiennya, dan Cholesky $4.000^3/3$, perkiraan dari ukuran matriks), dan ada 100 langkah. Karena jarak Hamming dihitung sebagai perkalian matriks, BLAS dapat dipakai sepenuhnya, berbeda dengan jarak L1 per kolom pada kernel Laplacian.
+
+\paragraph{Prediksi.} \texttt{decision\_function} memproses data uji per kelompok (4.096 baris, atau 256 untuk Laplacian), sehingga matriks kernel sementara paling besar $256 \times 8.662$ elemen (sekitar 17,7 MB) pada model akhir. Biaya prediksi $O(m\,n_{sv}\,d)$ untuk $m$ baris uji dan $n_{sv}$ \textit{support vector}.
+
+\subsubsection{\textit{Save} dan \textit{Load} Model}
+Paragraf ini membahas model Laplacian (tahap pertama, kelas \texttt{SVM}); model \textit{submission} dibahas di akhir subbab ini. Model disimpan dengan \texttt{pickle}: \texttt{save} menulis seluruh objek \texttt{SVM}, dan \texttt{load} membacanya kembali. Berkas berisi \textit{support vector} (\texttt{support\_vectors\_}), koefisien dual (\texttt{dual\_coef\_}), bias (\texttt{intercept\_}), $\gamma$ yang sudah dihitung (\texttt{gamma\_}), label kelas (\texttt{classes\_}), indeks \textit{support vector} (\texttt{support\_}), jumlah iterasi (\texttt{n\_iter\_}), dan hiperparameter. Model Laplacian (8.662 \textit{support vector}, 46 fitur) berukuran 3,3 MB di \nolinkurl{output/svm/svm_model.pkl}. \textit{Pickle} dipilih karena objek memuat larik dan skalar sehingga tidak perlu format khusus. Kelemahannya, \texttt{pickle.load} dapat menjalankan kode sembarang dari berkas yang dimuat, sehingga hanya berkas dari sumber tepercaya yang boleh dimuat (pada LR dipakai \texttt{.npz} yang tidak memiliki risiko ini, Subbab~\ref{subsec:lr-implementasi}).
+
+\begin{lstlisting}[caption={Contoh penyimpanan dan pemuatan model},label={lst:svm-saveload}]
+model = SVM(kernel="laplacian", gamma=1 / 20, C=2.0, tol=1e-3).fit(A * w, y)
+model.save("output/svm/svm_model.pkl")
+loaded = SVM.load("output/svm/svm_model.pkl")
+assert np.array_equal(loaded.decision_function(B * w), model.decision_function(B * w))
+\end{lstlisting}
+
+Notebook memeriksa bahwa nilai keputusan model hasil \texttt{load} identik secara bit dengan model aslinya pada model \textit{hold-out}, dan model \textit{submission} dimuat kembali dari berkas sebelum dipakai memprediksi. Ada keterbatasan yang sama seperti LR: berkas hanya menyimpan model, bukan pembangun fitur. \textit{Support vector} tersimpan dalam ruang fitur yang sudah dikalikan bobot $w$, tetapi $w$, statistik standardisasi, dan tabel saudara tidak ikut tersimpan. Untuk memprediksi data baru, \texttt{build\_features}, \texttt{standardize}, dan \texttt{feature\_weights} harus dijalankan ulang pada data latih yang sama (deterministik, sehingga hasilnya identik) lalu fitur data baru dikalikan $w$. Menyimpan $w$, rata-rata, dan simpangan baku ke berkas yang sama adalah perbaikan yang wajar, tetapi tabel saudara tetap memerlukan data latih karena fitur \texttt{sib\_te} mencari pesanan serupa di dalamnya.
+
+\paragraph{Model \textit{submission}.} Kelas \texttt{L2SVM} juga disimpan dengan \texttt{pickle} (\nolinkurl{output/svm/svm_kernel_model.pkl}). Berkas memuat \textit{support vector} dalam bentuk bit (\texttt{bool}), koefisien $\beta_i$, bias, bobot kernel, campuran, dan $\lambda$. Bobot hasil pembelajaran kernel disimpan terpisah di \nolinkurl{output/svm/kernel_weights.npz}. Notebook memakai berkas bobot itu pada pelatihan akhir, karena pembulatan \textit{floating point} dapat berbeda antar-mesin dan pembelajaran kernel berjalan 100 langkah dengan sampel acak. Notebook juga memuat kembali model sebelum dipakai memprediksi. Keterbatasannya sama dengan model Laplacian: untuk memprediksi data baru, ambang termometer harus dibentuk ulang dari data latih yang sama (\texttt{thermometer}), dan fitur saudara tetap memerlukan data latih.
+
+\subsubsection{Pengujian}
+\label{subsubsec:svm-uji}
+Pengujian ada pada \nolinkurl{test/test_svm.py}, berisi 22 metode uji (dijalankan dengan \texttt{python}\ \nolinkurl{test/test_svm.py}), semuanya lolos dalam sekitar 0,7 detik. Pengujian dibagi menjadi tujuh kelompok.
+\begin{itemize}
+	\item \textbf{Data terpisah (2).} Kernel \textit{linear} mengklasifikasikan dua gugus terpisah dengan akurasi 100\%, dan kernel \textit{Gaussian} menyelesaikan data \texttt{make\_moons} (akurasi $> 0{,}99$) yang tidak dapat diselesaikan kernel \textit{linear} ($< 0{,}95$).
+	\item \textbf{Kesesuaian dengan LIBSVM (5).} Pada 8 konfigurasi (\textit{linear} dengan dua nilai $C$, dua konfigurasi \textit{polynomial}, dua konfigurasi \textit{Gaussian}, dan dua konfigurasi \textit{Gaussian} dengan \texttt{class\_weight}) dengan \texttt{tol} $10^{-5}$, nilai keputusan pada data baru berbeda paling besar $5 \times 10^{-3}$ dari \texttt{SVC}, dan jumlah \textit{support vector} berbeda paling banyak 2. Kernel Laplacian dibandingkan dengan \texttt{SVC} yang memakai fungsi kernel dari \texttt{sklearn.metrics.pairwise.laplacian\_kernel} (batas yang sama). Dua uji lain memeriksa \texttt{gamma="scale"} dan \texttt{gamma="auto"} terhadap rumusnya.
+	\item \textbf{Kendala dual (3).} $\sum_i \alpha_i y_i = 0$ (galat paling besar $10^{-8}$), kotak batas dengan bobot kelas (positif $\le 6$, negatif $\ge -2$ untuk $C = 2$, bobot 3:1), dan \texttt{coef\_} \textit{linear} yang mereproduksi \texttt{decision\_function}.
+	\item \textbf{\textit{Cache} (1).} \textit{Cache} sekecil 0,01 MB memberi \texttt{n\_iter\_} dan skor identik dengan \textit{cache} 100 MB.
+	\item \textbf{Label (3).} Label asli (mis. teks) dikembalikan, kelas dengan urutan lebih besar adalah kelas positif, dan \texttt{threshold} yang lebih rendah menambah prediksi positif.
+	\item \textbf{Persistensi (1).} Model hasil \texttt{load} memprediksi identik.
+	\item \textbf{Validasi masukan (7).} Kernel tidak dikenal, satu kelas, lebih dari dua kelas, \texttt{NaN}, \texttt{predict} sebelum \texttt{fit}, \texttt{max\_iter} tercapai (ada peringatan, model tetap dapat dipakai), dan pelatihan yang konvergen tidak mengeluarkan peringatan.
+\end{itemize}
+Kelas \texttt{L2SVM} diuji terpisah di \nolinkurl{test/test_l2_svm.py} (5 metode uji, semuanya lolos): matriks kernel dibandingkan dengan jarak Hamming berbobot yang dihitung langsung, syarat optimal \textit{squared hinge} ($\lambda\alpha_i = y_i\max(0, 1 - y_i f(x_i))$ dan $\sum_i \alpha_i = 0$), sisa galat \textit{least-squares}, serta simpan dan muat. Modul \texttt{kernel\_learning} belum memiliki uji otomatis. Kebenarannya didukung hasil CV (Subbab~\ref{subsec:svm-validasi}). Pengujian di \nolinkurl{test/test_svm.py} memeriksa kebenaran pada data buatan berukuran 400 baris. Kesetaraan pada data sebenarnya dan pada kernel Laplacian dengan bobot fitur diperiksa pada Subbab~\ref{subsec:svm-hasil}.

@@ -1,0 +1,88 @@
+\section{Submisi Kaggle}
+\label{sec:kaggle}
+
+Submisi akhir berasal dari notebook yang masing-masing melatih satu model dari data mentah, yaitu
+\nolinkurl{src/kaggle/svm_kaggle_notebook.ipynb} untuk SVM dengan kernel yang dipelajari,
+\nolinkurl{src/kaggle/svm_notebook.ipynb} untuk SVM dengan kernel Laplacian (Subbab~\ref{sec:svm}),
+dan \nolinkurl{src/kaggle/dtl_notebook.ipynb} untuk DTL (Subbab~\ref{sec:dtl}). Prediksi model-model ini
+tidak digabung atau dirata-rata, sehingga setiap submisi berasal dari satu model \textit{from scratch}
+tanpa \textit{ensemble}.
+
+\begin{table}[H]
+	\centering
+	\caption{Submisi Kaggle akhir}
+	\label{tab:kaggle-final}
+	\begin{tabularx}{\textwidth}{l Y c c}
+		\toprule
+		\textbf{Model} & \textbf{Berkas submisi} & \textbf{CV Macro F1} & \textbf{\textit{Public score}} \\
+		\midrule
+		SVM kernel yang dipelajari & \texttt{output/svm/submission.csv} & 0,8750 & 0,87912 \\
+		SVM kernel yang dipelajari, 255 kuantil & \texttt{output/svm/submission\_b.csv} & -- & 0,87973 \\
+		SVM kernel Laplacian & \texttt{output/svm/submission\_laplacian.csv} & 0,8703 & 0,87464 \\
+		DTL C4.5 & \texttt{output/dtl/submission.csv} & 0,8672 & 0,87393 \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+Kolom CV adalah rata-rata tujuh \textit{seed} untuk SVM Laplacian dan sepuluh \textit{seed} untuk DTL. SVM dengan
+kernel yang dipelajari diukur pada satu \textit{seed} (42). Pada \textit{seed} itu SVM Laplacian mendapat 0,8716.
+Varian 255 kuantil (tiga komponen kernel, \textit{seed} pembelajaran 1) hanya diukur pada satu \textit{fold}, dengan Macro F1 0,8770
+terhadap 0,8775 untuk varian pertama, sehingga keduanya dianggap setara.
+
+\subsection{Pemilihan Submisi Final}
+
+Kaggle mengizinkan setiap tim memilih hingga tiga submisi untuk penilaian akhir pada
+\textit{private leaderboard}. Submisi utama kelompok adalah SVM dengan kernel yang dipelajari (dua varian), karena
+skor \textit{public} dan Macro F1 validasi silangnya sama-sama paling tinggi. Submisi SVM Laplacian (0,87464)
+dan DTL (0,87393) menjadi cadangan, karena selisih skor \textit{public} antarmodel masih di bawah
+variasi skor \textit{public} yang kami amati antarsubmisi DTL yang hanya berbeda
+\textit{seed} (sekitar 0,005). Semua submisi ini dapat direproduksi dari notebook masing-masing.
+
+Kelompok terdaftar di \textit{leaderboard} dengan nama tim \textit{LoopedThinkingTransformer}.
+Dengan SVM Laplacian, kelompok berada di peringkat 2 pada \textit{public leaderboard} dengan
+skor 0,87464, selisih 0,00224 dari peringkat 1 (Gambar~\ref{fig:kaggle}). Setelah submisi SVM dengan kernel yang
+dipelajari pada 24 November 2026, skor kelompok menjadi 0,87912 dan 0,87973 untuk varian 255 kuantil. Peringkat ini adalah
+posisi \textit{public leaderboard} pada saat gambar diambil; peringkat akhir ditentukan oleh
+\textit{private leaderboard} setelah kompetisi ditutup.
+
+\subsection{Riwayat Submisi DTL}
+
+Tabel~\ref{tab:kaggle-riwayat} memuat tiga versi DTL yang pernah disubmisi. Notebook versi pertama dan
+kedua sudah dihapus dari repositori setelah digantikan oleh versi akhir.
+
+\begin{table}[H]
+	\centering
+	\caption{Riwayat submisi DTL}
+	\label{tab:kaggle-riwayat}
+	\begin{tabularx}{\textwidth}{Y c}
+		\toprule
+		\textbf{Versi} & \textbf{\textit{Public score}} \\
+		\midrule
+		Pohon C4.5 dengan \textit{pruning}, fitur awal & 0,8686 \\
+		Satu pohon yang dilatih meniru \textit{ensemble} \textit{scikit-learn} (distilasi) & 0,87246 \\
+		Pohon C4.5 dengan \textit{pruning}, 46 fitur akhir (\texttt{dtl\_notebook.ipynb}) & 0,87393 \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+Versi kedua melatih satu pohon untuk meniru label dari \textit{ensemble} \textit{scikit-learn}
+\cite{breiman1996bornagain}. Pelatihannya membutuhkan \textit{ensemble} sebagai guru, dan pelatihan
+ulang dari awal tidak menghasilkan pohon yang sama di lingkungan Python yang berbeda. Versi akhir tidak
+memakai guru, dilatih langsung dengan \texttt{DTL.fit}, dan skor \textit{public}-nya justru lebih
+tinggi.
+
+\subsection{Reproduksibilitas}
+
+Kedua notebook melatih model dari data mentah, menyimpan model, memuatnya kembali, lalu memprediksi
+data uji dengan model hasil muat. Kode \texttt{dtl\_notebook.ipynb} yang dijalankan ulang menghasilkan
+\texttt{output/dtl/submission.csv} dan \texttt{output/dtl/dtl\_model.json} yang identik byte per byte
+dengan berkas di repositori (Subbab~\ref{subsec:dtl-validasi}). Berkas submisi kedua model juga identik
+dengan keluaran notebook gabungan sebelumnya (\texttt{kaggle\_final.ipynb}), yang mencatat skor
+\textit{public} pada Tabel~\ref{tab:kaggle-final}.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{kaggle.png}
+	\caption{Posisi kelompok (\textit{LoopedThinkingTransformer}) pada \textit{public leaderboard} Kaggle}
+	\label{fig:kaggle}
+\end{figure}

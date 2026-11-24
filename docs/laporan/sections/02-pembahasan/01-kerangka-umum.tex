@@ -1,0 +1,79 @@
+\section{Kerangka Umum Eksperimen}
+\label{sec:kerangka-umum}
+
+Bagian ini memuat hal yang berlaku untuk kelima algoritma: struktur kode, langkah \textit{preprocessing}
+yang dipakai bersama, serta protokol validasi dan reproduksibilitas. Rincian khusus setiap algoritma
+dibahas pada subbabnya masing-masing.
+
+\subsection{Struktur Kode dan Antarmuka}
+
+Implementasi \textit{from scratch} berada di \nolinkurl{src/algoritma/}, satu folder untuk setiap
+algoritma. Notebook, skrip submisi, dan dataset Kaggle berada di \nolinkurl{src/kaggle/}. Hasil
+\textit{run} (model tersimpan, berkas submisi, tabel, dan gambar) ditulis ke \nolinkurl{output/}, dan
+\textit{unit test} berada di \nolinkurl{test/}.
+
+Setiap kelas mengikuti antarmuka yang mirip dengan \textit{scikit-learn}: \texttt{fit(X, y)} untuk
+melatih, \texttt{predict(X)} untuk label, dan \texttt{predict\_proba(X)} untuk peluang kelas batal,
+sehingga \textit{threshold} keputusan dapat diatur di luar model. Perhitungan pada implementasi
+\textit{from scratch} memakai NumPy. Satu-satunya pengecualian adalah KNN, yang memakai fungsi jarak
+\texttt{cdist} dari SciPy. Pustaka lain, seperti pandas dan \textit{scikit-learn}, hanya dipakai di
+notebook untuk memuat data, membuat pembagian \textit{fold}, dan menjadi pembanding.
+
+\begin{table}[H]
+	\centering
+	\caption{Ringkasan implementasi algoritma}
+	\label{tab:ringkasan-implementasi}
+	\begin{tabularx}{\textwidth}{l l l Y}
+		\toprule
+		\textbf{Algoritma} & \textbf{Berkas} & \textbf{Kelas} & \textbf{Format model} \\
+		\midrule
+		KNN & \nolinkurl{knn/knn.py} & \texttt{KNN} & \textit{Pickle} bersama \textit{preprocessor} (\nolinkurl{output/knn/model.pkl}) \\
+		DTL & \nolinkurl{dtl/} (enam modul) & \texttt{DTL} & JSON (\nolinkurl{output/dtl/dtl_model.json}) \\
+		\textit{Logistic Regression} & \nolinkurl{lr/lr.py} & \texttt{LogisticRegression} & NumPy \texttt{.npz} \\
+		SVM & \nolinkurl{svm/svm.py} & \texttt{SVM} & \textit{Pickle} (\nolinkurl{output/svm/svm_model.pkl}) \\
+		\textit{Naive Bayes} & \nolinkurl{nb/nb.py}, \nolinkurl{nb/tan.py} & \texttt{NaiveBayes}, \texttt{TANNaiveBayes} & JSON \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+DTL, \textit{Logistic Regression}, SVM, dan \textit{Naive Bayes} menyediakan metode \texttt{save} dan
+\texttt{load} di kelasnya. Model KNN disimpan dengan \textit{pickle} oleh
+\nolinkurl{src/kaggle/knn_submission.py}, karena isi modelnya hanya data latih dan parameter.
+
+\subsection{\textit{Preprocessing} Bersama}
+
+Semua model memuat data dari \nolinkurl{src/kaggle/dataset/} dan membuang kolom \texttt{id} dari
+fitur. Kolom \texttt{id} hanya dipakai untuk menulis berkas submisi. Data latih berisi 27.373 baris;
+setelah duplikat dibuang tersisa 27.309 baris yang dipakai untuk pelatihan dan validasi.
+
+Setiap algoritma memiliki \textit{preprocessing} sendiri karena kebutuhannya berbeda. KNN dan SVM
+membutuhkan fitur berskala sama, DTL dapat memakai atribut kategorikal dan nilai kosong secara
+langsung, sedangkan \textit{Naive Bayes} membutuhkan tipe fitur (kategorikal atau Gaussian). DTL dan
+SVM memakai modul fitur yang sama, yaitu \nolinkurl{src/kaggle/booking_features.py}, yang berisi
+pembersihan, fitur tanggal, imputasi beserta penanda nilai kosong, fitur ``saudara'' (pemesanan lain
+yang mirip pada data latih), dan standardisasi.
+
+Pada semua algoritma, statistik \textit{preprocessing} (rata-rata, simpangan baku, modus, kategori,
+\textit{target encoding}, dan sejenisnya) hanya dihitung dari data latih, lalu diterapkan ke data
+validasi dan data uji. Saat validasi silang, statistik dihitung ulang di dalam setiap \textit{fold}.
+Data latih dan data uji tidak pernah digabungkan.
+
+\subsection{Protokol Validasi dan Reproduksibilitas}
+
+Metrik utama adalah Macro F1, sama dengan metrik kompetisi (Subbab~\ref{sec:metrik}). Validasi utama
+memakai \textit{stratified} 5-\textit{fold cross validation} dengan \textit{seed} 42. DTL,
+\textit{Logistic Regression}, dan \textit{Naive Bayes} menjalankannya pada seluruh data latih bersih,
+sedangkan KNN menjalankannya pada data \textit{development} (data latih tanpa \textit{hold-out}). SVM
+memilih kernel dan $C$ lebih dulu dengan CV 3-\textit{fold} pada sampel kecil karena biaya komputasi,
+lalu merinci konfigurasi akhirnya dengan CV 5-\textit{fold}. Untuk mengurangi pengaruh satu pembagian \textit{fold}, DTL dan SVM juga mengulang
+validasi dengan beberapa \textit{seed} (sepuluh \textit{seed} untuk DTL dan tujuh untuk SVM).
+
+Untuk analisis yang membutuhkan satu model tetap, misalnya perbandingan dengan \textit{scikit-learn},
+analisis kesalahan, dan \textit{cost-sensitive}, KNN, \textit{Logistic Regression}, dan SVM juga
+memakai pembagian \textit{hold-out} 80:20 (21.847 baris latih dan 5.462 baris validasi). Rincian
+skema validasi setiap algoritma ada pada subbab \textit{modeling} dan validasinya.
+
+Versi pustaka dipatok di \nolinkurl{requirements.txt} (antara lain NumPy 2.5.4, pandas 3.1.1, dan
+\textit{scikit-learn} 1.9.1). Submisi Kaggle akhir direproduksi oleh
+\nolinkurl{src/kaggle/svm_notebook.ipynb} dan \nolinkurl{src/kaggle/dtl_notebook.ipynb}
+(Bagian~\ref{sec:kaggle}).

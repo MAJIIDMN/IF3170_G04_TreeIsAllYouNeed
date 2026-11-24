@@ -1,0 +1,107 @@
+\subsection{Implementasi \textit{From Scratch}}
+\label{subsec:lr-implementasi}
+
+\subsubsection{Landasan Teori}
+
+\paragraph{Model.} Untuk vektor fitur $x \in \mathbb{R}^d$, LR memodelkan peluang kelas positif (batal) sebagai
+\begin{equation}
+	p = P(y = 1 \mid x) = \sigma(w \cdot x + b), \qquad \sigma(z) = \frac{1}{1 + e^{-z}},
+	\label{eq:lr-model}
+\end{equation}
+dengan bobot $w$ dan bias $b$. Fungsi sigmoid memetakan skor linear ke rentang $(0, 1)$, sehingga keluaran LR adalah \textit{soft classification}. Label diperoleh dengan aturan $\hat{y} = 1$ jika $p \ge t$; materi kelas memakai $t = 0{,}5$ \cite{khodra-lr-what,khodra-lr-sga}, sedangkan pada tugas ini $t$ dipilih lewat validasi silang (Subbab~\ref{subsec:lr-validasi}).
+
+\paragraph{Fungsi \textit{loss}.} Parameter dicari dengan \textit{maximum likelihood estimation}, yaitu memaksimumkan \textit{log conditional likelihood} (LCL) $\sum_i [\,y_i \log p_i + (1-y_i)\log(1-p_i)\,]$ \cite{khodra-lr-sga}. Implementasi meminimumkan bentuk yang setara, yaitu rata-rata \textit{log-loss} ditambah penalti regularisasi:
+\begin{equation}
+	J(w, b) = -\frac{1}{n}\sum_{i=1}^{n} c_i\big[\,y_i \log p_i + (1-y_i)\log(1-p_i)\,\big] + \lambda\,\Omega(w),
+	\label{eq:lr-loss}
+\end{equation}
+dengan $c_i$ bobot sampel (bernilai 1 kecuali pada \textit{cost-sensitive learning}, Subbab~\ref{sec:cost-sensitive}) dan $\lambda \ge 0$ kekuatan regularisasi. Gradien suku \textit{log-loss} terhadap $w$ adalah $\frac{1}{n}\sum_i c_i(p_i - y_i)\,x_i$, yaitu negatif dari turunan LCL $\sum_i (y_i - p_i)\,x_{ij}$ pada materi kelas dibagi $n$. Karena itu meminimumkan $J$ dengan \textit{gradient descent} identik dengan \textit{gradient ascent} pada LCL.
+
+\paragraph{Regularisasi.} Penalti $\Omega(w)$ dan gradiennya ditunjukkan pada Tabel~\ref{tab:lr-penalti}. Bias $b$ tidak diregularisasi. L2 (\textit{ridge}) mengecilkan semua bobot secara halus. L1 (\textit{lasso}) mendorong sebagian bobot menjadi tepat nol sehingga sekaligus berfungsi sebagai seleksi fitur \cite{tibshirani1996lasso}. \textit{Elastic Net} menggabungkan keduanya dengan rasio $\rho$; kombinasi ini lebih stabil daripada L1 murni ketika fitur saling berkorelasi \cite{zou2005elasticnet}. Formulasi ini mengikuti \textit{scikit-learn} \cite{sklearn-lr-guide}.
+
+\begin{table}[H]
+	\centering
+	\caption{Penalti regularisasi dan gradiennya}
+	\label{tab:lr-penalti}
+	\begin{tabular}{l c c}
+		\toprule
+		\textbf{\texttt{penalty}} & $\Omega(w)$ & $\nabla_w \Omega(w)$ \\
+		\midrule
+		\texttt{None} & $0$ & $0$ \\
+		\texttt{"l2"} & $\tfrac{1}{2}\lVert w\rVert_2^2$ & $w$ \\
+		\texttt{"l1"} & $\lVert w\rVert_1$ & $\operatorname{sign}(w)$ (subgradien) \\
+		\texttt{"elasticnet"} & $\rho\lVert w\rVert_1 + \tfrac{1-\rho}{2}\lVert w\rVert_2^2$ & $\rho\operatorname{sign}(w) + (1-\rho)\,w$ \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+Fungsi $\lVert w\rVert_1$ tidak terdiferensiasi di $w_j = 0$, sehingga \textit{gradient descent} memakai subgradien $\operatorname{sign}(w_j)$ dengan $\operatorname{sign}(0) = 0$. Konsekuensinya penting: langkah subgradien hampir tidak pernah mendarat tepat di nol, sehingga bobot yang seharusnya nol hanya berosilasi di sekitarnya. Pada percobaan dengan $\lambda = 10^{-3}$, L1 menghasilkan 42 dari 100 bobot dengan $|w_j| < 0{,}01$, tetapi hanya 2 yang tepat nol. Keduanya pun bukan hasil regularisasi: kolom \texttt{lead\_bin3\_x\_Airline} dan \texttt{lead\_bin4\_x\_Airline} selalu bernilai nol (tidak ada pesanan Airline dengan \textit{lead time} di atas 30 hari), sehingga gradiennya selalu nol dan bobotnya tidak pernah bergerak dari titik awal. Bobot nol yang sebenarnya baru diperoleh dengan \textit{soft-thresholding} pada \textit{solver} IRLS-CD (Subbab~\ref{subsec:lr-bonus}).
+
+\paragraph{\textit{Gradient descent}.} Update parameter dengan \textit{learning rate} $\eta$ pada himpunan contoh $B$ adalah
+\begin{equation}
+	w \leftarrow w - \eta\Big(\frac{1}{|B|}\sum_{i \in B} c_i(p_i - y_i)\,x_i + \lambda\,\nabla_w\Omega(w)\Big), \qquad
+	b \leftarrow b - \eta\,\frac{1}{|B|}\sum_{i \in B} c_i(p_i - y_i).
+	\label{eq:lr-update}
+\end{equation}
+Pilihan $B$ menentukan variannya. \textit{Batch gradient descent} memakai seluruh $n$ contoh sehingga satu \textit{epoch} hanya berisi satu update yang stabil tetapi mahal. \textit{Stochastic gradient descent} memakai satu contoh acak per update seperti pada materi kelas \cite{khodra-lr-sga}, sehingga update murah tetapi bising. 
+\textit{Mini-batch} berada di antara keduanya: urutan data diacak setiap \textit{epoch} lalu diproses per kelompok $|B|$ contoh. Implementasi mendukung ketiganya melalui parameter \texttt{batch\_size} (\texttt{None} berarti \textit{batch} penuh, 1 berarti stokastik murni). Konfigurasi yang dipakai adalah \textit{mini-batch} dengan $|B| = 128$ dan $\eta = 0{,}1$, yaitu sekitar 170 update per \textit{epoch} pada data latih satu \textit{fold} (sekitar 21.800 baris) dan 214 update pada seluruh data latih. 
+Pelatihan berhenti setelah \texttt{n\_epochs} \textit{epoch} atau ketika perubahan $J$ antar-\textit{epoch} lebih kecil dari \texttt{tol}.
+
+\subsubsection{Struktur Kelas dan Fungsi}
+Seluruh implementasi berada pada kelas \texttt{LogisticRegression} di \nolinkurl{src/algoritma/lr/lr.py} dan hanya memakai NumPy. Tabel~\ref{tab:lr-fungsi} merangkum fungsi dan metodenya.
+
+\begin{table}[H]
+	\centering
+	\caption{Deskripsi kelas dan fungsi LR (\texttt{src/algoritma/lr/lr.py})}
+	\label{tab:lr-fungsi}
+	\small
+	\begin{tabularx}{\textwidth}{l Y}
+		\toprule
+		\textbf{Fungsi/Metode} & \textbf{Deskripsi} \\
+		\midrule
+		\texttt{sigmoid(z)} & Fungsi logistik $1/(1+e^{-z})$; $z$ dipotong ke $[-500, 500]$ agar \texttt{np.exp} tidak \textit{overflow}. \\
+		\texttt{soft\_threshold(z, t)} & Operator $\operatorname{sign}(z)\max(|z|-t, 0)$, dipakai \textit{solver} IRLS-CD. \\
+		\texttt{\_\_init\_\_(...)} & Menyimpan hiperparameter: \texttt{lr}, \texttt{n\_epochs}, \texttt{penalty}, \texttt{lam} ($\lambda$), \texttt{rho} ($\rho$), \texttt{batch\_size}, \texttt{tol}, \texttt{seed}, \texttt{class\_weight}, dan \texttt{solver} (\texttt{"sgd"} atau \texttt{"irls\_cd"}); nilai yang tidak valid ditolak dengan \texttt{ValueError}. \\
+		\texttt{\_penalty\_value(w)} & Nilai $\lambda\,\Omega(w)$ sesuai Tabel~\ref{tab:lr-penalti}. \\
+		\texttt{\_penalty\_grad(w)} & Gradien atau subgradien $\lambda\,\nabla_w\Omega(w)$. \\
+		\texttt{\_l1\_l2()} & Memecah penalti menjadi kekuatan L1 dan L2 untuk IRLS-CD. \\
+		\texttt{\_sample\_weight(y)} & Bobot $c_i$ tiap contoh dari \texttt{class\_weight} (semua 1 jika \texttt{None}). \\
+		\texttt{loss(X, y, w, b)} & Menghitung $J$ pada Persamaan~\eqref{eq:lr-loss}; $p$ dipotong ke $[10^{-15}, 1-10^{-15}]$ agar $\log 0$ tidak terjadi. Parameter $w, b$ opsional sehingga dapat dipakai untuk mengevaluasi titik lain (mis. bobot \textit{scikit-learn}). \\
+		\texttt{fit(X, y, init)} & Mengatur ulang parameter ke titik awal (nol secara bawaan, sesuai \cite{khodra-lr-sga}), lalu memanggil \textit{solver} yang dipilih. \\
+		\texttt{\_record(X, y)} & Menyimpan $J$ ke \texttt{loss\_history} dan $(w, b)$ ke \texttt{path} setiap iterasi, lalu memeriksa kriteria berhenti. \\
+		\texttt{\_fit\_sgd(X, y)} & Pelatihan \textit{batch}/\textit{mini-batch}/stokastik dengan Persamaan~\eqref{eq:lr-update}. \\
+		\texttt{\_fit\_irls\_cd(X, y)} & Pelatihan dengan IRLS + \textit{coordinate descent} (bonus, Subbab~\ref{subsec:lr-bonus}). \\
+		\texttt{predict\_proba(X)} & Peluang $P(y=1 \mid x)$ menurut Persamaan~\eqref{eq:lr-model}. \\
+		\texttt{predict(X, threshold)} & Label 1 jika peluang $\ge$ \texttt{threshold} (bawaan 0,5). \\
+		\texttt{save(path)} & Menyimpan model ke berkas \texttt{.npz}. \\
+		\texttt{load(path)} & \textit{Class method} yang membangun ulang model dari berkas \texttt{.npz}. \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+\subsubsection{\textit{Source Code}}
+Kode~\ref{lst:lr-penalti} menunjukkan nilai dan gradien penalti. Pada L1 dan \textit{Elastic Net}, \texttt{np.sign} berperan sebagai subgradien.
+
+\kode{../../src/algoritma/lr/lr.py}{69}{87}{Nilai dan gradien penalti regularisasi}{lst:lr-penalti}
+
+Kode~\ref{lst:lr-loss} menghitung fungsi \textit{loss} pada Persamaan~\eqref{eq:lr-loss}. Fungsi ini juga dipakai sebagai kriteria berhenti dan untuk membandingkan nilai $J$ dengan solusi \textit{scikit-learn}.
+
+\kode{../../src/algoritma/lr/lr.py}{105}{112}{Fungsi \textit{loss}: rata-rata \textit{log-loss} berbobot ditambah penalti}{lst:lr-loss}
+
+Kode~\ref{lst:lr-sgd} adalah \textit{loop} pelatihan. Setiap \textit{epoch}, urutan contoh diacak dengan generator ber-\textit{seed} tetap sehingga hasilnya \textit{reproducible}. Data lalu diproses per \textit{mini-batch}: galat $p_i - y_i$ (dikali bobot sampel) dipakai untuk menghitung gradien, dan $w$ serta $b$ diperbarui menurut Persamaan~\eqref{eq:lr-update}. Di akhir setiap \textit{epoch}, \texttt{\_record} mencatat $J$ pada seluruh data latih dan menghentikan pelatihan jika perubahan $J$ di bawah \texttt{tol}.
+
+\kode{../../src/algoritma/lr/lr.py}{132}{148}{\textit{Loop} pelatihan \textit{mini-batch gradient descent}}{lst:lr-sgd}
+
+Ada dua keterbatasan implementasi SGD yang perlu dicatat. Pertama, \textit{learning rate} bernilai tetap, tanpa jadwal penurunan. Akibatnya parameter tidak benar-benar berhenti di optimum dan terus bergoyang di sekitarnya sebesar noise \textit{mini-batch}. Kedua, kriteria berhenti dievaluasi pada $J$ seluruh data setiap \textit{epoch}, sehingga dengan noise tersebut perubahan $J$ jarang turun di bawah $10^{-7}$. Pada praktiknya semua konfigurasi SGD berhenti karena batas 100 \textit{epoch} (Tabel~\ref{tab:lr-cv}). Kedua keterbatasan ini menjadi motivasi \textit{solver} IRLS-CD.
+
+\subsubsection{\textit{Save} dan \textit{Load} Model}
+Model disimpan dengan \texttt{np.savez} sebagai berkas \texttt{.npz} yang berisi bobot \texttt{w}, bias \texttt{b}, dan hiperparameter yang menentukan model (\texttt{lr}, \texttt{n\_epochs}, \texttt{penalty}, \texttt{lam}, \texttt{rho}, \texttt{solver}). Format ini dipilih daripada \textit{pickle} karena hanya berisi \textit{array} numerik, sehingga \texttt{load} dapat membuka berkas dengan \texttt{allow\_pickle=False} dan tidak mengeksekusi kode apa pun saat memuat.
+
+\begin{lstlisting}[caption={Contoh penyimpanan dan pemuatan model},label={lst:lr-saveload}]
+model = LogisticRegression(penalty=None, solver="irls_cd", n_epochs=100).fit(X_train, y)
+model.save("output/lr/lr_model.npz")
+loaded = LogisticRegression.load("output/lr/lr_model.npz")
+assert np.array_equal(loaded.predict_proba(X_test), model.predict_proba(X_test))
+\end{lstlisting}
+
+Notebook dan skrip memeriksa bahwa prediksi model hasil \texttt{load} identik secara bit dengan model aslinya. Ada satu keterbatasan: berkas \texttt{.npz} hanya menyimpan model, bukan \textit{preprocessing}. Untuk memprediksi data baru, \texttt{Preprocessor} harus di-\textit{fit} ulang pada data latih yang sama. Langkah ini deterministik sehingga hasilnya identik, tetapi berkas model belum dapat dipakai berdiri sendiri. Menyimpan statistik \texttt{Preprocessor} (median, kategori, mean, dan simpangan baku) ke berkas yang sama adalah perbaikan yang wajar.

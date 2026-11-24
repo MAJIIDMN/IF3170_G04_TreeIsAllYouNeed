@@ -1,0 +1,131 @@
+% ============================================================
+% Preamble: paket, header/footer, gaya kode, dan makro bantu
+% ============================================================
+
+% ---------- Paket dasar ----------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[indonesian]{babel}
+\usepackage[a4paper,top=3cm,bottom=3cm,left=3cm,right=3cm]{geometry}
+
+% ---------- Matematika & gambar ----------
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+
+% ---------- Tabel ----------
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{etoolbox}
+
+\captionsetup{font=footnotesize}
+\newif\iftabelkecil
+\AtBeginEnvironment{table}{\tabelkeciltrue}
+\AtBeginEnvironment{longtable}{\tabelkeciltrue\footnotesize}
+\AtBeginEnvironment{tabular}{\iftabelkecil\footnotesize\fi}
+\AtBeginEnvironment{tabularx}{\iftabelkecil\footnotesize\fi}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\usepackage[table]{xcolor}
+
+% ---------- Lain-lain ----------
+\usepackage[most]{tcolorbox}
+\usepackage{forest}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{listings}
+\usepackage{hyperref}
+
+
+% ---------- Lokasi gambar ----------
+% public/figures untuk gambar khusus laporan, ../../output/* untuk hasil run program
+\graphicspath{{public/}{public/figures/}{../../output/}{../../output/eda/}{../../output/dtl/}{../../output/svm/}}
+
+% ---------- Gaya source code ----------
+\definecolor{codebg}{RGB}{248,248,248}
+\definecolor{codecomment}{RGB}{106,115,125}
+\definecolor{codekeyword}{RGB}{0,92,197}
+\definecolor{codestring}{RGB}{3,47,98}
+\lstdefinestyle{py}{
+	language=Python,
+	backgroundcolor=\color{codebg},
+	basicstyle=\ttfamily\footnotesize,
+	keywordstyle=\color{codekeyword}\bfseries,
+	commentstyle=\color{codecomment}\itshape,
+	stringstyle=\color{codestring},
+	numbers=left,
+	numberstyle=\tiny\color{gray},
+	breaklines=true,
+	frame=single,
+	rulecolor=\color{gray!40},
+	showstringspaces=false,
+	tabsize=4,
+	captionpos=b,
+}
+\lstset{style=py}
+\renewcommand{\lstlistingname}{Kode}
+\renewcommand{\lstlistlistingname}{Daftar Kode}
+
+% Sisipkan potongan source code langsung dari repo.
+% Pemakaian: \kode{../../src/algoritma/dtl/criteria.py}{6}{14}{Fungsi entropy}{lst:dtl-entropy}
+\newcommand{\kode}[5]{\lstinputlisting[firstline=#2,lastline=#3,caption={#4},label={#5}]{#1}}
+
+% ---------- Penanda bagian yang belum ditulis ----------
+% Ubah \toggletodotrue menjadi \toggletodofalse untuk menyembunyikan semua TODO saat final.
+\newif\iftoggletodo
+\toggletodotrue
+\newcommand{\todo}[1]{\iftoggletodo\textcolor{red}{\textbf{[TODO:} #1\textbf{]}}\fi}
+% Kotak pengganti gambar yang belum ada. Ganti dengan \includegraphics saat gambar tersedia.
+\newcommand{\placeholdergambar}[1]{\fbox{\parbox[c][4cm][c]{0.8\textwidth}{\centering\todo{Gambar: #1}}}}
+
+% Subsubbab ikut diberi nomor (mis. 2.3.1.2) dan daftar isi sampai level subbab
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{2}
+
+% ---------- Identitas dokumen (dipakai di cover & header) ----------
+\newcommand{\matkul}{IF3170 Inteligensi Artifisial}
+\newcommand{\judullaporan}{Laporan Tugas Besar 2: \textit{Supervised Learning}}
+\newcommand{\semester}{Semester I 2026/2027}
+\newcommand{\namakelompok}{TreeIsAllYouNeed}
+\newcommand{\nomorkelompok}{G04}
+
+% ---------- Header & footer ----------
+\setlength{\headheight}{50pt}
+\setlength{\headsep}{25pt}
+\setlength{\footskip}{28pt}
+
+\newcommand{\kepala}{%
+	\fancyhf{}%
+	\fancyhead[L]{%
+		\includegraphics[height=1.1cm]{logo-itb}\hspace{0.3cm}%
+		\includegraphics[height=1.1cm]{logo-stei}%
+	}%
+	\fancyhead[R]{%
+		\begin{minipage}{9cm}
+			\raggedleft\bfseries \matkul\\
+			\normalsize Laporan Tugas Besar 2\\
+			\itshape \semester
+		\end{minipage}%
+	}%
+	\renewcommand{\headrulewidth}{0.4pt}%
+	\fancyfoot[L]{\small Kelompok \nomorkelompok}%
+	\fancyfoot[C]{\small Halaman \thepage}%
+	\renewcommand{\footrulewidth}{0.4pt}%
+}
+\pagestyle{fancy}
+\kepala
+\fancypagestyle{plain}{\kepala}
+
+% ---------- Pemenggalan baris ----------
+% Nama fungsi/kolom panjang di \texttt boleh dipatah setelah garis bawah, dan spasi antarkata
+% boleh melebar sedikit agar tidak ada baris yang keluar margin.
+\let\oldunderscore\_
+\renewcommand{\_}{\oldunderscore\allowbreak}
+\setlength{\emergencystretch}{3em}
+
+% ---------- Hyperref ----------
+\hypersetup{colorlinks=true, linkcolor=black, citecolor=blue, urlcolor=blue}

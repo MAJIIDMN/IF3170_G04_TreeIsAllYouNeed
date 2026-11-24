@@ -1,0 +1,12 @@
+\section{\textit{K-Nearest Neighbors} (KNN)}
+\label{sec:knn}
+
+\textit{K-Nearest Neighbors} (KNN) mengklasifikasikan reservasi berdasarkan label reservasi historis yang paling dekat dalam ruang fitur. Karena prediksinya bergantung langsung pada jarak, penanganan nilai kosong, skala numerik, representasi kategori, dan pemilihan fitur menjadi bagian penting eksperimen. Implementasi \textit{from scratch} diuji menggunakan validasi silang dan dibandingkan dengan \textit{scikit-learn} pada data yang sama.
+
+Konfigurasi terpilih memakai 16 fitur, jarak Manhattan, dan $k=7$. Model mencapai Macro F1 sebesar 0,82126 pada validasi silang 5-\textit{fold} dan 0,82830 pada data \textit{holdout}. Pembahasan berikut menguraikan implementasi, keputusan \textit{preprocessing}, pemilihan model, kesesuaian dengan pustaka, serta analisis biaya kesalahan.
+
+\input{sections/02-pembahasan/02-knn/01-implementasi}
+\input{sections/02-pembahasan/02-knn/02-cleaning-preprocessing}
+\input{sections/02-pembahasan/02-knn/03-modeling-validasi}
+\input{sections/02-pembahasan/02-knn/04-hasil-perbandingan}
+\input{sections/02-pembahasan/02-knn/05-bonus}

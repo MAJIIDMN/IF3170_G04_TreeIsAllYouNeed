@@ -1,0 +1,241 @@
+\subsection{\textit{Data Cleaning} dan \textit{Preprocessing}}
+\label{subsec:svm-preprocessing}
+
+Seluruh langkah berada pada \nolinkurl{src/kaggle/booking_features.py} (Tabel~\ref{tab:svm-fitur-fungsi}) dengan urutan berikut:
+\begin{enumerate}
+	\item pembuangan duplikat (data latih saja, sebelum data dibagi),
+	\item fitur tanggal pemesanan,
+	\item imputasi dan penanda kekosongan,
+	\item pencarian saudara dan fitur saudara \textit{out-of-fold},
+	\item lama menginap dan \textit{one-hot encoding},
+	\item transformasi (akar, logit, $\log(1+x)$) dan standardisasi,
+	\item bobot fitur AGOP, lalu perkalian fitur dengan bobot (model Laplacian, tahap pertama),
+	\item kode termometer per kolom, dengan bobot AGOP sebagai titik awal bobot per bit (model \textit{submission}, Subbab~\ref{subsubsec:svm-termometer}).
+\end{enumerate}
+Langkah 1 sampai 6 sama untuk kedua model, sehingga model \textit{submission} memakai 46 fitur yang persis sama dengan model Laplacian. Hanya langkah 8 yang menggantikan langkah 7 pada model \textit{submission}, kecuali bobot AGOP yang tetap dihitung sebagai titik awal.
+Semua statistik (median, modus, kolom \textit{one-hot}, rata-rata, simpangan baku, tabel saudara, bobot fitur, ambang termometer, dan bobot kernel yang dipelajari) dipelajari dengan data latih saja, lalu diterapkan ke data validasi atau data uji \cite{slide-dataprep}. Pada validasi, seluruh rangkaian dijalankan ulang di setiap \textit{fold} hanya dari bagian latih \textit{fold} tersebut (fungsi \texttt{prepare} pada notebook). Pada \textit{submission}, rangkaian dijalankan pada seluruh 27.309 baris latih bersih dan data uji hanya ditransformasi. Label data uji tidak tersedia dan pasangan antar-baris uji tidak dipakai. Angka analisis di bawah dihitung dari 27.309 baris latih bersih kecuali disebut lain.
+
+Tabel~\ref{tab:svm-komposisi} merangkum 46 fitur akhir.
+
+\begin{table}[H]
+	\centering
+	\caption{Komposisi 46 fitur akhir}
+	\label{tab:svm-komposisi}
+	\small
+	\begin{tabularx}{\textwidth}{l c Y}
+		\toprule
+		\textbf{Kelompok} & \textbf{Jumlah} & \textbf{Isi} \\
+		\midrule
+		Numerik asli & 14 & jumlah dewasa dan anak, malam akhir pekan dan hari kerja, \texttt{needs\_parking}, \textit{lead time}, tahun, bulan, dan tanggal kedatangan, \texttt{is\_returning\_guest}, dua kolom riwayat, tarif, \texttt{special\_requests} \\
+		Tanggal pemesanan & 3 & \texttt{arr\_ord}, \texttt{book\_ord}, \texttt{arr\_dow} \\
+		Penanda kosong & 9 & \texttt{missing\_*} untuk delapan kolom asli dan \texttt{book\_ord} \\
+		Fitur saudara & 2 & \texttt{sib\_te}, \texttt{sib\_n} \\
+		Lama menginap & 2 & \texttt{nights}, \texttt{weekend\_share} \\
+		\textit{One-hot} & 16 & \texttt{meal\_package} (4), \texttt{room\_category} (7), \texttt{booking\_channel} (5) \\
+		\midrule
+		\textbf{Total} & \textbf{46} & \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+\subsubsection{Penanganan \textit{Missing Values}}
+SVM menghitung kernel dari semua fitur sekaligus sehingga tidak dapat menerima nilai kosong, dan hanya 60,9\% baris latih bersih lengkap (16.619 dari 27.309). Membuang baris akan menghilangkan 39,1\% data dan tidak mungkin pada data uji, sehingga semua nilai kosong diimputasi. Strategi: median data latih untuk kolom numerik dan modus untuk kolom kategorikal, ditambah penanda biner \texttt{missing\_<kolom>} untuk setiap kolom yang memiliki nilai kosong di data latih. Imputasi memberi baris yang kosong nilai yang tipikal pada fitur itu, dan penanda membiarkan model membedakan baris tersebut jika kekosongannya informatif (Tabel~\ref{tab:svm-missing}).
+
+\begin{table}[H]
+	\centering
+	\caption{Kolom dengan nilai kosong dan penanganannya. Persentase kosong dari data latih mentah (27.373 baris) dan data uji; tingkat batal dari data latih bersih.}
+	\label{tab:svm-missing}
+	\small
+	\begin{tabular}{l c c l}
+		\toprule
+		\textbf{Kolom} & \textbf{\% kosong} & \textbf{Tingkat batal} & \textbf{Imputasi} \\
+		& \textbf{latih / uji} & \textbf{kosong / terisi} & \\
+		\midrule
+		\texttt{special\_requests} & 9,13 / 8,66 & 40,9\% / 31,9\% & median (0) \\
+		\texttt{num\_children} & 11,09 / 10,91 & 32,8\% / 32,7\% & median (0) \\
+		\texttt{nightly\_rate\_idr} & 7,45 / 7,89 & 30,9\% / 32,9\% & median (1.644.000) \\
+		\texttt{meal\_package} & 6,43 / 6,46 & 31,9\% / 32,8\% & modus (\textit{Breakfast}) \\
+		\texttt{days\_before\_arrival} & 4,10 / 4,24 & 31,2\% / 32,8\% & median (58 hari) \\
+		\texttt{needs\_parking} & 3,95 / 3,61 & 31,2\% / 32,8\% & median (0) \\
+		\texttt{room\_category} & 3,66 / 3,54 & 34,8\% / 32,7\% & modus (\textit{Type B}) \\
+		\texttt{num\_adults} & 2,96 / 2,63 & 33,5\% / 32,7\% & median (2) \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+Hanya \texttt{special\_requests} yang tingkat batalnya berbeda jelas saat kosong (40,9\% terhadap 31,9\%, selisih 9,0 poin persentase), dan bobot AGOP penandanya (0,412) termasuk di antara penanda yang tertinggi (Tabel~\ref{tab:svm-bobot}). Selisih pada kolom lain paling besar 2,0 poin, tetapi semua kolom tetap diberi penanda karena biayanya hanya satu kolom dan bobot AGOP sendiri yang menentukan pengaruhnya. Kolom \texttt{book\_ord} (tanggal kedatangan dikurangi \textit{lead time}) otomatis kosong jika \textit{lead time} kosong, sehingga \texttt{missing\_book\_ord} dan \texttt{missing\_days\_before\_arrival} identik dan sama-sama berbobot 0,271. Dua kolom identik menggandakan pengaruh sinyal itu pada jarak; ini sisa desain yang tidak dibersihkan.
+
+Berbeda dengan LR (Subbab~\ref{subsec:lr-preprocessing}), tarif kosong diisi median global, bukan median per kanal, dan kategori kosong tidak dijadikan kategori sendiri melainkan diisi modus dengan penanda. Median kanal Complimentary adalah 0 sedangkan median global 1.644.000, sehingga 12 baris Complimentary yang tarifnya kosong mendapat tarif yang tidak wajar. Jumlahnya kecil, tetapi alternatif imputasi per kanal tidak diuji pada SVM. Pencarian saudara memakai nilai mentah sebelum imputasi, dan nilai kosong di sana diperlakukan sebagai ``cocok dengan apa pun'' (lihat bagian fitur saudara).
+
+\subsubsection{Data Duplikat dan Data Tidak Valid}
+\paragraph{Duplikat.} Data latih mentah memuat 64 baris duplikat penuh (semua fitur dan label sama, \texttt{id} berbeda), sehingga tersisa 27.309 baris. Baris ini dibuang sebelum data dibagi, karena dua alasan. Pertama, baris identik di bagian latih dan validasi membuat skor terlalu optimis. Kedua, khusus pada pipeline ini, dua baris identik pasti saling menjadi saudara dengan label yang sama, sehingga fitur saudara akan membocorkan label salah satunya ke yang lain. Data uji memuat 3 baris duplikat, tetapi tidak disentuh karena setiap baris uji harus diprediksi.
+
+\paragraph{Data tidak valid.} Tanggal kedatangan selalu valid (pembentukan tanggal tidak menghasilkan galat) dan tidak ada nilai negatif. Dua kasus dipertahankan:
+\begin{itemize}
+	\item \textbf{\texttt{num\_children}} bernilai 9 dan 10 pada 3 baris. Berbeda dengan LR, pada SVM nilai ini tidak diubah menjadi kosong. Setelah standardisasi nilai maksimumnya berada sekitar 25 simpangan baku dari rata-rata (data pengembangan). Pada jarak L1 pengaruhnya linear, bukan kuadrat, dan bobot AGOP \texttt{num\_children} hanya 0,445, tetapi tiga baris ini tidak diperiksa lebih jauh pengaruhnya pada model.
+	\item \textbf{\texttt{num\_adults} = 0} pada 106 baris dipertahankan karena pola ini masuk akal secara domain (pesanan berisi anak).
+\end{itemize}
+
+\paragraph{\textit{Outlier}.} Tidak ada nilai yang dipangkas. Tarif mencapai 9,17 juta, \textit{lead time} 448 hari, dan \texttt{prior\_completed\_bookings} 58 (36 simpangan baku di atas rata-rata). Kemiringan \texttt{prior\_cancellations} 25,9 dan \texttt{prior\_completed\_bookings} 20,1, tetapi keduanya tidak ditransformasi pada SVM. Pengaruh nilai ekstrem dibatasi oleh jarak L1 dan oleh bobot AGOP yang kecil (0,179 dan 0,431), bukan oleh pemangkasan.
+
+\subsubsection{Konstruksi Fitur dan \textit{Encoding}}
+\paragraph{Fitur tanggal dan lama menginap.} Dari tanggal kedatangan dibentuk \texttt{arr\_ord} (hari sejak 1 Januari 2023), \texttt{book\_ord} $=$ \texttt{arr\_ord} $-$ \textit{lead time} (perkiraan tanggal pesan), dan \texttt{arr\_dow} (hari dalam minggu). Ketiganya numerik berurutan sehingga langsung sesuai dengan kernel berbasis jarak. Kolom \texttt{arrival\_year}, \texttt{arrival\_month}, dan \texttt{arrival\_day} tetap dipertahankan. Fitur periode hanya sah karena data uji berasal dari periode yang sama: kedatangan pada data latih dan data uji sama-sama mencakup 1 Juli 2023 sampai 30 Desember 2024. Dua fitur lain adalah \texttt{nights} (malam akhir pekan ditambah malam hari kerja) dan \texttt{weekend\_share} (porsi akhir pekan). Bobot AGOP \texttt{book\_ord} (2,303) dan \texttt{arr\_ord} (1,919) termasuk lima tertinggi.
+
+\paragraph{\textit{Encoding}.} Kernel membutuhkan masukan numerik, sehingga tiga kolom kategorikal (\texttt{meal\_package}, \texttt{room\_category}, \texttt{booking\_channel}) di-\textit{one-hot} menjadi 16 kolom. \textit{Ordinal encoding} tidak dipakai karena memaksakan urutan dan jarak yang tidak ada. Semua level dipertahankan (tanpa membuang satu level acuan); pada SVM dengan \textit{soft margin} kolinearitas ini tidak membuat solusi tidak unik seperti pada LR tanpa penalti. Kategori yang tidak ada di data latih tidak mendapat kolom, dan kolom yang ada di data latih tetapi tidak muncul di data lain bernilai 0. Karena semua kolom \textit{one-hot} distandardisasi, ketidakcocokan kategori langka menyumbang jarak yang besar. Bobot AGOP mengimbanginya: kategori paling langka mendapat bobot terkecil, yaitu \texttt{room\_category\_Type E} (7 baris, bobot 0,027), \texttt{booking\_channel\_Airline} (88 baris, 0,075), dan \texttt{meal\_package\_Full Board} (4 baris, 0,080).
+
+\paragraph{Fitur saudara: gagasan.} Dalam data terdapat pesanan yang kemungkinan satu rombongan: tanggal kedatangan, jumlah malam, dan kanalnya sama persis, \textit{lead time} dan tarifnya hampir sama. Pesanan satu rombongan cenderung dibatalkan bersama, sehingga label pesanan lain di rombongan yang sama adalah sinyal kuat. Ini adalah dugaan struktur data, yang didukung ukuran berikut: pada pasangan baris latih dengan kunci keras yang sama, label sama pada 97,0\% pasangan jika selisih tarif 0 sampai 1\% (Tabel~\ref{tab:svm-bukti-harga}). Fitur ini dibangun dari label data latih, sehingga harus dihitung dengan hati-hati agar tidak bocor (lihat bagian anti-kebocoran di bawah).
+
+\paragraph{Kriteria saudara.} Baris $q$ (data latih atau uji) dan baris latih $r$ adalah saudara jika memenuhi semuanya (\texttt{sibling\_pairs}):
+\begin{itemize}
+	\item \textbf{kunci keras sama persis:} tahun, bulan, dan tanggal kedatangan, malam akhir pekan, malam hari kerja, dan kanal pemesanan;
+	\item \textbf{selisih \textit{lead time}} paling besar 10 hari (\texttt{LEAD\_TOLERANCE});
+	\item \textbf{selisih tarif} paling besar 5\% dari tarif yang lebih besar (\texttt{RATE\_TOLERANCE});
+	\item \textbf{kolom lunak sama atau kosong:} \texttt{room\_category}, \texttt{meal\_package}, \texttt{num\_adults}, \texttt{num\_children}, \texttt{special\_requests}, dan \texttt{needs\_parking}. Jika salah satu baris kosong pada kolom itu, kolom tersebut dianggap cocok.
+\end{itemize}
+Jika \textit{lead time} atau tarif salah satu baris kosong, syarat selisihnya dianggap terpenuhi. Pencarian memakai nilai mentah sebelum imputasi, dan untuk baris latih, baris itu sendiri tidak dihitung sebagai saudaranya.
+
+\paragraph{Toleransi 10 hari dan 5\%.} Kedua batas didukung oleh pola pada data latih. Jumlah pasangan menurut selisih \textit{lead time} turun tajam setelah 10 hari (Tabel~\ref{tab:svm-bukti-lead}), dan kecocokan label menurut selisih tarif bertahan di atas 93\% sampai 5\% lalu turun ke 86,2\% dan 72,1\% (Tabel~\ref{tab:svm-bukti-harga}). Batas 5\% dipilih dari Tabel~\ref{tab:svm-bukti-harga}, yaitu batas terakhir sebelum kecocokan jatuh. Batas 10 hari diteruskan dari fitur saudara versi awal pada DTL dan sesuai dengan penurunan pada Tabel~\ref{tab:svm-bukti-lead}. Keduanya tidak dicari ulang dengan pencarian \textit{grid} pada SVM.
+
+\begin{table}[H]
+	\centering
+	\caption{Jumlah pasangan saudara pada data latih menurut selisih \textit{lead time}}
+	\label{tab:svm-bukti-lead}
+	\small
+	\begin{tabular}{l c c c c}
+		\toprule
+		\textbf{Selisih (hari)} & 8 & 9 & 10 & 11 \\
+		\midrule
+		\textbf{Jumlah pasangan} & 2.064 & 1.449 & 863 & 83 \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\begin{table}[H]
+	\centering
+	\caption{Kecocokan label pasangan saudara pada data latih menurut selisih tarif}
+	\label{tab:svm-bukti-harga}
+	\small
+	\begin{tabular}{l c c c c c c c}
+		\toprule
+		\textbf{Selisih tarif} & 0--1\% & 1--2\% & 2--3\% & 3--4\% & 4--5\% & 5--6\% & 6--7\% \\
+		\midrule
+		\textbf{Label sama} & 97,0\% & 97,1\% & 96,8\% & 95,6\% & 93,6\% & 86,2\% & 72,1\% \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\paragraph{Bobot kedekatan dan bobot Jaccard.} Setiap pasangan diberi bobot kedekatan \textit{lead time}
+\begin{equation}
+	u_{qr} = \max\Big(0,\ 1 - \frac{|\ell_q - \ell_r|}{\texttt{LEAD\_TOLERANCE} + 1}\Big),
+\end{equation}
+yaitu 1 untuk \textit{lead time} sama dan $1/11$ untuk selisih 10 hari; jika salah satu \textit{lead time} kosong, bobotnya 0,1 (\texttt{MISSING\_LEAD\_WEIGHT}). Bobot ini lalu dikalikan akar indeks Jaccard antara himpunan saudara kedua baris,
+\begin{equation}
+	v_{qr} = u_{qr}\sqrt{\frac{|N_q \cap N_r|}{|N_q \cup N_r|}},
+\end{equation}
+dengan $N_q$ himpunan saudara $q$ ditambah $q$ sendiri (untuk baris uji, $q$ tidak ada di data latih sehingga tidak ditambahkan). Dua pesanan yang benar-benar satu rombongan memiliki himpunan saudara yang hampir sama (Jaccard mendekati 1), sedangkan pesanan ``penghubung'' yang hanya cocok longgar dengan satu pesanan lain mendapat bobot kecil. Gagasan kesamaan tetangga bersama berasal dari \cite{jarvis1973snn}. Aslinya yang dipakai adalah jumlah tetangga bersama, sedangkan di sini akar indeks Jaccard, sehingga ini adalah adaptasi.
+
+\paragraph{\textit{Target encoding} dengan \textit{smoothing}.} Dengan bobot $v_{qr}$ dan label $y_r$ pada saudara yang diperbolehkan, dibentuk dua fitur:
+\begin{equation}
+	\texttt{sib\_te}_q = \frac{\sum_{r} v_{qr}\,y_r + \bar{y}}{\sum_{r} v_{qr} + 1}, \qquad \texttt{sib\_n}_q = \sum_{r} v_{qr},
+\end{equation}
+dengan $\bar{y}$ rata-rata label data latih (0,3275). Suku $+\bar{y}$ dan $+1$ adalah \textit{smoothing} ke arah \textit{prior} dengan satu pengamatan semu \cite{micci2001target,pargent2022target}: baris tanpa saudara mendapat \texttt{sib\_te} $= \bar{y}$ dan \texttt{sib\_n} $= 0$, dan baris dengan satu saudara berbobot kecil tidak langsung bernilai 0 atau 1. \texttt{sib\_n} adalah jumlah bobot, yaitu ukuran seberapa kuat bukti saudaranya. Pada data latih, rata-rata \texttt{sib\_te} adalah 0,524 untuk pesanan yang batal dan 0,270 untuk yang tidak batal, dan \texttt{sib\_te} adalah fitur dengan bobot AGOP terbesar (3,270). Analisis hasil per wilayah (ada atau tidak ada saudara) ada pada Subbab~\ref{subsec:svm-hasil}.
+
+\kode{../../src/kaggle/booking_features.py}{80}{91}{Penyaringan saudara dan bobot kedekatan \textit{lead time}}{lst:svm-saudara}
+
+\kode{../../src/kaggle/booking_features.py}{95}{101}{Bobot Jaccard antar-himpunan saudara}{lst:svm-jaccard}
+
+\paragraph{Anti-kebocoran: \textit{out-of-fold} dan faktor 4/5.} Untuk baris latih, label baris itu sendiri tidak boleh memengaruhi fiturnya. Mengecualikan baris itu sendiri saja (\textit{leave-one-out}) tidak cukup: dalam satu rombongan, nilai fitur tiap anggota bergeser berlawanan arah dengan labelnya sendiri, sehingga model dapat membaca label dari pergeseran itu. Karena itu baris latih dibagi acak ke \texttt{INNER\_FOLDS} $= 5$ kelompok (generator ber-\textit{seed} 0), dan untuk baris latih hanya saudara dari kelompok lain yang dihitung. Baris uji atau validasi memakai semua saudara latih, karena labelnya sendiri tidak ada di data latih. Akibatnya baris latih kehilangan sekitar seperlima saudaranya, sehingga \texttt{sib\_n} untuk baris uji dikalikan $4/5$ agar skalanya sama dengan baris latih.
+
+\kode{../../src/kaggle/booking_features.py}{119}{135}{Pembagian lima kelompok dan \textit{target encoding out-of-fold}}{lst:svm-oof}
+
+Ukuran cakupan: pada data latih 39,3\% baris memiliki \texttt{sib\_n} $> 0$ (setelah pengecualian satu kelompok), sedangkan pada data uji 42,1\%. Tanpa pengecualian kelompok, 42,1\% baris latih juga memiliki saudara, hampir sama dengan data uji, sehingga selisih 39,3\% terhadap 42,1\% berasal dari pengecualian itu, bukan dari perbedaan data. Satu baris yang memiliki saudara rata-rata memiliki 11 saudara (median 3, maksimum 111). Pernyataan anti-kebocoran secara keseluruhan:
+\begin{itemize}
+	\item semua statistik dipelajari dari data latih dalam \textit{fold} yang sedang dipakai (median, modus, kolom \textit{one-hot}, rata-rata dan simpangan baku, \textit{prior} $\bar{y}$, tabel saudara, dan bobot AGOP);
+	\item fitur saudara baris latih tidak memakai label baris itu maupun label satu kelompoknya;
+	\item fitur saudara baris validasi atau uji hanya memakai label baris latih \textit{fold} itu;
+	\item pada validasi silang rangkaian dijalankan ulang di setiap \textit{fold}, sehingga tidak ada label \textit{fold} validasi yang masuk ke fitur mana pun.
+\end{itemize}
+Keterbatasan: fitur saudara hanya sah karena data uji berasal dari periode dan distribusi yang sama dengan data latih. Pada data baru yang tidak punya saudara di data latih, \texttt{sib\_te} menjadi $\bar{y}$ dan fitur ini tidak memberi informasi.
+
+\subsubsection{Normalisasi dan Standarisasi}
+Kernel menjumlahkan selisih semua fitur, sehingga fitur berskala besar mendominasi jarak. Simpangan baku mentah tarif adalah sekitar 587.593 sedangkan jumlah dewasa 0,52; tanpa penskalaan, jarak praktis hanya ditentukan tarif. Kernel \textit{polynomial} dan \textit{Gaussian} dengan \texttt{gamma="scale"} juga bergantung pada skala ini. Karena itu seluruh 46 kolom distandardisasi dengan \textit{z-score} $x' = (x - \mu)/s$, dengan $\mu$ dan $s$ dari data latih (tidak ada kolom yang dibuang karena $s > 0$ pada semua kolom). Kolom \textit{one-hot} dan penanda juga distandardisasi, berbeda dengan LR, agar semua sumbu berskala sama sebelum bobot AGOP menimbangnya.
+
+Tiga kolom ditransformasi sebelum standardisasi (Tabel~\ref{tab:svm-transformasi}) untuk mengurangi kemiringan:
+\begin{itemize}
+	\item $\sqrt{\text{lead time}}$: kemiringan 1,35 menjadi 0,33;
+	\item $\operatorname{logit}(\texttt{sib\_te})$ dengan nilai dipotong ke $[0{,}005;\ 0{,}995]$: kemiringan 1,46 menjadi 0,67; pada data latih tidak ada nilai yang terpotong (rentang 0,007 sampai 0,983);
+	\item $\log(1 + \texttt{sib\_n})$: kemiringan 3,84 menjadi 1,80.
+\end{itemize}
+
+\begin{table}[H]
+	\centering
+	\caption{Kemiringan (\textit{skewness}) kolom yang ditransformasi, pada data latih bersih setelah imputasi}
+	\label{tab:svm-transformasi}
+	\small
+	\begin{tabular}{l l c c}
+		\toprule
+		\textbf{Kolom} & \textbf{Transformasi} & \textbf{Sebelum} & \textbf{Sesudah} \\
+		\midrule
+		\texttt{days\_before\_arrival} & $\sqrt{x}$ & 1,35 & 0,33 \\
+		\texttt{sib\_te} & logit & 1,46 & 0,67 \\
+		\texttt{sib\_n} & $\log(1+x)$ & 3,84 & 1,80 \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+Standardisasi dipilih daripada \textit{min-max} karena beberapa kolom miring dan tidak terbatas di atas, sehingga satu nilai ekstrem memampatkan nilai lain. Uji varian lain pada CV 5-\textit{fold}, yaitu transformasi \textit{rank} pada tanggal dan transformasi log pada \textit{lead time} dan tarif, tidak lebih baik (0,8704 dan 0,8700 terhadap 0,8707 sampai 0,8708, Tabel~\ref{tab:svm-ablasi}), sehingga transformasi di atas dipertahankan.
+
+\subsubsection{Penanganan \textit{Imbalanced Data}}
+Kelas batal mencakup 32,75\% data latih (8.944 dari 27.309 baris). Distribusi ini tidak seimbang, tetapi tidak ekstrem. Tidak dilakukan \textit{resampling}: \textit{oversampling} menduplikasi baris, dan karena pada SVM solusinya hanya bergantung pada \textit{support vector}, menduplikasi baris setara dengan menaikkan $C$ untuk baris itu, yang dapat dilakukan langsung lewat \texttt{class\_weight}. \textit{Undersampling} membuang data dan merusak struktur saudara. Model Laplacian memakai $C$ yang sama untuk kedua kelas dan ambang keputusan 0 (bawaan). Model \textit{submission} juga tidak memakai bobot kelas, tetapi ambang keputusannya digeser ke \SVMBaruAmbang{}, dipilih dari prediksi \textit{out-of-fold} (Subbab~\ref{subsec:svm-validasi}). Angka proporsi prediksi di bawah adalah milik model Laplacian. Model memprediksi 30,1\% pesanan hold-out batal (kenyataannya 32,8\%) dan 29,8\% pesanan uji, sedikit di bawah proporsi batal sebenarnya. Pembobotan kelas dan pergeseran ambang hanya diuji pada bonus \textit{cost-sensitive} (Subbab~\ref{subsubsec:svm-cost}), dan pengaruhnya pada Macro F1 sendiri tidak diuji di bab ini.
+
+\subsubsection{\textit{Feature Selection}}
+Tidak ada fitur yang dibuang. Seleksi dilakukan secara halus lewat bobot AGOP (Subbab~\ref{subsubsec:svm-agop-teori}): fitur yang tidak memengaruhi model pengganti diperkecil pengaruhnya pada jarak. Tabel~\ref{tab:svm-bobot} menunjukkan seluruh 46 bobot pada data latih penuh.
+
+\begin{table}[H]
+	\centering
+	\caption{Bobot fitur AGOP pada seluruh data latih bersih (urut menurun, $\sum w^2 = 46$)}
+	\label{tab:svm-bobot}
+	\footnotesize
+	\begin{tabularx}{\textwidth}{r Y r r Y r}
+		\toprule
+		\textbf{\#} & \textbf{Fitur} & $w$ & \textbf{\#} & \textbf{Fitur} & $w$ \\
+		\midrule
+		1 & \texttt{sib\_\allowbreak te} & 3,270 & 24 & \texttt{missing\_\allowbreak special\_\allowbreak requests} & 0,412 \\
+		2 & \texttt{days\_\allowbreak before\_\allowbreak arrival} & 2,790 & 25 & \texttt{meal\_\allowbreak package\_\allowbreak Breakfast} & 0,404 \\
+		3 & \texttt{book\_\allowbreak ord} & 2,303 & 26 & \texttt{missing\_\allowbreak num\_\allowbreak children} & 0,396 \\
+		4 & \texttt{nightly\_\allowbreak rate\_\allowbreak idr} & 2,190 & 27 & \texttt{is\_\allowbreak returning\_\allowbreak guest} & 0,364 \\
+		5 & \texttt{arr\_\allowbreak ord} & 1,919 & 28 & \texttt{missing\_\allowbreak nightly\_\allowbreak rate\_\allowbreak idr} & 0,353 \\
+		6 & \texttt{special\_\allowbreak requests} & 1,556 & 29 & \texttt{arrival\_\allowbreak year} & 0,349 \\
+		7 & \texttt{arrival\_\allowbreak day} & 1,293 & 30 & \texttt{meal\_\allowbreak package\_\allowbreak Half Board} & 0,345 \\
+		8 & \texttt{arrival\_\allowbreak month} & 1,180 & 31 & \texttt{missing\_\allowbreak num\_\allowbreak adults} & 0,337 \\
+		9 & \texttt{sib\_\allowbreak n} & 1,131 & 32 & \texttt{missing\_\allowbreak needs\_\allowbreak parking} & 0,335 \\
+		10 & \texttt{weekend\_\allowbreak share} & 0,813 & 33 & \texttt{missing\_\allowbreak meal\_\allowbreak package} & 0,304 \\
+		11 & \texttt{booking\_\allowbreak channel\_\allowbreak Online Travel Agent} & 0,803 & 34 & \texttt{missing\_\allowbreak room\_\allowbreak category} & 0,296 \\
+		12 & \texttt{arr\_\allowbreak dow} & 0,772 & 35 & \texttt{missing\_\allowbreak book\_\allowbreak ord} & 0,271 \\
+		13 & \texttt{booking\_\allowbreak channel\_\allowbreak Offline Agent} & 0,690 & 36 & \texttt{missing\_\allowbreak days\_\allowbreak before\_\allowbreak arrival} & 0,271 \\
+		14 & \texttt{nights} & 0,662 & 37 & \texttt{room\_\allowbreak category\_\allowbreak Type C} & 0,268 \\
+		15 & \texttt{weekday\_\allowbreak nights} & 0,640 & 38 & \texttt{booking\_\allowbreak channel\_\allowbreak Corporate} & 0,253 \\
+		16 & \texttt{needs\_\allowbreak parking} & 0,625 & 39 & \texttt{room\_\allowbreak category\_\allowbreak Type D} & 0,251 \\
+		17 & \texttt{room\_\allowbreak category\_\allowbreak Type B} & 0,517 & 40 & \texttt{room\_\allowbreak category\_\allowbreak Type A} & 0,250 \\
+		18 & \texttt{num\_\allowbreak adults} & 0,493 & 41 & \texttt{booking\_\allowbreak channel\_\allowbreak Complimentary} & 0,202 \\
+		19 & \texttt{weekend\_\allowbreak nights} & 0,458 & 42 & \texttt{prior\_\allowbreak cancellations} & 0,179 \\
+		20 & \texttt{num\_\allowbreak children} & 0,445 & 43 & \texttt{room\_\allowbreak category\_\allowbreak Type F} & 0,168 \\
+		21 & \texttt{prior\_\allowbreak completed\_\allowbreak bookings} & 0,431 & 44 & \texttt{meal\_\allowbreak package\_\allowbreak Full Board} & 0,080 \\
+		22 & \texttt{meal\_\allowbreak package\_\allowbreak Room Only} & 0,414 & 45 & \texttt{booking\_\allowbreak channel\_\allowbreak Airline} & 0,075 \\
+		23 & \texttt{room\_\allowbreak category\_\allowbreak Type G} & 0,412 & 46 & \texttt{room\_\allowbreak category\_\allowbreak Type E} & 0,027 \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+Delapan fitur teratas menyumbang 82,1\% dari $\sum w^2$ dan tiga teratas (\texttt{sib\_te}, \texttt{days\_before\_arrival}, \texttt{book\_ord}) 51,7\%. Sebanyak 29 fitur berbobot di bawah 0,5 dan 13 di bawah 0,3; rasio bobot terbesar terhadap terkecil 121. Seluruh 16 kolom \textit{one-hot} hanya menyumbang 5,1\% dan seluruh 9 penanda kosong 2,2\%. Pada data pengembangan (hold-out) lima fitur teratas adalah himpunan yang sama dengan urutan sedikit berbeda (\texttt{sib\_te} 3,484; \texttt{days\_before\_arrival} 2,704; \texttt{nightly\_rate\_idr} 2,262; \texttt{book\_ord} 2,127; \texttt{arr\_ord} 1,862), sehingga bobot cukup stabil antar-subset.
+
+Dampak ke akurasi cukup jelas: bobot menaikkan Macro F1 CV 3-\textit{fold} dari 0,8384 menjadi 0,8499 pada $C = 2$ (Tabel~\ref{tab:svm-tuning-cv}) dan Macro F1 hold-out dari 0,8488 menjadi 0,8561 (Tabel~\ref{tab:svm-hasil}). Dampak ke waktu pelatihan tidak ada: tidak ada kolom yang dibuang, jarak L1 tetap dihitung pada 46 kolom, dan jumlah iterasi SMO tetap hampir sama (5.591 terhadap 5.494 iterasi pada 6.000 baris). Bobot juga tidak digunakan untuk membuang fitur di model akhir.
+
+\subsubsection{\textit{Dimensionality Reduction}}
+PCA tidak dipakai pada model akhir, tetapi diuji pada Gaussian. Pada data pengembangan PCA dengan 95\% variansi membutuhkan 33 dari 46 komponen, yaitu hanya mengurangi dimensi 28\%. Macro F1 Gaussian dengan PCA ($C = 2$) 0,8144 pada CV 3-\textit{fold} dan 0,8224 pada hold-out, lebih rendah daripada tanpa PCA (0,8161 dan 0,8244), dan waktu pelatihan tidak membaik (0,93 terhadap 0,80 detik). Ada alasan tambahan untuk tidak memakai PCA pada model terbaik: rotasi PCA mengubah jarak L1 dan menghapus makna bobot AGOP yang berlaku per sumbu fitur. Dua komponen utama pertama hanya menyimpan 15,0\% variansi (8,9\% dan 6,1\%), sehingga proyeksi PCA dua dimensi tidak cocok untuk visualisasi bidang pemisah. Bonus visualisasi (Subbab~\ref{subsubsec:svm-bidang}) memakai dua fitur asli, akar \textit{lead time} dan tarif, agar sumbunya dapat dibaca langsung.
+
+\subsubsection{Kode Termometer}
+\label{subsubsec:svm-termometer}
+Model \textit{submission} mengubah tiap kolom fitur menjadi bit ``$x > \text{ambang}$'' (rumus dan kernelnya pada Subbab~\ref{subsubsec:svm-kernel-belajar}). Ada tiga alasan memakai kode ini dan bukan standardisasi. Pertama, bobot tiap ambang dapat dipelajari, sehingga jarak pada satu fitur tidak harus linear, dan kernel dapat memberi lompatan tajam di ambang tertentu seperti pohon keputusan. Kedua, kolom \textit{one-hot} dan penanda kosong sudah biner, sehingga mereka hanya satu bit. Ketiga, nilai ekstrem tidak lagi memperbesar jarak: nilai sebesar apa pun hanya melewati ambang terakhir, seperti pada jarak L1 yang membatasi pengaruh nilai ekstrem (Subbab~\ref{subsec:svm-implementasi}). Ini adalah alasan yang masuk akal, bukan bukti. Buktinya adalah hasil CV pada Subbab~\ref{subsec:svm-validasi}.
+
+Tiga kolom ditransformasi sebelum diberi ambang dengan fungsi yang sama seperti pada standardisasi (akar \textit{lead time}, logit \texttt{sib\_te}, dan $\log(1+x)$ pada \texttt{sib\_n}). Kolom dengan paling banyak 128 nilai unik, seperti seluruh kolom biner dan kolom hitungan kecil, mendapat ambang di titik tengah antar-nilai uniknya, sehingga pengodean tidak kehilangan informasi. Kolom kontinu seperti tarif dan \textit{lead time} mendapat paling banyak 127 ambang kuantil (kuantil kembar digabung), sehingga resolusinya sekitar $1/128$ dari data. Seluruh ambang dihitung dari data latih, sehingga data validasi dan data uji hanya dibandingkan dengan ambang itu. Hasilnya sekitar \SVMBaruJumlahBit{} bit dari 46 kolom. Bobot awal tiap bit memakai bobot AGOP kolomnya (Tabel~\ref{tab:svm-bobot}), sehingga kernel awal hampir sama dengan kernel Laplacian, dan pembelajaran kernel memperbaikinya dari titik itu.

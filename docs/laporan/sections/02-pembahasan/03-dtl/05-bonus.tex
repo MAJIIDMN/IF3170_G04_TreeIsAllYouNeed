@@ -1,0 +1,108 @@
+\subsection{Bonus DTL}
+\label{subsec:dtl-bonus}
+
+Dua bonus dikerjakan untuk DTL: gambar percabangan pohon dengan parameter \textit{top-N} dan dua
+metode \textit{pruning} di luar materi kelas. Bonus \textit{cost-sensitive classification} dibahas
+terpisah pada Subbab~\ref{sec:cost-sensitive}.
+
+\subsubsection{Gambar Percabangan Pohon}
+
+Metode \texttt{DTL.plot(path, top\_n, class\_names)} menggambar pohon ke berkas gambar dengan
+Matplotlib. Pohon final memiliki 82 daun, terlalu banyak untuk dibaca dalam satu gambar, sehingga
+parameter \texttt{top\_n} membatasi jumlah percabangan (simpul internal) yang digambar.
+\texttt{top\_n=None} menggambar seluruh pohon.
+
+\paragraph{Cara memilih \textit{top-N}.} Fungsi \texttt{top\_branchings} (Kode~\ref{lst:dtl-plot})
+memilih percabangan dari akar ke bawah dengan \textit{priority queue}. Awalnya antrean hanya berisi
+akar. Setiap langkah mengambil percabangan dengan bobot contoh terbesar, menandainya untuk
+digambar, lalu memasukkan anak-anaknya yang bukan daun ke antrean. Proses berhenti setelah
+\texttt{top\_n} percabangan terpilih. Dengan cara ini, percabangan yang digambar selalu terhubung ke
+akar, dan yang diprioritaskan adalah percabangan yang dilalui pemesanan terbanyak, bukan yang
+kebetulan dangkal. Simpul yang tidak terpilih digambar sebagai kotak berwarna: garis penuh untuk daun
+dan garis putus-putus untuk subpohon yang disembunyikan.
+
+\kode{../../src/algoritma/dtl/plot.py}{8}{21}{Pemilihan \textit{top-N} percabangan}{lst:dtl-plot}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.9\textwidth]{dtl/tree_top7.png}
+	\caption{Tujuh percabangan teratas pohon final (\texttt{output/dtl/tree\_top7.png}). Kotak putih adalah percabangan, kotak berwarna adalah daun (garis penuh) atau subpohon yang disembunyikan (garis putus-putus). Setiap kotak memuat jumlah contoh dan kelas mayoritasnya.}
+	\label{fig:dtl-tree}
+\end{figure}
+
+\paragraph{Interpretasi.} Akar pohon adalah \texttt{sib\_te} $\le 0{,}47$. Sebanyak 3.964 pemesanan
+dengan \texttt{sib\_te} di atas ambang tersebut 94\% batal, sedangkan 5.793 pemesanan dengan
+\texttt{sib\_te} $\le 0{,}27$ 97\% tidak batal. Untuk pemesanan di antaranya, pemisah berikutnya
+adalah \texttt{days\_before\_arrival} $> 148{,}5$ (68\% batal), lalu kebutuhan parkir, riwayat
+pemesanan yang selesai, dan \textit{special request}. Pemesanan yang membutuhkan parkir (659 baris)
+dan tamu yang pernah menyelesaikan pemesanan (395 baris) hampir tidak pernah batal. Urutan ini sesuai
+dengan peringkat \textit{information gain} pada Subbab~\ref{subsec:dtl-fs}, dengan \texttt{sib\_te}
+dan \texttt{days\_before\_arrival} di posisi teratas. Gambar dengan 15 percabangan tersimpan di
+\nolinkurl{output/dtl/tree_top15.png}.
+
+\subsubsection{Algoritma Optimasi di Luar Materi Kelas: \textit{Pessimistic} dan \textit{Cost-Complexity Pruning}}
+
+Materi kuliah membahas \textit{reduced error pruning} dan \textit{rule post-pruning}
+\cite{slide-dtl-issues}. Kami menambahkan dua metode \textit{pruning} lain. Keduanya tidak
+menyisihkan data validasi, sehingga pohon dibangun dari seluruh data latih.
+
+\paragraph{Mengapa dapat mengoptimasi model.} \textit{Cost-complexity pruning}
+\cite{breiman1984cart} menyeimbangkan kesalahan latih dengan ukuran pohon melalui fungsi biaya
+\begin{equation}
+	R_\alpha(T) = R(T) + \alpha\,|\text{daun}(T)|
+\end{equation}
+dengan $R(T)$ jumlah contoh latih yang salah klasifikasi. Menambah daun selalu mengurangi atau
+mempertahankan $R(T)$, tetapi setiap daun dikenai biaya $\alpha$. Subpohon hanya dipertahankan jika
+setiap daun tambahannya mengurangi kesalahan lebih dari $\alpha$ contoh (Persamaan~\eqref{eq:dtl-ccp}).
+Simpul dengan $\alpha_{\text{eff}}$ terkecil disebut \textit{weakest link} dan dipangkas lebih dulu,
+sehingga cabang yang hanya menghafal segelintir contoh dibuang lebih dulu
+(Kode~\ref{lst:dtl-ccp}).
+
+\textit{Pessimistic pruning} \cite{quinlan1993c45} berangkat dari masalah lain: tingkat kesalahan
+latih di sebuah daun terlalu optimistis karena daun itu dibentuk dari data yang sama. C4.5 menggantinya
+dengan batas atas selang kepercayaan binomial: daun dengan $N$ contoh dan $E$ kesalahan dianggap
+memiliki kesalahan sebesar batas atas pada faktor kepercayaan CF. Daun kecil mendapat koreksi yang
+lebih besar daripada daun besar, sehingga subpohon yang terdiri atas banyak daun kecil cenderung kalah
+dari satu daun gabungan. Implementasinya mengikuti fungsi \texttt{AddErrs} pada kode sumber C4.5
+(Kode~\ref{lst:dtl-pessimistic}).
+
+\paragraph{Bukti perbaikan (sebelum dan sesudah).} Tabel~\ref{tab:dtl-bonus-pruning} mengambil empat
+baris dari Tabel~\ref{tab:dtl-tuning}. Semua baris memakai fitur, \textit{fold}, kedalaman 20, dan
+minimal 2 contoh per cabang yang sama.
+
+\begin{table}[H]
+	\centering
+	\caption{Pengaruh metode \textit{pruning} (5-\textit{fold}, \textit{seed} 42, \textit{threshold} 0,4)}
+	\label{tab:dtl-bonus-pruning}
+	\begin{tabular}{l c c r}
+		\toprule
+		\textbf{Metode} & \textbf{Sumber} & \textbf{Macro F1} & \textbf{Daun} \\
+		\midrule
+		Tanpa \textit{pruning} & & $0{,}8497 \pm 0{,}0048$ & 688,4 \\
+		\textit{Reduced error}, validasi 30\% & materi kelas & $0{,}8625 \pm 0{,}0025$ & 115,2 \\
+		\textit{Pessimistic}, CF = 0,03 & di luar materi & $0{,}8685 \pm 0{,}0024$ & 81,8 \\
+		\textit{Cost-complexity}, $\alpha = 2{,}5$ & di luar materi & $\mathbf{0{,}8692 \pm 0{,}0030}$ & 65,6 \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\textit{Cost-complexity pruning} menaikkan Macro F1 sebesar 0,0195 dibandingkan pohon tanpa
+\textit{pruning}, dan 0,0067 dibandingkan \textit{reduced error pruning} dari materi kelas, dengan
+pohon yang sepuluh kali lebih kecil daripada pohon tanpa \textit{pruning}. \textit{Pessimistic
+pruning} memberi hasil yang hampir sama (0,8685).
+
+\paragraph{Analisis kritis.} Keunggulan atas \textit{reduced error pruning} kemungkinan sebagian
+berasal dari jumlah data, bukan dari kriteria pemangkasan: \textit{reduced error pruning} menyisihkan
+30\% data latih, sehingga pohonnya dibangun dari lebih sedikit contoh. Notebook tidak memisahkan kedua
+faktor ini. Selisih antara \textit{pessimistic} dan
+\textit{cost-complexity} (0,0007) berada di bawah simpangan baku antar-\textit{fold}, sehingga
+keduanya tidak dapat dibedakan pada data ini. \textit{Cost-complexity} dipilih karena skornya sedikit
+lebih tinggi dan pohonnya lebih kecil. Kedua metode memiliki parameter ($\alpha$ dan CF) yang harus
+dipilih lewat validasi silang, dan Tabel~\ref{tab:dtl-tuning} menunjukkan bahwa $\alpha$ yang terlalu
+kecil (1,0) menghapus sebagian besar manfaatnya.
+
+Penalti MDL untuk ambang atribut kontinu \cite{quinlan1996continuous} juga tersedia melalui parameter
+\texttt{mdl\_penalty}. Penalti ini mengurangi \textit{gain} atribut kontinu sebesar
+$\log_2(\text{jumlah nilai berbeda} - 1) / N$ untuk mengimbangi banyaknya ambang yang dicoba. Opsi ini
+tidak dievaluasi di notebook dan tidak dipakai pada model final, sehingga tidak kami klaim sebagai
+bonus.

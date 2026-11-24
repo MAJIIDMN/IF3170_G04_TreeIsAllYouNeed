@@ -1,0 +1,100 @@
+\subsection{Hasil dan Perbandingan dengan \textit{Scikit-learn}}
+\label{subsec:nb-hasil}
+
+\subsubsection{Perbandingan dengan \textit{Scikit-learn}}
+Implementasi \textit{from scratch} dibandingkan dengan \texttt{CategoricalNB} dan \texttt{GaussianNB} milik \textit{scikit-learn} pada \textit{fold} pertama. Hanya baris yang lengkap yang dipakai (16.287 dari 21.847 baris latih dan 4.138 dari 5.462 baris validasi), karena \textit{scikit-learn} tidak menerima nilai kosong. Fitur akhir yang kategorikal dibandingkan dengan \texttt{CategoricalNB}, dan blok fitur numerik dengan \texttt{GaussianNB}.
+
+\begin{table}[H]
+	\centering
+	\caption{Perbandingan NB \textit{from scratch} dan \textit{scikit-learn} (\textit{fold} pertama, baris lengkap)}
+	\label{tab:nb-hasil}
+	\begin{tabularx}{\textwidth}{Y r r r}
+		\toprule
+		\textbf{Implementasi} & \textbf{Macro F1} & \textbf{ROC-AUC} & \textbf{Waktu fit (detik)} \\
+		\midrule
+		Fitur akhir (kategorikal): \textit{from scratch} & 0,79164 & 0,86738 & 0,00295 \\
+		Fitur akhir (kategorikal): \textit{scikit-learn} \texttt{CategoricalNB} & 0,79164 & 0,86738 & 0,00521 \\
+		\midrule
+		Fitur Gaussian: \textit{from scratch} & 0,67554 & 0,74738 & 0,00211 \\
+		Fitur Gaussian: \textit{scikit-learn} \texttt{GaussianNB} & 0,67554 & 0,74738 & 0,00380 \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+\figpenuh{nb/nb_vs_sklearn.png}{Macro F1 dan probabilitas \textit{from scratch} terhadap \textit{scikit-learn}}{fig:nb-vs-sklearn}{%
+\insightkeputusan{Probabilitas kedua implementasi identik: selisih maksimum $3{,}8 \times 10^{-15}$ untuk \texttt{CategoricalNB} dan $8{,}7 \times 10^{-15}$ untuk \texttt{GaussianNB}, sehingga Macro F1 dan ROC-AUC sama persis. Hasil ini membuktikan ketepatan implementasi, bukan keunggulan akurasi. Angkanya lebih tinggi daripada validasi silang penuh karena hanya baris lengkap yang dipakai, sehingga tidak sebanding langsung dengannya.}{Implementasi \textit{from scratch} dianggap benar.}}
+
+Selisih sebesar $10^{-15}$ berasal dari urutan operasi bilangan desimal. Agar sebanding, batas bawah variansi mengikuti \texttt{GaussianNB} (\texttt{var\_smoothing} dikali variansi terbesar antar fitur), dan jumlah kategori tiap fitur pada \texttt{CategoricalNB} diatur lewat \texttt{min\_categories}.
+
+\subsubsection{Perbandingan NB dan TAN}
+TAN memakai fitur, \textit{preprocessing}, dan \textit{threshold} yang sama dengan NB; hanya cara menghitung peluangnya yang berbeda.
+
+\begin{table}[H]
+	\centering
+	\caption{Perbandingan NB dan TAN}
+	\label{tab:nb-tan}
+	\setlength{\tabcolsep}{4pt}
+	\begin{tabular}{l r r r r r}
+		\toprule
+		& \multicolumn{2}{c}{\textbf{CV (rata-rata 4 \textit{seed})}} & \multicolumn{2}{c}{\textbf{\textit{Hold-out}}} & \\
+		\cmidrule(lr){2-3} \cmidrule(lr){4-5}
+		\textbf{Model} & \textbf{Macro F1} & \textbf{ROC-AUC} & \textbf{Macro F1} & \textbf{ROC-AUC} & \textbf{Skor Kaggle} \\
+		\midrule
+		\textit{Naive Bayes} & 0,7810 & 0,8636 & 0,7757 & 0,8584 & 0,79404 \\
+		TAN & 0,8094 & 0,9009 & 0,8155 & 0,9063 & 0,80986 \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+{\small
+\insightkeputusan{TAN lebih baik pada keempat \textit{seed}: Macro F1 naik 0,028 dan ROC-AUC naik 0,037 pada validasi silang, dan 0,040 serta 0,048 pada \textit{hold-out}. Macro F1 TAN terendah (0,8087) masih di atas Naive Bayes tertinggi (0,7823). Skor Kaggle juga menempatkan TAN di atas Naive Bayes (0,80986 dibanding 0,79404).}{TAN dipilih sebagai optimasi karena lebih baik daripada Naive Bayes biasa (Subbab~\ref{subsec:nb-bonus}).}\par}
+
+\subsubsection{Analisis Kesalahan}
+Analisis memakai prediksi \textit{out-of-fold} dari \textit{Stratified 5-Fold} (\textit{seed} 42) atas seluruh data latih, dengan \textit{threshold} masing-masing model.
+
+\begin{table}[H]
+	\centering
+	\caption{Jenis kesalahan NB dan TAN (\textit{out-of-fold})}
+	\label{tab:nb-error}
+	\begin{tabular}{l r r r r r r}
+		\toprule
+		\textbf{Model} & \textbf{FP} & \textbf{FN} & \textbf{\textit{Error rate}} & \textbf{Presisi batal} & \textbf{\textit{Recall} batal} & \textbf{Macro F1} \\
+		\midrule
+		\textit{Naive Bayes} & 2.373 & 2.804 & 0,1896 & 0,7212 & 0,6865 & 0,7821 \\
+		TAN & 2.167 & 2.369 & 0,1661 & 0,7521 & 0,7351 & 0,8104 \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+{\small
+\textbf{Insight.} TAN mengurangi kedua jenis kesalahan: FP turun dari 2.373 menjadi 2.167 dan FN dari 2.804 menjadi 2.369. Pada kedua model FN lebih banyak daripada FP, artinya model lebih sering melewatkan pembatalan daripada menuduh tamu batal padahal datang.\par}
+
+\medskip
+\figkiri{nb/nb_error_segments.png}{Sepuluh segmen dengan \textit{error rate} TAN tertinggi}{fig:nb-error-segments}{%
+\textbf{Insight.} Kesalahan terkonsentrasi pada baris yang informasinya hilang atau tidak tegas. \textit{Error rate} TAN tertinggi ada pada baris dengan \texttt{days\_before\_arrival} kosong (26,07\%) dan \texttt{special\_requests} kosong (21,65\%), yaitu komponen dua fitur yang pertama dipilih \textit{forward selection}. Lead time menengah (58 sampai 167 hari) juga sulit karena tingkat batalnya dekat batas keputusan.
+\par\smallskip
+\textbf{Implikasi.} Segmen paling mudah adalah \texttt{special\_requests} 3 (2,62\%) dan kanal \textit{Complimentary} (4,33\%). TAN paling banyak memperbaiki kanal \textit{Offline Agent} (17,53\% menjadi 10,11\%).}
+
+\figkanan{nb/nb_error_confidence.png}{\textit{Error rate} menurut kuintil jarak skor ke \textit{threshold}}{fig:nb-error-confidence}{%
+\textbf{Insight.} Kesalahan turun tajam ketika model yakin. Pada kuintil paling yakin, \textit{error rate} NB 2,20\% dan TAN 0,88\%, sedangkan pada kuintil paling ragu 36,92\% dan 40,22\%, mendekati tebakan acak.
+\par\smallskip
+\textbf{Implikasi.} Skor log odds informatif, dan baris yang dekat dengan \textit{threshold} layak ditinjau manual bila hotel ingin mengurangi keputusan yang salah.}
+
+\begin{table}[H]
+	\centering
+	\caption{\textit{Error rate} menurut jumlah fitur yang dilewati}
+	\label{tab:nb-error-kosong}
+	\begin{tabular}{l r r r r}
+		\toprule
+		\textbf{Fitur dilewati} & \textbf{Baris} & \textbf{\% batal} & \textbf{\textit{Error} NB (\%)} & \textbf{\textit{Error} TAN (\%)} \\
+		\midrule
+		0 & 20.425 & 32,19 & 17,95 & 15,93 \\
+		1 & 6.108 & 33,97 & 21,33 & 18,30 \\
+		2 & 743 & 38,22 & 27,05 & 21,40 \\
+		3 atau lebih & 33 & 30,30 & 21,21 & 15,15 \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+{\small
+\textbf{Insight.} Semakin banyak fitur yang dilewati karena nilainya kosong, semakin tinggi \textit{error rate}. Kenaikan TAN dari nol ke dua fitur (5,5 poin) lebih kecil daripada Naive Bayes (9,1 poin). Kedua model berbeda prediksi pada 14,0\% baris, dan 64,8\% kesalahan TAN juga salah pada Naive Bayes, sehingga sebagian besar kesalahan kemungkinan berasal dari batas informasi pada fitur yang ada.\par}

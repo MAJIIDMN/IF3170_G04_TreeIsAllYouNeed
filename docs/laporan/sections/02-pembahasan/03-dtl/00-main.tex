@@ -1,0 +1,26 @@
+\section{\textit{Decision Tree Learning} (C4.5)}
+\label{sec:dtl}
+
+\textit{Decision tree learning} (DTL) membangun pohon aturan ``jika-maka'' dengan memecah data secara
+rekursif pada atribut yang paling memisahkan kelas. Varian yang kami implementasikan adalah C4.5
+\cite{quinlan1993c45}: atribut dipilih dengan \textit{gain ratio}, atribut kontinu dipecah dengan
+ambang, atribut kategorikal dipecah satu cabang per kategori, dan nilai hilang ditangani dengan bobot
+pecahan. Karena pemecahannya hanya bergantung pada urutan nilai, pohon tidak memerlukan penskalaan
+fitur, tetapi mudah \textit{overfitting} jika dibiarkan tumbuh sampai murni. Implementasi kami
+menyediakan \textit{reduced error pruning} dari materi kelas \cite{slide-dtl-issues} serta
+\textit{pessimistic pruning} \cite{quinlan1993c45} dan \textit{cost-complexity pruning}
+\cite{breiman1984cart} sebagai bonus algoritma optimasi.
+
+Konfigurasi terbaik hasil \textit{stratified} 5-\textit{fold cross validation} adalah pohon C4.5
+dengan kedalaman maksimum 20, minimal 2 contoh per cabang, \textit{cost-complexity pruning}
+$\alpha = 2{,}5$, 46 fitur, dan \textit{threshold} 0,4. Konfigurasi ini mencapai Macro F1
+$0{,}8692 \pm 0{,}0030$ (rata-rata per \textit{fold}, \textit{seed} 42) dan 0,87393 pada
+\textit{public leaderboard} Kaggle. Faktor penentunya adalah \textit{pruning}: pohon yang sama tanpa
+\textit{pruning} memiliki sekitar 688 daun dan hanya mencapai 0,8497, sedangkan dengan
+\textit{pruning} pohon tinggal sekitar 66 daun.
+
+\input{sections/02-pembahasan/03-dtl/01-implementasi}
+\input{sections/02-pembahasan/03-dtl/02-cleaning-preprocessing}
+\input{sections/02-pembahasan/03-dtl/03-modeling-validasi}
+\input{sections/02-pembahasan/03-dtl/04-hasil-perbandingan}
+\input{sections/02-pembahasan/03-dtl/05-bonus}

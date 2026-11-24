@@ -1,0 +1,172 @@
+% Gambar di satu sisi (setengah halaman), teks di sisi lain.
+% \figkiri{berkas}{caption}{label}{teks}: gambar kiri, teks kanan. \figkanan: sebaliknya.
+\newcommand{\figkiri}[4]{%
+	\begin{figure}[H]
+		\centering
+		\begin{minipage}[t]{0.49\linewidth}\vspace{0pt}\centering
+			\includegraphics[width=\linewidth]{#1}
+		\end{minipage}\hfill
+		\begin{minipage}[t]{0.49\linewidth}\vspace{0pt}\small #4\end{minipage}
+		\caption{#2}
+		\label{#3}
+	\end{figure}}
+\newcommand{\figkanan}[4]{%
+	\begin{figure}[H]
+		\centering
+		\begin{minipage}[t]{0.49\linewidth}\vspace{0pt}\small #4\end{minipage}\hfill
+		\begin{minipage}[t]{0.49\linewidth}\vspace{0pt}\centering
+			\includegraphics[width=\linewidth]{#1}
+		\end{minipage}
+		\caption{#2}
+		\label{#3}
+	\end{figure}}
+% Gambar dengan dua panel atau lebih: satu kolom (sedikit lebih kecil dari lebar halaman), teks di bawahnya.
+\newcommand{\figpenuh}[4]{%
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=0.88\textwidth]{#1}
+		\caption{#2}
+		\label{#3}
+	\end{figure}
+	{\small #4\par}\medskip}
+\newcolumntype{R}{>{\raggedleft\arraybackslash}X}
+\newcommand{\insightkeputusan}[2]{\textbf{Insight.} #1\par\smallskip\textbf{Keputusan.} #2}
+
+\subsection{\textit{Data Cleaning} dan \textit{Preprocessing}}
+\label{subsec:nb-preprocessing}
+
+Setiap keputusan dinilai dengan \textit{Stratified 5-Fold}, dan seluruh statistik dipelajari ulang dari bagian latih di tiap \textit{fold}. Data latih dan uji diproses terpisah. Karena Naive Bayes menghitung $P(c)\prod_j P(x_j \mid c)$, nilai kosong boleh dilewati, kategorikal tidak perlu \textit{one-hot}, dan fitur yang saling bergantung perlu digabung atau dibuang (Gambar~\ref{fig:nb-keputusan}).
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{nb/workflow_decisions.png}
+	\caption{Keputusan \textit{preprocessing} untuk \textit{Naive Bayes}}
+	\label{fig:nb-keputusan}
+\end{figure}
+
+\subsubsection{Penanganan \textit{Missing Values}}
+Delapan dari 17 kolom memiliki nilai kosong, dan hanya 60,9\% baris yang lengkap.
+
+\figpenuh{nb/nb_missing.png}{Persentase nilai kosong dan tingkat batal}{fig:nb-missing}{%
+\insightkeputusan{Menghapus baris membuang sekitar 39\% data dan tidak mungkin dilakukan pada data uji. Hanya \texttt{special\_requests} yang kekosongannya berkaitan dengan target. Pada fitur akhir, 25,2\% baris punya setidaknya satu fitur kosong, tetapi tidak ada baris yang kehilangan seluruh fiturnya.}{Nilai kosong tidak diisi dan tidak ada baris yang dibuang. Fitur yang kosong dimarginalkan, yaitu dilewati saat menjumlahkan log \textit{likelihood}.}}
+
+\subsubsection{Data Duplikat dan Data Tidak Valid}
+Ada 64 baris duplikat identik (0,23\%) yang dibuang dari data latih. Empat baris lain memiliki fitur sama tetapi label berbeda, dan dipertahankan sebagai derau. Baris data uji tidak pernah dibuang. Nilai yang tampak ganjil diperiksa terhadap target (Tabel~\ref{tab:nb-ganjil}).
+
+\begin{table}[H]
+	\centering
+	\caption{Nilai ganjil dan tingkat batalnya}
+	\label{tab:nb-ganjil}
+	\begin{tabular}{l r r}
+		\toprule
+		\textbf{Kondisi} & \textbf{Baris} & \textbf{\% batal} \\
+		\midrule
+		\texttt{nightly\_rate\_idr} = 0 & 408 & 0,74 \\
+		\texttt{num\_adults} = 0 & 106 & 30,19 \\
+		total malam = 0 & 64 & 3,12 \\
+		total malam $\geq$ 15 & 55 & 80,00 \\
+		\texttt{special\_requests} $\geq$ 3 & 563 & 0,00 \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+{\small
+\insightkeputusan{Nilai yang ganjil membawa informasi: tarif nol hampir tidak pernah batal, total malam minimal 15 hampir selalu batal, dan seluruh baris dengan \texttt{special\_requests} minimal 3 tidak batal.}{Semua nilai ganjil dan \textit{outlier} dipertahankan karena tidak ada bukti nilainya salah. Penanganannya dirangkum pada Tabel~\ref{tab:nb-outlier}.}\par}
+
+\begin{table}[H]
+	\centering
+	\caption{Penanganan \textit{outlier}}
+	\label{tab:nb-outlier}
+	\begin{tabularx}{\textwidth}{l l Y}
+		\toprule
+		\textbf{Atribut} & \textbf{Metode} & \textbf{Alasan} \\
+		\midrule
+		\texttt{nightly\_rate\_idr} & Diskretisasi MDL & Tarif besar masuk kelompok paling atas \\
+		\texttt{days\_before\_arrival} & Kuantil (5 kelompok) & Nilai besar masuk interval teratas \\
+		\texttt{num\_children} & Dibatasi di 2 & 3 anak hanya 16 baris, 9 anak 2 baris, 10 anak 1 baris \\
+		Kolom hitungan lain & Dibatasi di batas atas & Nilai besar yang jarang digabung ke kode teratas \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+\subsubsection{Konstruksi Fitur dan \textit{Encoding}}
+Fitur kategorikal diberi kode bilangan bulat tanpa \textit{one-hot}, karena \textit{likelihood}-nya dihitung dari tabel frekuensi per kelas. Kategori dengan kurang dari 30 baris (\texttt{Full Board} dan \texttt{Type E}) digabung menjadi \texttt{lainnya}.
+
+\paragraph{Fitur numerik: Gaussian atau diskret.} Gaussian NB mengasumsikan fitur numerik berdistribusi normal di dalam kelasnya. Asumsi ini diuji pada \texttt{days\_before\_arrival} dan \texttt{nightly\_rate\_idr}.
+
+\figpenuh{nb/nb_gaussian_fit.png}{Distribusi fitur numerik per kelas dan kurva normal terpasang}{fig:nb-gaussian}{%
+\insightkeputusan{Tidak ada yang benar-benar normal. Lead time miring ke kanan (\textit{skewness} 1,308), tarif juga miring (1,179), dan transformasi log mengoreksi terlalu jauh.}{Gaussian bukan pilihan yang aman, sehingga kedua fitur didiskretisasi.}}
+
+\figpenuh{nb/nb_discretization.png}{ROC-AUC tiap skema diskretisasi}{fig:nb-diskretisasi}{%
+\insightkeputusan{Untuk lead time, diskretisasi mengalahkan Gaussian (ROC-AUC 0,8132 menjadi 0,8208 sampai 0,8228), sedangkan lebar sama paling lemah (0,8158). Untuk tarif, semua skema hampir sama (0,8205 sampai 0,8218).}{Tarif memakai diskretisasi berbasis entropi (MDL), yang menghasilkan 8 titik potong (9 kelompok) dan tidak butuh jumlah interval yang ditentukan sendiri. Lead time memakai kuantil 5 di dalam fitur gabungan agar sel gabungannya tidak terlalu jarang.}}
+
+\paragraph{Fitur gabungan.} Dua fitur yang saling bergantung dihitung dua kali oleh Naive Bayes, sehingga model terlalu yakin. Solusinya fitur gabungan (\textit{cross}), yaitu satu fitur kategorikal untuk nilai bersama dua atau tiga kolom asli. Kombinasi dengan kurang dari 30 baris berbagi satu kode.
+
+\figkiri{nb/nb_dependence.png}{Cram\'er's V antarfitur kategorikal}{fig:nb-dependence}{%
+\insightkeputusan{Pasangan paling bergantung adalah \texttt{is\_returning\_guest} dengan \texttt{prior\_completed\_bookings} (Cram\'er's V 0,932). \texttt{arrival\_year} dan \texttt{arrival\_month} bergantung sedang (0,396).}{Fitur yang sangat bergantung tidak diambil bersamaan, dan tahun serta bulan digabung menjadi periode.}}
+
+\figkanan{nb/nb_engineering.png}{Perubahan ROC-AUC saat satu fitur ditambahkan}{fig:nb-engineering}{%
+\insightkeputusan{\texttt{x\_period} menaikkan ROC-AUC dari 0,8211 ke 0,8361, dan \texttt{x\_period\_channel} mencapai 0,8402. \texttt{x\_sr\_channel} mencapai 0,8328. Gabungan yang tidak saling bergantung merugikan (\texttt{x\_nights} 0,8120).}{Dipakai periode, \texttt{x\_sr\_channel}, dan \texttt{x\_lead5\_period}.}}
+
+\subsubsection{Normalisasi dan Standarisasi}
+Standardisasi secara teori tidak mengubah prediksi Gaussian NB, tetapi batas bawah variansi (\texttt{var\_smoothing}) dihitung dari variansi terbesar antar fitur, sehingga hasilnya bergantung pada skala. Pada baris yang lengkap, Macro F1 Gaussian NB turun dari 0,6899 (data mentah) menjadi 0,3579 setelah standardisasi, dan dengan \texttt{var\_smoothing} = 0 keduanya jatuh ke 0,3579, di bawah \textit{baseline} semua-tidak-batal (0,4021). Pipeline akhir seluruhnya kategorikal, sehingga masalah ini tidak berlaku. \textbf{Keputusan:} \textit{scaling} tidak dipakai.
+
+\subsubsection{Penanganan \textit{Imbalanced Data}}
+Rasio kelas sekitar 2 banding 1. Pada Naive Bayes ketidakseimbangan masuk lewat \textit{prior} $P(c)$, sehingga ada tiga cara menanganinya tanpa data sintetis: \textit{prior} apa adanya, \textit{prior} disetarakan, atau menggeser \textit{threshold}.
+
+\figkiri{nb/nb_imbalance.png}{Macro F1 terhadap \textit{threshold} untuk dua jenis \textit{prior}}{fig:nb-imbalance}{%
+\insightkeputusan{Dengan \textit{threshold} terbaik dari \textit{fold} lain, \textit{prior} yang dipelajari dan yang disetarakan hampir sama (Macro F1 0,7815 dan 0,7821, ROC-AUC sama 0,8636), karena mengganti \textit{prior} hanya menggeser log odds dengan konstanta.}{Tanpa \textit{resampling}. \textit{Prior} dibiarkan apa adanya dan \textit{threshold} ditetapkan $-0{,}2$, sesuai rata-rata \textit{threshold} terbaik pada empat \textit{seed}.}}
+
+\subsubsection{\textit{Feature Selection}}
+Fitur yang saling berkorelasi menghitung bukti dua kali. Seleksi dilakukan dari 40 kandidat fitur dengan \textit{forward selection}, yang menambahkan satu fitur per langkah berdasarkan ROC-AUC dan berhenti ketika kenaikannya kurang dari $10^{-4}$. Filter \textit{mutual information} hanya dipakai sebagai pembanding, karena memilih banyak fitur gabungan yang berbagi lead time dan redundan satu sama lain.
+
+\begin{table}[H]
+	\centering
+	\caption{Fitur akhir hasil \textit{forward selection}}
+	\label{tab:nb-fitur}
+	\begin{tabular}{c l c}
+		\toprule
+		\textbf{Langkah} & \textbf{Fitur yang ditambahkan} & \textbf{ROC-AUC} \\
+		\midrule
+		1 & \texttt{x\_lead5\_period} & 0,7868 \\
+		2 & \texttt{x\_sr\_channel} & 0,8537 \\
+		3 & \texttt{rate\_mdl} & 0,8590 \\
+		4 & \texttt{weekend\_nights} & 0,8607 \\
+		5 & \texttt{needs\_parking} & 0,8623 \\
+		6 & \texttt{room\_category} & 0,8629 \\
+		7 & \texttt{arrival\_day} & 0,8634 \\
+		8 & \texttt{prior\_completed\_bookings} & 0,8636 \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+{\small
+\insightkeputusan{Pencarian berhenti pada delapan fitur dan ROC-AUC naik dari 0,7868 ke 0,8636. Langkah kedua paling besar, dan setelah langkah ketiga tiap fitur hanya menaikkan ROC-AUC 0,0002 sampai 0,0017.}{Delapan fitur ini dipakai.}\par}
+
+\subsubsection{\textit{Dimensionality Reduction}}
+PCA hanya berlaku untuk fitur numerik dan tidak menerima nilai kosong, sehingga diuji pada 11 fitur numerik dengan Gaussian NB memakai baris yang lengkap (18.294 dari 27.309 baris).
+
+\begin{table}[H]
+	\centering
+	\caption{Hasil PCA pada blok fitur numerik}
+	\label{tab:nb-pca}
+	\begin{tabular}{l r r}
+		\toprule
+		\textbf{Masukan} & \textbf{ROC-AUC} & \textbf{Macro F1} \\
+		\midrule
+		11 fitur asli & 0,7553 & 0,6923 \\
+		PCA 4 komponen & 0,7056 & 0,5521 \\
+		PCA 8 komponen & 0,7785 & 0,6431 \\
+		PCA 11 komponen & 0,7609 & 0,4256 \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+{\small
+\insightkeputusan{PCA 8 komponen menaikkan ROC-AUC tetapi menurunkan Macro F1. Dibutuhkan 9 dari 11 komponen untuk 90\% variansi, dan seluruh blok ini jauh di bawah pipeline akhir (ROC-AUC 0,8636, Macro F1 0,7770).}{PCA tidak dipakai.}\par}
+
+\subsubsection{Kontribusi Tiap Tahap}
+Pipeline dibangun bertahap dan tiap tahap dinilai dengan \textit{Stratified 5-Fold} yang sama.
+
+\figpenuh{nb/nb_ablation.png}{Macro F1 dan ROC-AUC per tahap preprocessing}{fig:nb-ablation}{%
+\insightkeputusan{Macro F1 naik dari 0,6926 (Gaussian pada fitur mentah) menjadi 0,7122 (hitungan sebagai kategori), 0,7253 (diskretisasi), 0,7466 (periode), 0,7702 (fitur gabungan), dan 0,7770 (seleksi fitur), sementara ROC-AUC naik dari 0,7792 ke 0,8636. Kenaikan terbesar ada pada tahap fitur gabungan.}{\textit{Preprocessing} lebih berdampak daripada pemilihan hiperparameter, sehingga seluruh tahap dipertahankan.}}
