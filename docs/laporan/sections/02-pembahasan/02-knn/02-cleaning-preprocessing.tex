@@ -1,25 +1,75 @@
 \subsection{\textit{Data Cleaning} dan \textit{Preprocessing}}
 \label{subsec:knn-preprocessing}
 
-\todo{Jelaskan \textit{pipeline} khusus KNN beserta alasan tiap langkah, dikaitkan dengan temuan EDA (Subbab~\ref{sec:eda}) dan karakteristik algoritma. Semua transformasi di-\textit{fit} pada data latih saja lalu diterapkan ke data uji \cite{slide-dataprep}.}
+\textit{Preprocessing} KNN disusun dengan mempertimbangkan sifat algoritma yang menghitung jarak antarbaris. Data awal terdiri atas 27.373 reservasi latih dan 17 atribut prediktor. Temuan eksplorasi, termasuk nilai hilang dan ketidakseimbangan kelas, dijelaskan pada Subbab~\ref{sec:eda}. Rangkaian khusus KNN diimplementasikan dalam \texttt{clean\_training\_data}, \texttt{add\_features}, dan kelas \texttt{BookingPreprocessor} pada \nolinkurl{src/kaggle/knn_submission.py}. Statistik transformasi selalu dihitung pada bagian latih dari setiap \textit{split} atau \textit{fold}, kemudian diterapkan tanpa \textit{fit} ulang pada data validasi \cite{slide-dataprep}.
 
 \subsubsection{Penanganan \textit{Missing Values}}
-\todo{KNN tidak bisa menghitung jarak dengan nilai hilang, sehingga imputasi wajib. Jelaskan strategi per kolom (median/modus/konstanta) dan alasannya.}
+Delapan atribut memiliki nilai kosong. Tiga jumlah terbesar adalah \texttt{num\_children} (3.035 baris), \texttt{special\_requests} (2.500 baris), dan \texttt{nightly\_rate\_idr} (2.038 baris). Nilai kosong harus ditangani karena perhitungan jarak tidak menerima \texttt{NaN}. Atribut numerik diimputasi dengan median dari data latih pada \textit{fold} terkait. Atribut kategorikal memakai modus. Median dipilih karena tidak mudah bergeser akibat nilai ekstrem, sementara modus mempertahankan kategori yang paling sering muncul. Data validasi dan uji memakai statistik hasil \textit{fit} yang sama, sehingga tidak terjadi kebocoran informasi dari target evaluasi.
 
 \subsubsection{Data Duplikat dan Data Tidak Valid}
-\todo{Jumlah duplikat, nilai tidak wajar, atau \textit{outlier} yang ditangani untuk KNN dan caranya. Baris data uji tidak boleh dibuang.}
+Ditemukan 64 baris duplikat berdasarkan 17 fitur asli beserta label, dengan mengabaikan \texttt{id}. Duplikat dihapus hanya dari data latih sebelum pembagian development dan \textit{holdout}, sehingga tersisa \textbf{27.309 reservasi}. Langkah ini mencegah reservasi identik memberi pengaruh berulang pada pemungutan suara tetangga. Data uji tetap utuh agar seluruh 6.844 \texttt{id} memperoleh prediksi.
+
+Pemeriksaan pada notebook tidak menemukan tanggal kedatangan tidak valid maupun nilai negatif pada jumlah anak, jumlah malam, \textit{lead time}, dan tarif kamar. Nilai ekstrem tidak dibuang atau dipotong karena tidak ada bukti bahwa nilai tersebut merupakan kesalahan pencatatan. Sebagai contoh, \texttt{days\_before\_arrival} mencapai 448 hari dan \texttt{nightly\_rate\_idr} mencapai Rp9.165.000. Pengaruh skala ditangani melalui normalisasi, bukan melalui penghapusan observasi.
 
 \subsubsection{Konstruksi Fitur dan \textit{Encoding}}
-\todo{KNN butuh fitur numerik. Jelaskan \textit{encoding} kategorikal (\textit{one-hot} vs \textit{ordinal}/\textit{target}) dan dampaknya ke jarak (dimensi besar membuat jarak kurang bermakna).}
+Empat fitur turunan dibentuk agar durasi dan waktu pemesanan lebih mudah dibandingkan melalui jarak, sebagaimana dirangkum pada Tabel~\ref{tab:knn-engineering}.
+
+\begin{table}[H]
+ \centering
+ \caption{Fitur turunan pada KNN}
+ \label{tab:knn-engineering}
+ \begin{tabularx}{\textwidth}{>{\ttfamily\footnotesize}l Y}
+  \toprule
+  \textnormal{\textbf{Fitur}} & \textbf{Konstruksi dan informasi yang dipertahankan} \\
+  \midrule
+  total\_nights & Jumlah \texttt{weekend\_nights} dan \texttt{weekday\_nights} untuk durasi keseluruhan. \\
+  lead\_log & $\log(1+\max(\texttt{days\_before\_arrival},0))$ untuk meredam rentang \textit{lead time} yang panjang. \\
+  arrival\_index & Selisih hari dari tanggal kedatangan terhadap 1 Januari 2023 untuk menyatakan urutan waktu. \\
+  booking\_index & \texttt{arrival\_index} dikurangi \texttt{days\_before\_arrival} untuk memperkirakan waktu pemesanan. \\
+  \bottomrule
+ \end{tabularx}
+\end{table}
+
+KNN membutuhkan matriks numerik, sehingga kategori tidak diberi kode integer yang menyiratkan urutan semu. \texttt{booking\_channel} dan \texttt{room\_category} pada model akhir dikonversi dengan \textit{one-hot encoding}, yang kategorinya ditentukan hanya dari data latih. Nilai indikator selanjutnya dibagi dengan $\sqrt{2}$. Pada jarak Euclidean, dua kategori berbeda dalam satu atribut memberikan kontribusi jarak sebesar 1. Pada Manhattan, kontribusinya sebesar $\sqrt{2}$. Faktor ini merupakan pilihan representasi tetap, bukan bobot fitur hasil pembelajaran. Kategori yang tidak terlihat pada saat \textit{fit} menghasilkan semua indikator nol untuk atribut terkait.
 
 \subsubsection{Normalisasi dan Standarisasi}
-\todo{Wajib karena KNN berbasis jarak. Fitur berskala besar akan mendominasi. Jelaskan \textit{scaler} yang dipilih (standar/\textit{min-max}/\textit{robust}).}
+Skala atribut sangat berbeda, dari jumlah tamu yang hanya beberapa orang hingga tarif kamar dalam jutaan rupiah. Tanpa normalisasi, tarif atau atribut waktu berpotensi mendominasi jarak. Setiap fitur numerik dinormalisasi menggunakan \textit{Min-Max scaling}:
+\begin{equation}
+ x'_j = \frac{x_j-\min_{\mathrm{train}}(x_j)}{\max_{\mathrm{train}}(x_j)-\min_{\mathrm{train}}(x_j)}.
+ \label{eq:knn-minmax}
+\end{equation}
+Jika rentang fitur pada data latih nol, hasil transformasi diisi nol. Nilai minimum dan maksimum berasal dari data latih masing-masing \textit{fold} atau dari seluruh data latih saat membuat model akhir.
 
 \subsubsection{Penanganan \textit{Imbalanced Data}}
-\todo{Misalnya \textit{distance-weighted voting}, \textit{threshold} probabilitas, atau \textit{resampling}.}
+Sebanyak 67,23\% reservasi termasuk kelas tidak batal dan 32,77\% termasuk kelas batal. KNN tidak menggunakan \textit{oversampling}, \textit{undersampling}, atau pembobotan kelas pada model utama. Sebagai gantinya, pembagian data dan setiap \textit{fold} dibuat secara \textit{stratified}, dan pemilihan konfigurasi didasarkan pada Macro F1 yang memberi perhatian sama pada kedua kelas. Dampak pembobotan biaya saat mengambil keputusan dianalisis secara terpisah pada Subbab~\ref{subsec:knn-bonus}.
 
 \subsubsection{\textit{Feature Selection}}
-\todo{Sangat berpengaruh karena fitur tak relevan ikut menambah jarak (\textit{curse of dimensionality}). Sebutkan fitur akhir yang dipakai.}
+Sebanyak sepuluh representasi fitur dievaluasi dengan \textit{stratified} 3-\textit{fold} CV menggunakan $k=5$ dan jarak Euclidean yang ditetapkan sama untuk semua kandidat. Tahap ini menguji kombinasi fitur asli dan turunan, bukan mencari hiperparameter terbaik sekaligus. Hasil pilihan utama diringkas pada Tabel~\ref{tab:knn-fs}.
+
+\begin{table}[H]
+ \centering
+ \caption{Perbandingan representasi fitur pada tahap seleksi, Macro F1 3-\textit{fold} CV}
+ \label{tab:knn-fs}
+ \begin{tabular}{l c c}
+  \toprule
+  \textbf{Representasi} & \textbf{Jumlah fitur} & \textbf{Macro F1} \\
+  \midrule
+  Fitur asli & 17 & 0,79800 \\
+  Fitur asli ditambah empat fitur turunan & 21 & 0,80655 \\
+  Turunan tanpa \texttt{meal\_package} & 16 & \textbf{0,81661} \\
+  Turunan tanpa \texttt{meal\_package} dan \texttt{room\_category} & 15 & 0,81585 \\
+  \bottomrule
+ \end{tabular}
+\end{table}
+
+Dua kandidat terbaik, yaitu representasi 16 dan 15 fitur, dilanjutkan ke \textit{hyperparameter tuning}. Hasilnya memilih 16 fitur konseptual, yang dikelompokkan sebagai berikut.
+\begin{itemize}
+ \small\sloppy
+ \item \textbf{Numerik asli (10 fitur)}: \nolinkurl{num_adults}, \nolinkurl{num_children}, \nolinkurl{needs_parking}, \nolinkurl{days_before_arrival}, \nolinkurl{arrival_month}, \nolinkurl{is_returning_guest}, \nolinkurl{prior_cancellations}, \nolinkurl{prior_completed_bookings}, \nolinkurl{nightly_rate_idr}, dan \nolinkurl{special_requests}.
+ \item \textbf{Kategorikal (2 fitur)}: \nolinkurl{room_category} dan \nolinkurl{booking_channel}.
+ \item \textbf{Fitur turunan (4 fitur)}: \nolinkurl{total_nights}, \nolinkurl{lead_log}, \nolinkurl{arrival_index}, dan \nolinkurl{booking_index}.
+\end{itemize}
+Atribut \texttt{meal\_package} tidak dipakai. Dua atribut kategorikal yang tersisa menghasilkan 12 kolom \textit{one-hot}, sehingga matriks akhir memiliki \textbf{26 kolom numerik}.
 
 \subsubsection{\textit{Dimensionality Reduction}}
-\todo{Relevan untuk KNN: mengurangi dimensi dan mempercepat perhitungan jarak. Laporkan dampaknya.}
+PCA tidak diterapkan pada KNN. Reduksi dilakukan melalui pemilihan representasi fitur yang tetap dapat ditelusuri maknanya, bukan melalui proyeksi ke komponen utama. Keputusan ini menjaga interpretasi jarak terhadap atribut reservasi, sekaligus menghindari penambahan tahap transformasi yang belum diuji manfaatnya. Oleh karena itu, tidak ada klaim peningkatan performa akibat PCA pada eksperimen ini.

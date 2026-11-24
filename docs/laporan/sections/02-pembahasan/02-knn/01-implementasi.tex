@@ -2,27 +2,64 @@
 \label{subsec:knn-implementasi}
 
 \subsubsection{Landasan Teori}
-\todo{Jelaskan prinsip \textit{lazy learning}, metrik jarak (Euclidean, Manhattan, Minkowski), pemilihan $k$, \textit{voting} mayoritas atau berbobot jarak, dan penanganan \textit{tie}. Acu salindia KNN \cite{slide-knn} dan \cite{cunningham2020knn}. Sertakan rumus utama dalam lingkungan \texttt{equation}/\texttt{align}.}
+KNN adalah metode \textit{instance-based learning} atau \textit{lazy learning}. Pada tahap \textit{fit}, model menyimpan fitur dan label data latih tanpa membentuk parameter pemisah kelas. Untuk suatu reservasi baru $x$, model menghitung jaraknya terhadap seluruh reservasi latih, mengambil $k$ tetangga terdekat, lalu menentukan kelas melalui suara mayoritas \cite{slide-knn,cunningham2020knn}.
+
+Tiga ukuran jarak yang didukung adalah Manhattan, Euclidean, dan Minkowski. Untuk vektor $x,z\in\mathbb{R}^{d}$, ketiganya dinyatakan sebagai
+\begin{equation}
+ \begin{aligned}
+ d_{\mathrm{Man}}(x,z) &= \sum_{j=1}^{d}|x_j-z_j|, \\
+ d_{\mathrm{Euc}}(x,z) &= \sqrt{\sum_{j=1}^{d}(x_j-z_j)^2}, \\
+ d_{p}(x,z) &= \left(\sum_{j=1}^{d}|x_j-z_j|^{p}\right)^{1/p}.
+ \end{aligned}
+ \label{eq:knn-jarak}
+\end{equation}
+Dalam eksperimen, Minkowski diuji pada $p=3$, sedangkan Manhattan dan Euclidean masing-masing setara dengan $p=1$ dan $p=2$. Untuk himpunan indeks $N_k(x)$ dari $k$ tetangga terdekat, prediksi memakai \textit{uniform majority voting}:
+\begin{equation}
+ \hat y(x)=\underset{c\in\{0,1\}}{\arg\max}\sum_{i\in N_k(x)}\mathbb{1}(y_i=c).
+ \label{eq:knn-voting}
+\end{equation}
+Jika jumlah suara sama, \texttt{np.argmax} memilih kelas dengan indeks lebih kecil, yaitu kelas 0 karena \texttt{np.unique} mengurutkan label. Eksperimen menggunakan nilai $k$ ganjil sehingga seri suara antarkelas tidak terjadi pada klasifikasi biner.
 
 \subsubsection{Struktur Kelas dan Fungsi}
-\todo{Deskripsikan kelas pada \texttt{src/algoritma/knn/knn.py}: \texttt{\_\_init\_\_}, \texttt{fit}, perhitungan jarak, pencarian $k$ tetangga, \texttt{predict\_proba}, \texttt{predict}, \texttt{save}, \texttt{load}. Isi tabel di bawah, satu baris per fungsi/metode.}
+Implementasi inti berada di \nolinkurl{src/algoritma/knn/knn.py}. NumPy digunakan untuk manipulasi matriks, sedangkan \texttt{scipy.spatial.distance.cdist} digunakan untuk perhitungan jarak numerik. Seluruh keputusan tetangga dan kelas ditangani oleh kelas \texttt{KNN}, bukan oleh \textit{classifier} dari pustaka.
 
 \begin{table}[H]
-	\centering
-	\caption{Deskripsi kelas dan fungsi KNN}
-	\label{tab:knn-fungsi}
-	\begin{tabularx}{\textwidth}{l Y}
-		\toprule
-		\textbf{Fungsi/Metode} & \textbf{Deskripsi} \\
-		\midrule
-		\texttt{nama\_fungsi} & \todo{deskripsi} \\
-		\bottomrule
-	\end{tabularx}
+ \centering
+ \caption{Fungsi utama kelas KNN \textit{from scratch}}
+ \label{tab:knn-fungsi}
+ \begin{tabularx}{\textwidth}{>{\ttfamily\footnotesize}l Y}
+  \toprule
+  \textnormal{\textbf{Metode}} & \textbf{Peran} \\
+  \midrule
+  \_\_init\_\_ & Memeriksa dan menyimpan $k$, metrik jarak, nilai $p$, serta ukuran \textit{batch}. \\
+  fit & Memvalidasi matriks dan label, lalu menyimpan seluruh data latih. \\
+  \_validate\_query & Memeriksa dimensi dan validitas data yang akan diprediksi. \\
+  \_distance\_matrix & Menghitung jarak antara suatu \textit{batch} data uji dan data latih. \\
+  \_neighbors & Memilih $k$ indeks tetangga terdekat, beserta jaraknya. \\
+  kneighbors & Mengembalikan jarak dan indeks tetangga yang diurutkan menurut jarak. \\
+  predict\_many\_k & Menghasilkan prediksi untuk beberapa nilai $k$ dari matriks jarak yang sama. \\
+  predict\_proba & Menghitung proporsi suara masing-masing kelas. \\
+  predict & Menghasilkan label dari suara mayoritas. \\
+  \bottomrule
+ \end{tabularx}
 \end{table}
 
 \subsubsection{\textit{Source Code}}
-\todo{Sisipkan potongan kode inti (perhitungan jarak (vektorisasi) dan \textit{voting}) dengan makro \texttt{\textbackslash kode}, lalu jelaskan alurnya. Cek ulang nomor baris jika kode berubah.}
-% \kode{../../src/algoritma/knn/knn.py}{1}{30}{Judul potongan kode}{lst:knn-inti}
+Kode~\ref{lst:knn-jarak} menunjukkan tiga pilihan metrik jarak. Perhitungan seluruh pasangan dilakukan secara vektorisasi menggunakan \texttt{cdist}, tanpa \textit{loop} Python untuk setiap pasangan reservasi.
+
+\kode{../../src/algoritma/knn/knn.py}{49}{54}{Perhitungan matriks jarak KNN}{lst:knn-jarak}
+
+Kode~\ref{lst:knn-tetangga} menunjukkan penggunaan \texttt{np.argpartition} untuk memilih $k$ jarak terkecil. Data uji diproses per \textit{batch} berukuran 128 agar matriks jarak sementara tidak harus menampung seluruh data uji sekaligus. Langkah tersebut mengurangi kebutuhan memori sementara, tetapi tidak mengubah pencarian eksak terhadap seluruh data latih.
+
+\kode{../../src/algoritma/knn/knn.py}{56}{72}{Pemilihan tetangga terdekat dengan \textit{batch} dan \texttt{argpartition}}{lst:knn-tetangga}
+
+Kode~\ref{lst:knn-voting} memperlihatkan penghitungan suara setiap kelas. Fungsi \texttt{predict\_proba} memakai jumlah suara yang sama, kemudian membaginya dengan $k$. Untuk validasi hiperparameter, \texttt{predict\_many\_k} menggunakan kembali matriks jarak saat menguji beberapa nilai $k$ pada \textit{fold} dan metrik yang sama.
+
+\kode{../../src/algoritma/knn/knn.py}{96}{108}{Perhitungan proporsi kelas dan prediksi mayoritas}{lst:knn-voting}
+
+Kompleksitas penghitungan jarak secara langsung untuk $m$ data uji, $n$ data latih, dan $d$ kolom fitur adalah $O(mnd)$. Karena itu, penerapan KNN pada data besar tetap memiliki biaya prediksi yang tinggi meskipun perhitungannya telah dibuat vektorisasi.
 
 \subsubsection{\textit{Save} dan \textit{Load} Model}
-\todo{Format penyimpanan (JSON/\texttt{.npz}/\textit{pickle}), isi yang disimpan, dan contoh pemakaian.}
+Kelas \texttt{KNN} tidak menyediakan metode \texttt{save} dan \texttt{load} tersendiri. Penyimpanan dilakukan oleh \nolinkurl{src/kaggle/knn_submission.py} menggunakan \texttt{pickle}. Berkas \nolinkurl{output/knn/model.pkl} memuat objek KNN yang sudah di-\textit{fit}, statistik imputasi dan normalisasi, daftar kategori \textit{one-hot}, daftar fitur akhir, serta konfigurasi $k$ dan metrik jarak. Penyimpanan seluruh \textit{preprocessing} penting agar masukan baru diubah dengan parameter yang sama seperti data latih.
+
+Setelah berkas disimpan, pipeline memuatnya kembali, membangun ulang \textit{preprocessor} dari statistik tersimpan, dan memprediksi data uji. Prediksi sebelum dan sesudah pemuatan diverifikasi identik menggunakan \texttt{np.array\_equal}. Dengan demikian, model dapat digunakan kembali tanpa menghitung ulang pemilihan fitur atau validasi silang. Berkas \texttt{pickle} hanya boleh dimuat dari sumber tepercaya karena format ini dapat menjalankan kode saat deserialisasi.
