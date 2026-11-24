@@ -38,10 +38,10 @@ dan DTL (0,87393) menjadi cadangan, karena selisih skor \textit{public} antarmod
 variasi skor \textit{public} yang kami amati antarsubmisi DTL yang hanya berbeda
 \textit{seed} (sekitar 0,005). Semua submisi ini dapat direproduksi dari notebook masing-masing.
 
-Kelompok terdaftar di \textit{leaderboard} dengan nama tim \textit{LoopedThinkingTransformer}.
-Dengan SVM Laplacian, kelompok berada di peringkat 2 pada \textit{public leaderboard} dengan
-skor 0,87464, selisih 0,00224 dari peringkat 1 (Gambar~\ref{fig:kaggle}). Setelah submisi SVM dengan kernel yang
-dipelajari pada 24 November 2026, skor kelompok menjadi 0,87912 dan 0,87973 untuk varian 255 kuantil. Peringkat ini adalah
+Kelompok terdaftar di \textit{leaderboard} dengan nama tim \textit{G04-TreeIsAllYouNeed}. Dengan SVM kernel yang
+dipelajari (varian 255 kuantil), kelompok berada di peringkat 1 pada \textit{public leaderboard} dengan skor 0,87973,
+selisih 0,00285 dari peringkat 2 (Gambar~\ref{fig:kaggle}). Varian pertama mendapat 0,87912, dan SVM Laplacian
+sebelumnya mendapat 0,87464. Peringkat ini adalah
 posisi \textit{public leaderboard} pada saat gambar diambil; peringkat akhir ditentukan oleh
 \textit{private leaderboard} setelah kompetisi ditutup.
 
@@ -76,13 +76,13 @@ tinggi.
 Kedua notebook melatih model dari data mentah, menyimpan model, memuatnya kembali, lalu memprediksi
 data uji dengan model hasil muat. Kode \texttt{dtl\_notebook.ipynb} yang dijalankan ulang menghasilkan
 \texttt{output/dtl/submission.csv} dan \texttt{output/dtl/dtl\_model.json} yang identik byte per byte
-dengan berkas di repositori (Subbab~\ref{subsec:dtl-validasi}). Berkas submisi kedua model juga identik
+dengan berkas di repositori (Subbab~\ref{subsec:dtl-validasi}). Berkas submisi SVM Laplacian dan DTL juga identik
 dengan keluaran notebook gabungan sebelumnya (\texttt{kaggle\_final.ipynb}), yang mencatat skor
 \textit{public} pada Tabel~\ref{tab:kaggle-final}.
 
 \begin{figure}[H]
 	\centering
 	\includegraphics[width=\textwidth]{kaggle.png}
-	\caption{Posisi kelompok (\textit{LoopedThinkingTransformer}) pada \textit{public leaderboard} Kaggle}
+	\caption{Posisi kelompok (\textit{G04-TreeIsAllYouNeed}, peringkat 1) pada \textit{public leaderboard} Kaggle}
 	\label{fig:kaggle}
 \end{figure}
