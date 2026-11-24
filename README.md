@@ -91,7 +91,7 @@ jupyter lab
 | [`src/kaggle/eda.ipynb`](src/kaggle/eda.ipynb) | Eksplorasi data | `output/eda/` |
 | [`src/kaggle/knn_notebook.ipynb`](src/kaggle/knn_notebook.ipynb) | KNN | `output/knn/` |
 | [`src/kaggle/dtl_notebook.ipynb`](src/kaggle/dtl_notebook.ipynb) | DTL C4.5, perbandingan dengan `DecisionTreeClassifier` (ID3, C4.5, CART) | `output/dtl/` |
-| [`src/algoritma/lr/lr.ipynb`](src/algoritma/lr/lr.ipynb) | Logistic Regression | `output/lr/` |
+| [`src/kaggle/lr_notebook.ipynb`](src/kaggle/lr_notebook.ipynb) | Logistic Regression: L1/L2/Elastic Net, IRLS-CD, cost-sensitive, video kontur | `output/lr/` |
 | [`src/kaggle/svm_notebook.ipynb`](src/kaggle/svm_notebook.ipynb) | SVM | `output/svm/` |
 | [`src/kaggle/nb_notebook.ipynb`](src/kaggle/nb_notebook.ipynb) | Naive Bayes dan TAN | |
 
