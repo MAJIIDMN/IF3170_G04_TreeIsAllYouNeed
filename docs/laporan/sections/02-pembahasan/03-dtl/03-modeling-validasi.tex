@@ -126,8 +126,11 @@ dirangkum pada Tabel~\ref{tab:dtl-ruang}, dan hasilnya pada Tabel~\ref{tab:dtl-t
 
 \subsubsection{Model Final}
 
-Konfigurasi final adalah \texttt{DTL(max\_depth=20, min\_samples\_leaf=2,
-pruning="cost\_complexity", ccp\_alpha=2.5)} dengan parameter lain bernilai bawaan, 46 fitur, dan
+Konfigurasi final adalah
+\begin{center}
+	\texttt{DTL(max\_depth=20, min\_samples\_leaf=2, pruning="cost\_complexity", ccp\_alpha=2.5)}
+\end{center}
+dengan parameter lain bernilai bawaan, 46 fitur, dan
 \textit{threshold} \textbf{0,4}. Hasil CV-nya adalah Macro F1 $0{,}8692 \pm 0{,}0030$
 (\textit{seed} 42) atau 0,8670 sebagai rata-rata sepuluh \textit{seed}, \textit{accuracy} 0,8870,
 \textit{precision} kelas batal 0,8538, dan \textit{recall} kelas batal 0,7904. Untuk submisi, fitur
