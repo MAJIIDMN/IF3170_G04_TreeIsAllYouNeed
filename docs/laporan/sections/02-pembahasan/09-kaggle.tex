@@ -15,27 +15,29 @@ tanpa \textit{ensemble}.
 		\toprule
 		\textbf{Model} & \textbf{Berkas submisi} & \textbf{CV Macro F1} & \textbf{\textit{Public score}} \\
 		\midrule
+		SVM (submisi terbaru) & -- & -- & \textbf{0,87912} \\
 		SVM kernel Laplacian & \texttt{output/svm/submission.csv} & 0,8703 & 0,87464 \\
 		DTL C4.5 & \texttt{output/dtl/submission.csv} & 0,8672 & 0,87393 \\
 		\bottomrule
 	\end{tabularx}
 \end{table}
 
-Kolom CV adalah angka yang tercantum di notebook: rata-rata tujuh \textit{seed} untuk SVM dan sepuluh
-\textit{seed} untuk DTL.
+Kolom CV adalah angka yang tercantum di notebook: rata-rata tujuh \textit{seed} untuk SVM kernel
+Laplacian dan sepuluh \textit{seed} untuk DTL. Submisi SVM terbaru memperoleh skor \textit{public}
+tertinggi kelompok, yaitu 0,87912. Berkas submisi dan skor CV-nya belum tercantum pada tabel ini.
 
 \subsection{Pemilihan Submisi Final}
 
 Kaggle mengizinkan setiap tim memilih hingga tiga submisi untuk penilaian akhir pada
-\textit{private leaderboard}. Submisi utama kelompok adalah SVM dengan kernel Laplacian, karena
-skor \textit{public} dan Macro F1 validasi silangnya sama-sama paling tinggi. Submisi DTL (0,87393)
-ikut dipilih sebagai cadangan, karena selisih skor \textit{public} keduanya hanya 0,0007, lebih kecil
-daripada variasi skor \textit{public} yang kami amati antarsubmisi DTL yang hanya berbeda
-\textit{seed} (sekitar 0,005). Kedua submisi dapat direproduksi dari notebook masing-masing.
+\textit{private leaderboard}. Submisi utama kelompok adalah SVM terbaru (0,87912) karena skor
+\textit{public}-nya paling tinggi. SVM dengan kernel Laplacian (0,87464) dan DTL (0,87393) ikut dipilih
+sebagai cadangan. Selisih skor \textit{public} kedua cadangan hanya 0,0007, lebih kecil daripada
+variasi skor \textit{public} yang kami amati antarsubmisi DTL yang hanya berbeda \textit{seed}
+(sekitar 0,005).
 
 Kelompok terdaftar di \textit{leaderboard} dengan nama tim \texttt{G04-TreeIsAllYouNeed}.
-Dengan submisi SVM tersebut, kelompok berada di peringkat 2 pada \textit{public leaderboard} dengan
-skor 0,87464, selisih 0,00224 dari peringkat 1 (Gambar~\ref{fig:kaggle}). Peringkat ini adalah
+Dengan submisi SVM terbaru, kelompok berada di peringkat 1 pada \textit{public leaderboard} dengan
+skor 0,87912, unggul 0,00224 dari peringkat 2 (Gambar~\ref{fig:kaggle}). Peringkat ini adalah
 posisi \textit{public leaderboard} pada saat gambar diambil; peringkat akhir ditentukan oleh
 \textit{private leaderboard} setelah kompetisi ditutup.
 

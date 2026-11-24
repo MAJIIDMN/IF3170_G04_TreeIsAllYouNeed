@@ -17,14 +17,15 @@ pada data uji yang sama, tetapi hanya tersedia untuk model yang disubmisi.
 		KNN ($k = 7$, Manhattan) & CV 5-\textit{fold}, \textit{development} & 0,8213 & -- \\
 		DTL (C4.5, \textit{pruning}) & CV 5-\textit{fold}, 10 \textit{seed} & 0,8670 & 0,87393 \\
 		\textit{Logistic Regression} (tanpa penalti, IRLS-CD) & CV 5-\textit{fold}, OOF & 0,7824 & -- \\
-		SVM (Laplacian + bobot fitur) & CV 5-\textit{fold}, 7 \textit{seed} & 0,8703 & 0,87464 \\
+		SVM (Laplacian + bobot fitur) & CV 5-\textit{fold}, 7 \textit{seed} & 0,8703 & 0,87464$^{*}$ \\
 		\textit{Naive Bayes} & CV 5-\textit{fold}, 4 \textit{seed} & 0,7810 & 0,79404 \\
 		TAN & CV 5-\textit{fold}, 4 \textit{seed} & 0,8094 & 0,80986 \\
 		\bottomrule
 	\end{tabularx}
 \end{table}
 
-Untuk skema dengan beberapa \textit{seed}, Macro F1 adalah rata-ratanya. Tanda ``--'' berarti skor
+Untuk skema dengan beberapa \textit{seed}, Macro F1 adalah rata-ratanya. $^{*}$Submisi SVM terbaru
+memperoleh skor Kaggle 0,87912 (Bagian~\ref{sec:kaggle}). Tanda ``--'' berarti skor
 Kaggle model tersebut tidak tercatat di repositori.
 
 Perbandingan dengan \textit{scikit-learn} dilakukan per algoritma pada protokol yang sama untuk kedua
@@ -55,7 +56,7 @@ tidak tersedia pada \texttt{DecisionTreeClassifier}. Hasilnya 0,8692 berbanding 
 konfigurasi \textit{scikit-learn} terbaik.
 
 \paragraph{Model terbaik.} SVM dengan kernel Laplacian dan bobot fitur memperoleh skor tertinggi pada
-validasi silang (0,8703) dan Kaggle (0,87464), diikuti DTL (0,8670 dan 0,87393). Keduanya memakai
+validasi silang (0,8703) dan Kaggle (0,87464, dan 0,87912 untuk submisi SVM terbaru), diikuti DTL (0,8670 dan 0,87393). Keduanya memakai
 fitur yang sama dari \nolinkurl{booking_features.py}, termasuk fitur ``saudara'' yang menangkap
 pemesanan rombongan. Kedua model juga dapat memodelkan interaksi antarfitur yang tidak linear: SVM
 melalui kernel dan DTL melalui percabangan. Sebaliknya, \textit{Logistic Regression} (0,7824) hanya
