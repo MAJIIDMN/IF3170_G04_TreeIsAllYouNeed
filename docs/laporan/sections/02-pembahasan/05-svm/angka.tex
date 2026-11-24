@@ -1,0 +1,38 @@
+% Angka bab SVM yang masih bisa berubah. Ganti nilainya di sini, teks bab mengikuti.
+% Pemakaian di teks: \SVMBaruCV{} (selalu dengan {} agar spasi sesudahnya tidak hilang).
+% Nilai bertanda ?? adalah angka yang belum ada dan wajib diisi sebelum dikumpulkan.
+
+% ---------- Tahap sebelumnya: SVM Laplacian + AGOP + SMO ----------
+\newcommand{\SVMLamaCV}{0,8716}          % Macro F1 CV 5-fold, seed 42 (Tabel seed)
+\newcommand{\SVMLamaCVTujuhSeed}{0,8703} % rata-rata 7 seed
+\newcommand{\SVMLamaPublik}{0,87464}     % skor publik Kaggle
+
+% ---------- Pembanding ----------
+\newcommand{\SVMLightGBMCV}{0,8764}      % LightGBM pada 46 fitur yang sama, CV 5-fold seed 42 (hanya pembanding)
+
+% ---------- Kernel yang dipelajari, versi least-squares (hasil yang sudah ada) ----------
+\newcommand{\SVMLSCV}{0,8747}                          % CV 5-fold seed 42
+\newcommand{\SVMLSAmbang}{\ensuremath{-0{,}10}}        % ambang dari prediksi out-of-fold
+\newcommand{\SVMLSPublik}{0,87912}                     % skor publik Kaggle
+\newcommand{\SVMLSSelisih}{\ensuremath{+0{,}0031}}     % selisih terhadap SVM Laplacian, seed 42
+\newcommand{\SVMLSSelisihBawah}{\ensuremath{+0{,}0007}} % batas bawah selang bootstrap 95%
+\newcommand{\SVMLSSelisihAtas}{\ensuremath{+0{,}0054}}  % batas atas selang bootstrap 95%
+
+% ---------- Model baru: kernel yang dipelajari + L2-SVM (model submission) ----------
+\newcommand{\SVMBaruCV}{0,8750} % Macro F1 CV 5-fold seed 42 versi L2-SVM, ambang -0,10
+\newcommand{\SVMBaruPublik}{0,87912} % skor publik Kaggle, ref 58809425
+\newcommand{\SVMBaruAmbang}{\ensuremath{-0{,}10}} % ambang keputusan dari prediksi out-of-fold
+\newcommand{\SVMBaruDatarBawah}{\ensuremath{-0{,}125}}  % kurva Macro F1 terhadap ambang datar dari sini
+\newcommand{\SVMBaruDatarAtas}{0}                       % sampai sini
+\newcommand{\SVMBaruJumlahBit}{792} % jumlah bit termometer di seluruh train
+\newcommand{\SVMBaruJumlahSV}{16.243} % jumlah baris dengan alpha tidak nol di seluruh train
+\newcommand{\SVMBaruSelisih}{\ensuremath{+0{,}0033}} % selisih L2-SVM terhadap SVM Laplacian, seed 42
+\newcommand{\SVMBaruSelisihBawah}{\ensuremath{+0{,}0009}} % batas bawah selang bootstrap 95%
+\newcommand{\SVMBaruSelisihAtas}{\ensuremath{+0{,}0056}} % batas atas selang bootstrap 95%
+
+% ---------- Alasan slack kuadrat: fold 0, kernel hasil belajar versi awal (1 komponen, 64 bin), sama untuk keduanya ----------
+\newcommand{\SVMHingeFoldF}{0,8742}     % hinge biasa (SMO, C = 2): Macro F1
+\newcommand{\SVMHingeFoldAUC}{0,9314}   % hinge biasa: AUC
+\newcommand{\SVMKuadratFoldF}{0,8744}   % loss kuadrat (least-squares), ambang 0: Macro F1
+\newcommand{\SVMKuadratFoldFTerbaik}{0,8781} % loss kuadrat, ambang terbaik di fold itu (-0,14)
+\newcommand{\SVMKuadratFoldAUC}{0,9477} % loss kuadrat: AUC

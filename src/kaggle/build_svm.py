@@ -44,7 +44,7 @@ md(f"""{HR}
 6. [**Model Akhir**](#6)
 7. [**Bonus: Cost-Sensitive Classification**](#7)
 8. [**Bonus: Bidang Pemisah, Margin, dan Support Vector**](#8)
-9. [**Submission Kaggle**](#9)
+9. [**Submission Kaggle (Laplacian)**](#9)
 10. [**Kesimpulan**](#10)
 11. [**Referensi**](#11)""")
 
@@ -54,7 +54,7 @@ md("""Notebook ini menguji class `SVM` di `src/algoritma/svm/svm.py`. Tiga kerne
 Gaussian) dibandingkan dengan `sklearn.svm.SVC` pada data dan hyperparameter yang sama. Kernel Laplacian, yang
 dipakai untuk submission Kaggle, ikut dibandingkan.
 
-| Model submission | Skor publik Kaggle | Macro F1, CV 5-fold |
+| Model submission Laplacian | Skor publik Kaggle | Macro F1, CV 5-fold |
 |---|---|---|
 | SVM kernel Laplacian + bobot fitur | 0,87464 | 0,8703 (7 seed), 0,8699 (4 seed konfirmasi) |
 
@@ -455,9 +455,12 @@ md("""#### Insights
 > kecil di kiri atas pada Gaussian hanya ditopang sedikit titik, contoh risiko overfit kernel yang fleksibel. Lebar
 > margin antarkernel diukur di ruang fitur masing-masing, sehingga tidak bisa dibandingkan langsung.""")
 
-section("Submission Kaggle", "9")
+section("Submission Kaggle (Laplacian)", "9")
 
-md("""Model submission dilatih ulang pada seluruh train. Fitur, skala, dan bobot fitur dihitung dari train, lalu
+md("""Bagian ini menghasilkan submission SVM Laplacian (skor publik 0,87464). Submission akhir kelompok memakai kernel
+yang dipelajari dan dibuat di `svm_kaggle_notebook.ipynb`.
+
+Model dilatih ulang pada seluruh train. Fitur, skala, dan bobot fitur dihitung dari train, lalu
 diterapkan ke test. Model disimpan, dimuat kembali, dan model hasil muat itulah yang dipakai untuk prediksi.""")
 
 code("""A, B = build_features(train, y_all, test, shared_neighbours=True)
@@ -474,7 +477,7 @@ submission = pd.DataFrame({"id": test["id"], "is_canceled": svm.predict(B * w)})
 sample = pd.read_csv(DATA / "sample_submission.csv", dtype={"id": str})
 assert list(submission.columns) == list(sample.columns)
 assert submission["id"].tolist() == sample["id"].tolist()
-submission.to_csv(OUTPUT / "submission.csv", index=False)
+submission.to_csv(OUTPUT / "submission_laplacian.csv", index=False)
 print("baris:", len(submission), " rasio batal:", round(submission["is_canceled"].mean(), 4))""")
 
 section("Kesimpulan", "10")

@@ -1,9 +1,10 @@
 \section{Submisi Kaggle}
 \label{sec:kaggle}
 
-Submisi akhir berasal dari dua notebook yang masing-masing melatih satu model dari data mentah, yaitu
-\nolinkurl{src/kaggle/svm_notebook.ipynb} untuk SVM dengan kernel Laplacian (Subbab~\ref{sec:svm})
-dan \nolinkurl{src/kaggle/dtl_notebook.ipynb} untuk DTL (Subbab~\ref{sec:dtl}). Prediksi kedua model
+Submisi akhir berasal dari notebook yang masing-masing melatih satu model dari data mentah, yaitu
+\nolinkurl{src/kaggle/svm_kaggle_notebook.ipynb} untuk SVM dengan kernel yang dipelajari,
+\nolinkurl{src/kaggle/svm_notebook.ipynb} untuk SVM dengan kernel Laplacian (Subbab~\ref{sec:svm}),
+dan \nolinkurl{src/kaggle/dtl_notebook.ipynb} untuk DTL (Subbab~\ref{sec:dtl}). Prediksi model-model ini
 tidak digabung atau dirata-rata, sehingga setiap submisi berasal dari satu model \textit{from scratch}
 tanpa \textit{ensemble}.
 
@@ -15,27 +16,29 @@ tanpa \textit{ensemble}.
 		\toprule
 		\textbf{Model} & \textbf{Berkas submisi} & \textbf{CV Macro F1} & \textbf{\textit{Public score}} \\
 		\midrule
-		SVM kernel Laplacian & \texttt{output/svm/submission.csv} & 0,8703 & 0,87464 \\
+		SVM kernel yang dipelajari & \texttt{output/svm/submission.csv} & 0,8750 & 0,87912 \\
+		SVM kernel Laplacian & \texttt{output/svm/submission\_laplacian.csv} & 0,8703 & 0,87464 \\
 		DTL C4.5 & \texttt{output/dtl/submission.csv} & 0,8672 & 0,87393 \\
 		\bottomrule
 	\end{tabularx}
 \end{table}
 
-Kolom CV adalah angka yang tercantum di notebook: rata-rata tujuh \textit{seed} untuk SVM dan sepuluh
-\textit{seed} untuk DTL.
+Kolom CV adalah rata-rata tujuh \textit{seed} untuk SVM Laplacian dan sepuluh \textit{seed} untuk DTL. SVM dengan
+kernel yang dipelajari diukur pada satu \textit{seed} (42). Pada \textit{seed} itu SVM Laplacian mendapat 0,8716.
 
 \subsection{Pemilihan Submisi Final}
 
 Kaggle mengizinkan setiap tim memilih hingga tiga submisi untuk penilaian akhir pada
-\textit{private leaderboard}. Submisi utama kelompok adalah SVM dengan kernel Laplacian, karena
-skor \textit{public} dan Macro F1 validasi silangnya sama-sama paling tinggi. Submisi DTL (0,87393)
-ikut dipilih sebagai cadangan, karena selisih skor \textit{public} keduanya hanya 0,0007, lebih kecil
-daripada variasi skor \textit{public} yang kami amati antarsubmisi DTL yang hanya berbeda
-\textit{seed} (sekitar 0,005). Kedua submisi dapat direproduksi dari notebook masing-masing.
+\textit{private leaderboard}. Submisi utama kelompok adalah SVM dengan kernel yang dipelajari, karena
+skor \textit{public} dan Macro F1 validasi silangnya sama-sama paling tinggi. Submisi SVM Laplacian (0,87464)
+dan DTL (0,87393) menjadi cadangan, karena selisih skor \textit{public} antarmodel masih di bawah
+variasi skor \textit{public} yang kami amati antarsubmisi DTL yang hanya berbeda
+\textit{seed} (sekitar 0,005). Semua submisi ini dapat direproduksi dari notebook masing-masing.
 
 Kelompok terdaftar di \textit{leaderboard} dengan nama tim \textit{LoopedThinkingTransformer}.
-Dengan submisi SVM tersebut, kelompok berada di peringkat 2 pada \textit{public leaderboard} dengan
-skor 0,87464, selisih 0,00224 dari peringkat 1 (Gambar~\ref{fig:kaggle}). Peringkat ini adalah
+Dengan SVM Laplacian, kelompok berada di peringkat 2 pada \textit{public leaderboard} dengan
+skor 0,87464, selisih 0,00224 dari peringkat 1 (Gambar~\ref{fig:kaggle}). Setelah submisi SVM dengan kernel yang
+dipelajari pada 24 November 2026, skor kelompok menjadi 0,87912. Peringkat ini adalah
 posisi \textit{public leaderboard} pada saat gambar diambil; peringkat akhir ditentukan oleh
 \textit{private leaderboard} setelah kompetisi ditutup.
 

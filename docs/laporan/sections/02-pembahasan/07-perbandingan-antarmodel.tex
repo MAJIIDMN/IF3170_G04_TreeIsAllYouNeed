@@ -17,6 +17,7 @@ pada data uji yang sama, tetapi hanya tersedia untuk model yang disubmisi.
 		KNN ($k = 7$, Manhattan) & CV 5-\textit{fold}, \textit{development} & 0,8213 & -- \\
 		DTL (C4.5, \textit{pruning}) & CV 5-\textit{fold}, 10 \textit{seed} & 0,8670 & 0,87393 \\
 		\textit{Logistic Regression} (tanpa penalti, IRLS-CD) & CV 5-\textit{fold}, OOF & 0,7824 & -- \\
+		SVM (kernel yang dipelajari) & CV 5-\textit{fold}, 1 \textit{seed} & 0,8750 & 0,87912 \\
 		SVM (Laplacian + bobot fitur) & CV 5-\textit{fold}, 7 \textit{seed} & 0,8703 & 0,87464 \\
 		\textit{Naive Bayes} & CV 5-\textit{fold}, 4 \textit{seed} & 0,7810 & 0,79404 \\
 		TAN & CV 5-\textit{fold}, 4 \textit{seed} & 0,8094 & 0,80986 \\
@@ -54,10 +55,11 @@ multicabang untuk atribut kategorikal, bobot fraksional untuk nilai kosong, dan 
 tidak tersedia pada \texttt{DecisionTreeClassifier}. Hasilnya 0,8692 berbanding 0,8642 untuk
 konfigurasi \textit{scikit-learn} terbaik.
 
-\paragraph{Model terbaik.} SVM dengan kernel Laplacian dan bobot fitur memperoleh skor tertinggi pada
-validasi silang (0,8703) dan Kaggle (0,87464), diikuti DTL (0,8670 dan 0,87393). Keduanya memakai
+\paragraph{Model terbaik.} SVM dengan kernel yang dipelajari memperoleh skor tertinggi pada
+validasi silang (0,8750, satu \textit{seed}) dan Kaggle (0,87912), diikuti SVM Laplacian (0,8703 dan 0,87464) dan
+DTL (0,8670 dan 0,87393). Semuanya memakai
 fitur yang sama dari \nolinkurl{booking_features.py}, termasuk fitur ``saudara'' yang menangkap
-pemesanan rombongan. Kedua model juga dapat memodelkan interaksi antarfitur yang tidak linear: SVM
+pemesanan rombongan. Ketiga model juga dapat memodelkan interaksi antarfitur yang tidak linear: SVM
 melalui kernel dan DTL melalui percabangan. Sebaliknya, \textit{Logistic Regression} (0,7824) hanya
 membentuk batas keputusan linear pada ruang fiturnya, dan \textit{Naive Bayes} (0,7810) menganggap
 fitur saling independen, padahal banyak fitur pada data ini saling berkaitan. TAN menaikkan
