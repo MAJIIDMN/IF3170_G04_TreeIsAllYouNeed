@@ -124,7 +124,37 @@ submission.to_csv(OUTPUT / "submission.csv", index=False)
 print("baris:", len(submission), " rasio batal:", round(submission["is_canceled"].mean(), 4),
       " jarak skor terdekat ke ambang:", float(np.abs(scores - THRESHOLD).min()))""")
 
-section("Referensi", "5")
+section("Submission Kedua", "5")
+
+md("""Penilaian akhir Kaggle memakai submission terbaik dari paling banyak tiga pilihan. Submission kedua memakai kode
+dan langkah yang sama, dengan 255 kuantil, tiga komponen kernel, dan seed lain. Model ini berdiri sendiri dan tidak
+digabung dengan model pertama.""")
+
+code("""codes_b, codes_test_b, start_b, _ = thermometer(X, X_test, agop, bins=255)
+started = time.time()
+weights_b, mixture_b, reg_b = learn_kernel(codes_b, y, start_b, seed=1, scales=(0.7, 1.5, 3.0))
+print(f"bit termometer: {codes_b.shape[1]}, {time.time() - started:.0f} detik")
+path_b = OUTPUT / "kernel_weights_b.npz"
+if not path_b.exists():
+    np.savez(path_b, weights=np.array(weights_b), mixture=mixture_b, reg=reg_b)
+saved = np.load(path_b)
+gap = max(np.abs(np.log(a) - np.log(b)).max() for a, b in zip(weights_b, saved["weights"]))
+print("selisih log bobot terbesar terhadap bobot tersimpan:", round(float(gap), 4))""")
+
+code("""started = time.time()
+svm_b = L2SVM(list(saved["weights"]), saved["mixture"], reg=float(saved["reg"])).fit(codes_b, y)
+print(f"iterasi Newton: {svm_b.n_iter_}, support vector: {len(svm_b.support_)}, {time.time() - started:.0f} detik")
+svm_b.save(OUTPUT / "svm_kernel_model_b.pkl")
+svm_b = L2SVM.load(OUTPUT / "svm_kernel_model_b.pkl")
+
+scores_b = svm_b.decision_function(codes_test_b)
+submission_b = pd.DataFrame({"id": test["id"], "is_canceled": (scores_b > THRESHOLD).astype(int)})
+submission_b.to_csv(OUTPUT / "submission_b.csv", index=False)
+print("baris:", len(submission_b), " rasio batal:", round(submission_b["is_canceled"].mean(), 4),
+      " label beda dari submission pertama:", int((submission_b["is_canceled"] != submission["is_canceled"]).sum()),
+      " jarak skor terdekat ke ambang:", float(np.abs(scores_b - THRESHOLD).min()))""")
+
+section("Referensi", "6")
 
 md("""1. O. Chapelle, "Training a Support Vector Machine in the Primal", Neural Computation 19(5), 2007.
 2. O. Chapelle, V. Vapnik, O. Bousquet, dan S. Mukherjee, "Choosing Multiple Parameters for Support Vector
