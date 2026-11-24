@@ -23,11 +23,11 @@ TRANSFORMS = {
 }
 
 
-def _thresholds(values):
+def _thresholds(values, bins):
     unique = np.unique(values)
-    if len(unique) <= BINS:
+    if len(unique) <= bins:
         return (unique[1:] + unique[:-1]) / 2
-    quantiles = np.unique(np.quantile(values, np.linspace(0, 1, BINS + 1)[1:-1]))
+    quantiles = np.unique(np.quantile(values, np.linspace(0, 1, bins + 1)[1:-1]))
     following = unique[np.minimum(np.searchsorted(unique, quantiles, "right"), len(unique) - 1)]
     cuts = np.unique((quantiles + following) / 2)
     return cuts[cuts < unique[-1]]
@@ -41,7 +41,7 @@ def _bin_centres(values, cuts):
 
 
 # Sumber: Y. Gorishniy, I. Rubachev & A. Babenko, NeurIPS 2022 (kode termometer / piecewise-linear per fitur).
-def thermometer(train, other, feature_weight):
+def thermometer(train, other, feature_weight, bins=BINS):
     codes_train, codes_other, start, names = [], [], [], []
     k = 0
     for col in train.columns:
@@ -53,7 +53,7 @@ def thermometer(train, other, feature_weight):
             continue
         unit = max(feature_weight[k], MIN_WEIGHT) / SCALE / spread
         k += 1
-        cuts = _thresholds(a)
+        cuts = _thresholds(a, bins)
         gaps = np.diff(_bin_centres(a, cuts))
         codes_train.append(a[:, None] > cuts)
         codes_other.append(b[:, None] > cuts)
@@ -83,11 +83,11 @@ class _Adam:
 # H. Owhadi & G. Yoo, "Kernel Flows", J. Comput. Phys. 389, 2019 (gradien dari sampel acak tiap langkah);
 # G. Lanckriet dkk., JMLR 5, 2004 (kernel sebagai jumlah berbobot beberapa kernel);
 # D. Kingma & J. Ba, ICLR 2015 (Adam).
-def learn_kernel(X, y, start, seed=0, steps=STEPS, verbose=20):
+def learn_kernel(X, y, start, seed=0, steps=STEPS, scales=START_SCALES, verbose=20):
     n = len(X)
     sign = np.where(np.asarray(y) > 0, 1.0, -1.0).astype(np.float32)
     noise = np.random.default_rng(0)
-    logs = [(np.log(start * c) + noise.normal(0, START_NOISE, len(start))).astype(np.float32) for c in START_SCALES]
+    logs = [(np.log(start * c) + noise.normal(0, START_NOISE, len(start))).astype(np.float32) for c in scales]
     M = len(logs)
     log_mix, log_reg = np.zeros(M, np.float32), np.float32(np.log(START_REG))
     adam = [_Adam(len(start)) for _ in logs]

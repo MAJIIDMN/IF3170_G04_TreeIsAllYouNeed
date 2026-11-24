@@ -17,6 +17,7 @@ tanpa \textit{ensemble}.
 		\textbf{Model} & \textbf{Berkas submisi} & \textbf{CV Macro F1} & \textbf{\textit{Public score}} \\
 		\midrule
 		SVM kernel yang dipelajari & \texttt{output/svm/submission.csv} & 0,8750 & 0,87912 \\
+		SVM kernel yang dipelajari, 255 kuantil & \texttt{output/svm/submission\_b.csv} & -- & 0,87973 \\
 		SVM kernel Laplacian & \texttt{output/svm/submission\_laplacian.csv} & 0,8703 & 0,87464 \\
 		DTL C4.5 & \texttt{output/dtl/submission.csv} & 0,8672 & 0,87393 \\
 		\bottomrule
@@ -25,11 +26,13 @@ tanpa \textit{ensemble}.
 
 Kolom CV adalah rata-rata tujuh \textit{seed} untuk SVM Laplacian dan sepuluh \textit{seed} untuk DTL. SVM dengan
 kernel yang dipelajari diukur pada satu \textit{seed} (42). Pada \textit{seed} itu SVM Laplacian mendapat 0,8716.
+Varian 255 kuantil (tiga komponen kernel, \textit{seed} pembelajaran 1) hanya diukur pada satu \textit{fold}, dengan Macro F1 0,8770
+terhadap 0,8775 untuk varian pertama, sehingga keduanya dianggap setara.
 
 \subsection{Pemilihan Submisi Final}
 
 Kaggle mengizinkan setiap tim memilih hingga tiga submisi untuk penilaian akhir pada
-\textit{private leaderboard}. Submisi utama kelompok adalah SVM dengan kernel yang dipelajari, karena
+\textit{private leaderboard}. Submisi utama kelompok adalah SVM dengan kernel yang dipelajari (dua varian), karena
 skor \textit{public} dan Macro F1 validasi silangnya sama-sama paling tinggi. Submisi SVM Laplacian (0,87464)
 dan DTL (0,87393) menjadi cadangan, karena selisih skor \textit{public} antarmodel masih di bawah
 variasi skor \textit{public} yang kami amati antarsubmisi DTL yang hanya berbeda
@@ -38,7 +41,7 @@ variasi skor \textit{public} yang kami amati antarsubmisi DTL yang hanya berbeda
 Kelompok terdaftar di \textit{leaderboard} dengan nama tim \textit{LoopedThinkingTransformer}.
 Dengan SVM Laplacian, kelompok berada di peringkat 2 pada \textit{public leaderboard} dengan
 skor 0,87464, selisih 0,00224 dari peringkat 1 (Gambar~\ref{fig:kaggle}). Setelah submisi SVM dengan kernel yang
-dipelajari pada 24 November 2026, skor kelompok menjadi 0,87912. Peringkat ini adalah
+dipelajari pada 24 November 2026, skor kelompok menjadi 0,87912 dan 0,87973 untuk varian 255 kuantil. Peringkat ini adalah
 posisi \textit{public leaderboard} pada saat gambar diambil; peringkat akhir ditentukan oleh
 \textit{private leaderboard} setelah kompetisi ditutup.
 

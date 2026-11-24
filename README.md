@@ -19,6 +19,7 @@ Setiap submisi berasal dari satu model *from scratch* tanpa *ensemble*.
 | Model | Notebook | Berkas submisi | CV Macro F1 | *Public score* |
 | --- | --- | --- | --- | --- |
 | SVM kernel yang dipelajari | [`svm_kaggle_notebook.ipynb`](src/kaggle/svm_kaggle_notebook.ipynb) | [`output/svm/submission.csv`](output/svm/submission.csv) | 0,8750 | 0,87912 |
+| SVM kernel yang dipelajari, 255 kuantil | [`svm_kaggle_notebook.ipynb`](src/kaggle/svm_kaggle_notebook.ipynb) | [`output/svm/submission_b.csv`](output/svm/submission_b.csv) | - | 0,87973 |
 | SVM kernel Laplacian | [`svm_notebook.ipynb`](src/kaggle/svm_notebook.ipynb) | [`output/svm/submission_laplacian.csv`](output/svm/submission_laplacian.csv) | 0,8703 | 0,87464 |
 | DTL C4.5 | [`dtl_notebook.ipynb`](src/kaggle/dtl_notebook.ipynb) | [`output/dtl/submission.csv`](output/dtl/submission.csv) | 0,8672 | 0,87393 |
 
