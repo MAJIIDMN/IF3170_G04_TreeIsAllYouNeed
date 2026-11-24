@@ -1,7 +1,7 @@
 \section{Rekapitulasi Bonus}
 \label{sec:rekap-bonus}
 
-\todo{Isi status setiap bonus dan rujukan subbabnya agar mudah diperiksa asisten. Hapus baris bonus yang tidak dikerjakan.}
+Tabel~\ref{tab:rekap-bonus} merangkum seluruh bonus yang dikerjakan beserta subbab pembahasannya.
 
 \begin{table}[H]
 	\centering
@@ -11,14 +11,16 @@
 		\toprule
 		\textbf{Bonus} & \textbf{Keterangan} & \textbf{Subbab} \\
 		\midrule
-		Kaggle & Peringkat \textit{leaderboard} & \ref{sec:kaggle} \\
+		Kaggle & Peringkat 2 pada \textit{public leaderboard} (skor 0,87464, SVM Laplacian) & \ref{sec:kaggle} \\
 		DTL & Gambar percabangan pohon dengan parameter \textit{top-N} (\texttt{DTL.plot}) & \ref{subsec:dtl-bonus} \\
-		\textit{Logistic Regression} & Video kontur \textit{log-loss} & \ref{subsec:lr-bonus} \\
-		SVM & Gambar bidang pemisah per kernel & \ref{subsec:svm-bonus} \\
-		\textit{Naive Bayes} & Graf \textit{Bayesian network} & \ref{subsec:nb-bonus} \\
-		Optimasi model & DTL: \textit{cost-complexity pruning} dan \textit{pessimistic pruning} C4.5 & \ref{subsec:dtl-bonus} \\
-		Optimasi model & \todo{Algoritma lain di luar materi kelas, jika ada} & \todo{} \\
-		\textit{Cost-sensitive} & DTL: \textit{threshold moving} dan pembobotan kelas, FP $2\times$ lebih mahal daripada FN & \ref{sec:cost-sensitive} \\
+		\textit{Logistic Regression} & Video kontur \textit{log-loss} dan lintasan $(\theta_0, \theta_1)$ & \ref{subsubsec:lr-video} \\
+		SVM & Gambar bidang pemisah, \textit{margin}, dan \textit{support vector} per kernel & \ref{subsubsec:svm-bidang} \\
+		\textit{Naive Bayes} & Graf \textit{Bayesian network} untuk NB dan TAN & \ref{subsec:nb-bonus} \\
+		Optimasi DTL & \textit{Pessimistic pruning} C4.5 dan \textit{cost-complexity pruning} & \ref{subsec:dtl-bonus} \\
+		Optimasi LR & IRLS dengan \textit{coordinate descent} (IRLS-CD) & \ref{subsubsec:lr-optimasi} \\
+		Optimasi SVM & SMO dengan pemilihan pasangan orde kedua dan \textit{cache} kernel, kernel Laplacian, serta bobot fitur AGOP & \ref{subsubsec:svm-optimasi} \\
+		Optimasi NB & \textit{Tree-Augmented Naive Bayes} (TAN) & \ref{subsec:nb-bonus} \\
+		\textit{Cost-sensitive} & Analisis dengan FP $2\times$ lebih mahal daripada FN pada DTL (\textit{threshold moving} dan pembobotan kelas), KNN, SVM, dan NB & \ref{sec:cost-sensitive}, \ref{subsec:knn-bonus}, \ref{subsubsec:svm-cost}, \ref{subsec:nb-bonus} \\
 		\bottomrule
 	\end{tabularx}
 \end{table}
