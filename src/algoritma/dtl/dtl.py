@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from .plot import plot_tree
 from .pruning import (cost_complexity_prune, pessimistic_prune,
                       reduced_error_prune)
 from .serialization import load_model, save_model
@@ -269,6 +270,12 @@ class DTL:
         self._check_fitted()
         rows = _stack(self._predict_columns(X))
         return np.array([traverse(self.root_, row).leaf_id for row in rows])
+
+    def plot(self, path, top_n=15, class_names=None) -> int:
+        self._check_fitted()
+        return plot_tree(self.root_, self.feature_names_, self.classes_ if class_names is None else class_names,
+                         path, top_n)
+
     def save(self, path) -> None:
         self._check_fitted()
         params = {

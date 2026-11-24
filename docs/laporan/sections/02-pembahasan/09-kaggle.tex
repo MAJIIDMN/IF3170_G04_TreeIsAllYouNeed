@@ -1,7 +1,75 @@
 \section{Submisi Kaggle}
 \label{sec:kaggle}
 
-\todo{Nama tim di \textit{leaderboard}, riwayat submisi penting, model dan konfigurasi submisi final, skor \textit{public}/\textit{private}, serta peringkat. Tegaskan bahwa model final adalah implementasi \textit{from scratch} tunggal tanpa \textit{ensemble}, dan sebutkan notebook yang mereproduksi skor tersebut.}
+Submisi akhir berasal dari dua notebook yang masing-masing melatih satu model dari data mentah, yaitu
+\nolinkurl{src/kaggle/svm_notebook.ipynb} untuk SVM dengan kernel Laplacian (Subbab~\ref{sec:svm})
+dan \nolinkurl{src/kaggle/dtl_notebook.ipynb} untuk DTL (Subbab~\ref{sec:dtl}). Prediksi kedua model
+tidak digabung atau dirata-rata, sehingga setiap submisi berasal dari satu model \textit{from scratch}
+tanpa \textit{ensemble}.
+
+\begin{table}[H]
+	\centering
+	\caption{Submisi Kaggle akhir}
+	\label{tab:kaggle-final}
+	\begin{tabularx}{\textwidth}{l Y c c}
+		\toprule
+		\textbf{Model} & \textbf{Berkas submisi} & \textbf{CV Macro F1} & \textbf{\textit{Public score}} \\
+		\midrule
+		SVM kernel Laplacian & \texttt{output/svm/submission.csv} & 0,8703 & 0,87464 \\
+		DTL C4.5 & \texttt{output/dtl/submission.csv} & 0,8672 & 0,87393 \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+Kolom CV adalah angka yang tercantum di notebook: rata-rata tujuh \textit{seed} untuk SVM dan sepuluh
+\textit{seed} untuk DTL.
+
+\subsection{Pemilihan Submisi Final}
+
+Kaggle mengizinkan setiap tim memilih hingga tiga submisi untuk penilaian akhir pada
+\textit{private leaderboard}. Submisi utama kelompok adalah SVM dengan kernel Laplacian, karena
+skor \textit{public} dan Macro F1 validasi silangnya sama-sama paling tinggi. Submisi DTL (0,87393)
+ikut dipilih sebagai cadangan, karena selisih skor \textit{public} keduanya hanya 0,0007, lebih kecil
+daripada variasi skor \textit{public} yang kami amati antarsubmisi DTL yang hanya berbeda
+\textit{seed} (sekitar 0,005). Kedua submisi dapat direproduksi dari notebook masing-masing.
+
+\todo{Sebutkan submisi ketiga yang dipilih (jika ada), nama tim pada \textit{leaderboard},
+peringkat, dan skor \textit{private} setelah kompetisi ditutup, lalu tambahkan \textit{screenshot}.}
+
+\subsection{Riwayat Submisi DTL}
+
+Tabel~\ref{tab:kaggle-riwayat} memuat tiga versi DTL yang pernah disubmisi. Notebook versi pertama dan
+kedua sudah dihapus dari repositori setelah digantikan oleh versi akhir.
+
+\begin{table}[H]
+	\centering
+	\caption{Riwayat submisi DTL}
+	\label{tab:kaggle-riwayat}
+	\begin{tabularx}{\textwidth}{Y c}
+		\toprule
+		\textbf{Versi} & \textbf{\textit{Public score}} \\
+		\midrule
+		Pohon C4.5 dengan \textit{pruning}, fitur awal & 0,8686 \\
+		Satu pohon yang dilatih meniru \textit{ensemble} \textit{scikit-learn} (distilasi) & 0,87246 \\
+		Pohon C4.5 dengan \textit{pruning}, 46 fitur akhir (\texttt{dtl\_notebook.ipynb}) & 0,87393 \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+Versi kedua melatih satu pohon untuk meniru label dari \textit{ensemble} \textit{scikit-learn}
+\cite{breiman1996bornagain}. Pelatihannya membutuhkan \textit{ensemble} sebagai guru, dan pelatihan
+ulang dari awal tidak menghasilkan pohon yang sama di lingkungan Python yang berbeda. Versi akhir tidak
+memakai guru, dilatih langsung dengan \texttt{DTL.fit}, dan skor \textit{public}-nya justru lebih
+tinggi.
+
+\subsection{Reproduksibilitas}
+
+Kedua notebook melatih model dari data mentah, menyimpan model, memuatnya kembali, lalu memprediksi
+data uji dengan model hasil muat. Kode \texttt{dtl\_notebook.ipynb} yang dijalankan ulang menghasilkan
+\texttt{output/dtl/submission.csv} dan \texttt{output/dtl/dtl\_model.json} yang identik byte per byte
+dengan berkas di repositori (Subbab~\ref{subsec:dtl-validasi}). Berkas submisi kedua model juga identik
+dengan keluaran notebook gabungan sebelumnya (\texttt{kaggle\_final.ipynb}), yang mencatat skor
+\textit{public} pada Tabel~\ref{tab:kaggle-final}.
 
 \begin{figure}[H]
 	\centering

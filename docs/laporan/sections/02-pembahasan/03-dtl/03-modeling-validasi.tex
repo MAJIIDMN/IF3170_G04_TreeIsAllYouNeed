@@ -2,23 +2,156 @@
 \label{subsec:dtl-validasi}
 
 \subsubsection{Skema Validasi}
-\todo{Skema validasi untuk DTL (\textit{stratified k-fold} atau \textit{train-test split}), nilai $k$/rasio, dan \textit{seed}. Jika sama dengan kerangka umum (Subbab~\ref{sec:kerangka-umum}), cukup rujuk dan jelaskan perbedaannya saja, misalnya \textit{subsampling} karena waktu komputasi.}
+
+Pemilihan model memakai \textit{stratified} 5-\textit{fold cross validation} pada seluruh data latih
+bersih (27.309 baris), dengan \textit{seed} 42. Pembagian \textit{fold} memakai
+\texttt{StratifiedKFold} dari \textit{scikit-learn}, sehingga setiap \textit{fold} memiliki proporsi
+batal sekitar 32,8\%. Pada setiap \textit{fold}:
+\begin{enumerate}
+	\item \texttt{build\_features} dijalankan dengan empat \textit{fold} latih sebagai data latih,
+	sehingga imputasi, penanda kekosongan, dan fitur grup pemesanan untuk \textit{fold} validasi hanya
+	memakai statistik dan label dari empat \textit{fold} latih;
+	\item model dilatih pada empat \textit{fold} latih;
+	\item peluang \textit{fold} validasi disimpan sebagai prediksi \textit{out-of-fold} (OOF).
+\end{enumerate}
+Macro F1 dilaporkan sebagai rata-rata dan simpangan baku dari lima nilai per \textit{fold}.
+\textit{Accuracy}, \textit{precision}, dan \textit{recall} dihitung dari gabungan prediksi OOF. Semua
+konfigurasi dievaluasi pada \textit{fold} dan fitur yang sama, sehingga perbedaan skor hanya berasal
+dari konfigurasi, bukan dari pembagian data.
+
+Satu \textit{seed} pembagian dapat memberi angka yang sedikit lebih tinggi atau lebih rendah daripada
+rata-rata jangka panjang. Untuk mengukurnya, model final juga kami evaluasi dengan sepuluh
+\textit{seed} lain (0 hingga 9). Rata-rata Macro F1 OOF-nya 0,8670 dengan simpangan baku
+antar-\textit{seed} 0,0010, dekat dengan angka 0,8672 untuk sepuluh \textit{seed} yang tercantum di
+notebook. \textit{Seed} 42 (0,8692) berada di sisi atas sebaran ini, sehingga angka absolut pada
+Tabel~\ref{tab:dtl-tuning} sekitar 0,002 lebih optimistis. Perbandingan antarkonfigurasi tetap sah
+karena semuanya memakai \textit{fold} yang sama.
 
 \subsubsection{\textit{Hyperparameter Tuning}}
-\todo{Ruang pencarian (\texttt{max\_depth}, \texttt{min\_samples\_leaf}, kriteria \textit{split}, strategi \textit{pruning}, \texttt{confidence}, \texttt{ccp\_alpha}), metode pencarian, dan hasilnya. Sertakan tabel atau grafik skor CV terhadap hiperparameter.}
+
+Kedalaman maksimum 20 dan minimal 2 contoh per cabang ditetapkan dari eksperimen awal kelompok dan
+tidak di-\textit{tuning} ulang di notebook. Notebook membandingkan metode \textit{pruning},
+parameternya, kriteria pemilihan atribut, dan representasi data pada nilai tersebut. Ruang pencarian
+dirangkum pada Tabel~\ref{tab:dtl-ruang}, dan hasilnya pada Tabel~\ref{tab:dtl-tuning}.
 
 \begin{table}[H]
 	\centering
-	\caption{Hasil \textit{tuning} hiperparameter DTL}
-	\label{tab:dtl-tuning}
-	\begin{tabular}{l l c}
+	\caption{Ruang pencarian hiperparameter DTL}
+	\label{tab:dtl-ruang}
+	\small
+	\begin{tabularx}{\textwidth}{l Y l}
 		\toprule
 		\textbf{Hiperparameter} & \textbf{Ruang pencarian} & \textbf{Terbaik} \\
 		\midrule
-		\todo{} & & \\
+		\texttt{pruning} & \texttt{none}, \texttt{reduced\_error}, \texttt{pessimistic}, \texttt{cost\_complexity} & \texttt{cost\_complexity} \\
+		\texttt{ccp\_alpha} & 1,0; 2,5; 5,0 & 2,5 \\
+		\texttt{confidence} (CF) & 0,03 (tetap) & tidak dipakai \\
+		\texttt{split\_criterion} & \texttt{gain\_ratio}, \texttt{gain} & \texttt{gain\_ratio} \\
+		Representasi data & 46 fitur hasil \textit{preprocessing}, data mentah & 46 fitur \\
+		\texttt{max\_depth}, \texttt{min\_samples\_leaf} & tetap: 20; 2 (data mentah: 10; 10) & 20; 2 \\
+		\textit{Threshold} & 0,20 hingga 0,70 (langkah 0,02) & 0,4 \\
 		\bottomrule
-	\end{tabular}
+	\end{tabularx}
 \end{table}
 
+\begin{table}[H]
+	\centering
+	\caption{Hasil \textit{stratified} 5-\textit{fold} CV untuk setiap konfigurasi (\textit{seed} 42, \textit{threshold} 0,4). Kolom ``Daun'' adalah rata-rata jumlah daun per \textit{fold}, dan kolom ``Waktu'' adalah total waktu lima \textit{fold}.}
+	\label{tab:dtl-tuning}
+	\footnotesize
+	\setlength{\tabcolsep}{3.5pt}
+	\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X c c c c r r}
+		\toprule
+		\textbf{Konfigurasi} & \textbf{Macro F1} & \textbf{Acc.} & \textbf{Prec.} & \textbf{Rec.} & \textbf{Daun} & \textbf{Waktu (s)} \\
+		\midrule
+		Tanpa \textit{pruning} & $0{,}8497 \pm 0{,}0048$ & 0,8675 & 0,7970 & 0,7990 & 688,4 & 28,2 \\
+		\textit{Reduced error}, validasi 30\% & $0{,}8625 \pm 0{,}0025$ & 0,8801 & 0,8302 & 0,7970 & 115,2 & 15,6 \\
+		\textit{Pessimistic}, CF = 0,03 & $0{,}8685 \pm 0{,}0024$ & 0,8863 & 0,8512 & 0,7911 & 81,8 & 18,9 \\
+		\textit{Cost-complexity} 1,0 & $0{,}8623 \pm 0{,}0026$ & 0,8801 & 0,8321 & 0,7942 & 254,8 & 49,4 \\
+		\textbf{\textit{Cost-complexity} 2,5} & $\mathbf{0{,}8692 \pm 0{,}0030}$ & \textbf{0,8870} & \textbf{0,8538} & \textbf{0,7904} & \textbf{65,6} & \textbf{22,2} \\
+		\textit{Cost-complexity} 5,0 & $0{,}8671 \pm 0{,}0042$ & 0,8849 & 0,8469 & 0,7917 & 33,2 & 39,7 \\
+		\textit{Cost-complexity} 2,5, \textit{info. gain} & $0{,}8627 \pm 0{,}0033$ & 0,8815 & 0,8463 & 0,7800 & 132,2 & 68,8 \\
+		Data mentah, kedalaman 10 & $0{,}8134 \pm 0{,}0070$ & 0,8390 & 0,7746 & 0,7168 & 71,4 & 9,8 \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{dtl/dtl_validation.png}
+	\caption{Kiri: Macro F1 prediksi OOF model final terhadap \textit{threshold}. Kanan: \textit{confusion matrix} prediksi OOF pada \textit{threshold} 0,4 (\textit{seed} 42).}
+	\label{fig:dtl-validation}
+\end{figure}
+
+\paragraph{Analisis.}
+\begin{itemize}
+	\item \textbf{\textit{Pruning} adalah faktor penentu.} Tanpa \textit{pruning}, pohon tumbuh
+	menjadi sekitar 688 daun dan hanya mencapai 0,8497. \textit{Cost-complexity pruning} dengan
+	$\alpha = 2{,}5$ memangkasnya menjadi sekitar 66 daun dan menaikkan Macro F1 sebesar 0,0195. Yang
+	berubah terutama \textit{precision} kelas batal (0,7970 menjadi 0,8538), sedangkan
+	\textit{recall}-nya hampir tetap (0,7990 menjadi 0,7904). Pohon tanpa \textit{pruning} memiliki
+	banyak daun kecil, dan pola ini konsisten dengan daun-daun kecil yang menandai batal berdasarkan
+	segelintir contoh latih yang tidak berlaku pada data validasi. Ini gejala \textit{overfitting}, kebalikan dari
+	LR yang justru \textit{underfitting} (Subbab~\ref{subsec:lr-validasi}).
+	\item \textbf{\textit{Pessimistic} dan \textit{cost-complexity} setara.} Selisih keduanya
+	0,0007, jauh di bawah simpangan baku antar-\textit{fold} (sekitar 0,003), sehingga keduanya tidak
+	dapat dibedakan pada data ini. \textit{Reduced error pruning} tertinggal 0,0067 karena 30\% data
+	latih disisihkan untuk validasi, sehingga pohon dibangun dari data yang lebih sedikit. Kedua metode
+	lainnya memakai seluruh data latih.
+	\item \textbf{$\alpha$ memiliki titik tengah yang jelas.} $\alpha = 1{,}0$ menyisakan sekitar 255
+	daun dan skornya turun ke 0,8623, mendekati \textit{reduced error pruning}. $\alpha = 5{,}0$
+	memangkas sampai sekitar 33 daun dan skornya turun sedikit ke 0,8671. Penurunan di sisi $\alpha$
+	besar lebih landai daripada di sisi $\alpha$ kecil, sehingga pada data ini pohon yang agak terlalu
+	kecil lebih aman daripada pohon yang terlalu besar.
+	\item \textbf{\textit{Gain ratio} lebih baik daripada \textit{information gain}.} Dengan
+	\textit{pruning} yang sama, \textit{information gain} hanya mencapai 0,8627 dan menghasilkan pohon
+	dua kali lebih besar (sekitar 132 daun). Hasil ini sejalan dengan alasan C4.5 pada materi kelas:
+	\textit{information gain} condong ke pemecahan yang tampak murni tetapi tidak menggeneralisasi
+	\cite{slide-dtl-issues}.
+	\item \textbf{Data mentah dapat dilatih, tetapi lebih lemah.} Varian ini memberikan kolom asli tanpa
+	imputasi dan tanpa \textit{one-hot}, sehingga \texttt{DTL} sendiri yang menangani kategori dan
+	nilai kosong dengan \texttt{missing\_predict="distribute"}. Skornya 0,8134. Varian ini sekaligus
+	tidak memakai fitur grup pemesanan dan fitur tanggal, serta dibatasi ke kedalaman 10 agar waktunya
+	wajar. Karena tiga hal berubah bersamaan, selisihnya tidak dapat dikaitkan dengan satu penyebab saja.
+	\item \textbf{\textit{Threshold} tidak sensitif.} Kurva pada Gambar~\ref{fig:dtl-validation} datar
+	dari sekitar 0,36 hingga 0,58. \textit{Threshold} 0,4 dan 0,5 memberi Macro F1 yang sama hingga
+	empat desimal (0,8692). Daun hasil \textit{pruning} umumnya sangat murni, sehingga hanya sedikit
+	prediksi yang peluangnya berada di rentang tersebut. Karena itu, pilihan antara 0,4 dan 0,5 tidak
+	memengaruhi hasil, dan notebook memakai 0,4.
+	\item \textbf{Keterbatasan \textit{tuning}.} Kedalaman dan ukuran daun tidak diuji ulang di
+	notebook, CF hanya satu nilai, dan $\alpha$ hanya tiga nilai. Konfigurasi juga dipilih dari
+	prediksi OOF yang sama dengan yang dilaporkan, sehingga 0,8692 sedikit optimistis. Evaluasi sepuluh
+	\textit{seed} di atas memberi perkiraan yang lebih jujur, yaitu sekitar 0,867.
+\end{itemize}
+
 \subsubsection{Model Final}
-\todo{Konfigurasi final DTL, skor CV (rata-rata $\pm$ simpangan baku), dan lokasi model tersimpan di \texttt{output/}.}
+
+Konfigurasi final adalah \texttt{DTL(max\_depth=20, min\_samples\_leaf=2,
+pruning="cost\_complexity", ccp\_alpha=2.5)} dengan parameter lain bernilai bawaan, 46 fitur, dan
+\textit{threshold} \textbf{0,4}. Hasil CV-nya adalah Macro F1 $0{,}8692 \pm 0{,}0030$
+(\textit{seed} 42) atau 0,8670 sebagai rata-rata sepuluh \textit{seed}, \textit{accuracy} 0,8870,
+\textit{precision} kelas batal 0,8538, dan \textit{recall} kelas batal 0,7904. Untuk submisi, fitur
+dibangun ulang dengan seluruh 27.309 baris data latih sebagai acuan, lalu pohon dilatih pada seluruh
+data tersebut. Pohon final memiliki 82 daun dan kedalaman 20. Jumlah daunnya lebih besar daripada
+rata-rata per \textit{fold} (sekitar 66) kemungkinan karena datanya 25\% lebih banyak: $\alpha$
+dihitung dalam jumlah contoh, sehingga pada data yang lebih besar lebih banyak cabang yang mengurangi
+lebih dari 2,5 kesalahan per daun.
+
+Model memprediksi 30,25\% pemesanan uji batal, sedikit di bawah proporsi batal data latih (32,75\%).
+Skornya 0,87393 pada \textit{public leaderboard} Kaggle. Artefaknya tersimpan di
+\nolinkurl{output/dtl/}:
+\begin{itemize}
+	\item \texttt{dtl\_model.json}: model final;
+	\item \texttt{submission.csv}: berkas submisi;
+	\item \texttt{dtl\_pruning.csv}: Tabel~\ref{tab:dtl-tuning};
+	\item \texttt{dtl\_feature\_selection.csv}, \texttt{dtl\_comparison.csv}, dan
+	\texttt{dtl\_cost\_sensitive.csv}: Tabel~\ref{tab:dtl-fs}, Tabel~\ref{tab:dtl-hasil}, dan
+	Tabel~\ref{tab:cost-hasil}.
+\end{itemize}
+Notebook \nolinkurl{src/kaggle/dtl_notebook.ipynb} dibangkitkan oleh skrip
+\nolinkurl{src/kaggle/build_dtl.py}. Kami menjalankan ulang seluruh kode notebook dari data
+mentah (sekitar 7,6 menit). \texttt{submission.csv} dan \texttt{dtl\_model.json} yang dihasilkan
+identik byte per byte dengan berkas di repositori, begitu juga semua angka DTL pada
+Tabel~\ref{tab:dtl-tuning} dan Tabel~\ref{tab:dtl-fs}. Yang berbeda hanya kolom waktu dan dua baris
+\textit{scikit-learn} tanpa \textit{pruning} pada Tabel~\ref{tab:dtl-hasil}, yang bergeser paling
+banyak 0,0005 Macro F1 di lingkungan Python kami.

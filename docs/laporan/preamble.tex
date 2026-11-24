@@ -21,6 +21,14 @@
 \usepackage{booktabs}
 \usepackage{tabularx}
 \usepackage{multirow}
+\usepackage{etoolbox}
+
+\captionsetup{font=footnotesize}
+\newif\iftabelkecil
+\AtBeginEnvironment{table}{\tabelkeciltrue}
+\AtBeginEnvironment{longtable}{\tabelkeciltrue\footnotesize}
+\AtBeginEnvironment{tabular}{\iftabelkecil\footnotesize\fi}
+\AtBeginEnvironment{tabularx}{\iftabelkecil\footnotesize\fi}
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
 \usepackage[table]{xcolor}
 
@@ -111,6 +119,13 @@
 \pagestyle{fancy}
 \kepala
 \fancypagestyle{plain}{\kepala}
+
+% ---------- Pemenggalan baris ----------
+% Nama fungsi/kolom panjang di \texttt boleh dipatah setelah garis bawah, dan spasi antarkata
+% boleh melebar sedikit agar tidak ada baris yang keluar margin.
+\let\oldunderscore\_
+\renewcommand{\_}{\oldunderscore\allowbreak}
+\setlength{\emergencystretch}{3em}
 
 % ---------- Hyperref ----------
 \hypersetup{colorlinks=true, linkcolor=black, citecolor=blue, urlcolor=blue}

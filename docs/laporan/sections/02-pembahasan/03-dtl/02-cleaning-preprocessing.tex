@@ -1,25 +1,218 @@
 \subsection{\textit{Data Cleaning} dan \textit{Preprocessing}}
 \label{subsec:dtl-preprocessing}
 
-\todo{Jelaskan \textit{pipeline} khusus DTL beserta alasan tiap langkah, dikaitkan dengan temuan EDA (Subbab~\ref{sec:eda}) dan karakteristik algoritma. Semua transformasi di-\textit{fit} pada data latih saja lalu diterapkan ke data uji \cite{slide-dataprep}.}
+Seluruh langkah diimplementasikan pada \nolinkurl{src/kaggle/booking_features.py} (pandas dan NumPy)
+dan dipanggil oleh notebook \nolinkurl{src/kaggle/dtl_notebook.ipynb} dengan urutan berikut:
+\begin{enumerate}
+	\item pembuangan kolom \texttt{id} dan duplikat (data latih saja, \texttt{clean}),
+	\item fitur tanggal pemesanan (\texttt{add\_booking\_dates}),
+	\item imputasi dan penanda kekosongan (\texttt{impute\_and\_flag}),
+	\item fitur grup pemesanan (\texttt{sibling\_pairs} dan \texttt{build\_features}),
+	\item fitur lama menginap,
+	\item \textit{one-hot encoding}.
+\end{enumerate}
+Semua statistik (median, modus, daftar kategori, dan label untuk fitur grup) dipelajari dari data
+latih saja, lalu diterapkan ke data validasi dan data uji \cite{slide-dataprep}. Fungsi
+\texttt{build\_features} menerima data latih dan data lain sebagai dua argumen terpisah, sehingga
+kedua data tidak pernah digabung. Pada validasi silang, fungsi ini dipanggil ulang di setiap
+\textit{fold} dengan bagian latih \textit{fold} tersebut sebagai data latih. Angka analisis di bawah
+berasal dari seluruh data latih bersih (27.309 baris).
 
 \subsubsection{Penanganan \textit{Missing Values}}
-\todo{C4.5 menangani \textit{null} secara bawaan (bobot fraksional saat \textit{training} dan distribusi probabilitas saat prediksi), jadi imputasi tidak wajib. Jelaskan apakah tetap ada imputasi dan alasannya.}
+
+Delapan fitur memiliki nilai kosong, dan hanya 60,9\% baris data latih yang lengkap.
+Tabel~\ref{tab:dtl-missing} membandingkan tingkat pembatalan saat kolom kosong dan saat terisi.
+
+\begin{table}[H]
+	\centering
+	\caption{Kolom dengan nilai kosong pada data latih bersih dan data uji, serta tingkat pembatalan saat kolom kosong dan terisi}
+	\label{tab:dtl-missing}
+	\small
+	\begin{tabular}{l r c c c c}
+		\toprule
+		\textbf{Kolom} & \textbf{Kosong} & \textbf{\% latih} & \textbf{\% uji} & \textbf{Batal (kosong)} & \textbf{Batal (terisi)} \\
+		\midrule
+		\texttt{num\_adults} & 809 & 3,0 & 2,6 & 0,335 & 0,327 \\
+		\texttt{num\_children} & 3.035 & 11,1 & 10,9 & 0,328 & 0,327 \\
+		\texttt{meal\_package} & 1.760 & 6,4 & 6,5 & 0,319 & 0,328 \\
+		\texttt{needs\_parking} & 1.082 & 4,0 & 3,6 & 0,312 & 0,328 \\
+		\texttt{room\_category} & 1.002 & 3,7 & 3,5 & 0,348 & 0,327 \\
+		\texttt{days\_before\_arrival} & 1.120 & 4,1 & 4,2 & 0,312 & 0,328 \\
+		\texttt{nightly\_rate\_idr} & 1.992 & 7,3 & 7,9 & 0,309 & 0,329 \\
+		\texttt{special\_requests} & 2.499 & 9,2 & 8,7 & 0,409 & 0,319 \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+Proporsi kosong di data latih dan data uji hampir sama. Pada tujuh kolom, tingkat pembatalan saat
+kosong hanya berbeda paling banyak 0,021 dari saat terisi. Pengecualiannya
+\texttt{special\_requests}: baris yang kosong batal 0,409, jauh di atas baris terisi (0,319).
+
+Kelas \texttt{DTL} dapat menerima nilai kosong secara langsung dengan bobot pecahan
+(Subbab~\ref{subsec:dtl-implementasi}). Meski begitu, \textit{pipeline} final mengimputasi nilai
+kosong dengan dua alasan. Pertama, varian yang menerima data mentah jauh lebih lambat karena baris
+bernilai kosong diteruskan ke semua cabang, sehingga hanya dapat diuji sampai kedalaman 10
+(Subbab~\ref{subsec:dtl-validasi}). Kedua, data yang sudah lengkap dapat dipakai langsung oleh
+pembanding \textit{scikit-learn} dan PCA, yang tidak menerima nilai kosong, sehingga semua
+perbandingan memakai matriks fitur yang sama. Langkahnya sebagai berikut.
+\begin{itemize}
+	\item \textbf{Imputasi.} Fitur numerik diisi median dan fitur kategorikal diisi modus data latih.
+	\item \textbf{Penanda kekosongan.} Setiap kolom yang memiliki nilai kosong di data latih mendapat
+	kolom biner \texttt{missing\_<kolom>}, termasuk fitur turunan \texttt{book\_ord} yang ikut kosong
+	ketika \texttt{days\_before\_arrival} kosong. Hasilnya sembilan penanda. Penanda ini menjaga
+	informasi yang hilang akibat imputasi, terutama pada \texttt{special\_requests}.
+\end{itemize}
 
 \subsubsection{Data Duplikat dan Data Tidak Valid}
-\todo{Jumlah duplikat, nilai tidak wajar, atau \textit{outlier} yang ditangani untuk DTL dan caranya. Baris data uji tidak boleh dibuang.}
+
+\paragraph{Duplikat.} Kolom \texttt{id} dibuang karena hanya berupa \textit{hash} acak. Kolom ini
+dibaca sebagai teks karena sebagian nilainya, misalnya \texttt{123e4567}, akan terbaca sebagai
+notasi ilmiah jika dibaca sebagai angka. Data latih memuat 64 baris duplikat persis (seluruh fitur
+dan label sama), sehingga tersisa 27.309 baris. Ada juga dua pasang baris dengan fitur identik
+tetapi label berbeda. Keempat baris dipertahankan karena tidak ada dasar untuk memilih salah satu
+label. Data uji tidak diubah barisnya karena setiap baris harus diprediksi.
+
+\paragraph{Data tidak valid.} Terdapat 106 baris dengan \texttt{num\_adults} = 0 dan 408 baris
+dengan \texttt{nightly\_rate\_idr} = 0. Kedua nilai ini mungkin terjadi pada pemesanan nyata, misalnya
+kamar komplimen, sehingga dianggap nilai asli dan dipertahankan.
+
+\paragraph{\textit{Outlier}.} Tidak ada nilai yang dipangkas. Pemecahan pohon hanya bergantung pada
+urutan nilai terhadap ambang, sehingga nilai ekstrem tidak menarik ambang seperti pada model linear.
 
 \subsubsection{Konstruksi Fitur dan \textit{Encoding}}
-\todo{DTL dapat memakai kategori mentah (\textit{multiway} atau \textit{binary split}), sehingga \textit{encoding} tidak wajib. Jelaskan keputusan yang diambil.}
+
+\paragraph{Fitur tanggal pemesanan.} \texttt{arr\_ord} adalah tanggal kedatangan dalam jumlah hari
+sejak 1 Januari 2023, \texttt{book\_ord} = \texttt{arr\_ord} $-$ \texttt{days\_before\_arrival}
+adalah perkiraan tanggal pemesanan, dan \texttt{arr\_dow} adalah hari kedatangan dalam pekan.
+Kolom tahun, bulan, dan tanggal yang terpisah tidak dapat dibandingkan dalam satu pemecahan, sedangkan
+\texttt{arr\_ord} menyatakan urutan waktu dalam satu angka.
+
+\paragraph{Fitur grup pemesanan.} Sebagian pemesanan memiliki pemesanan lain di data latih dengan
+tanggal kedatangan, lama menginap, dan kanal yang sama, yang kemungkinan berasal dari satu rombongan.
+Pohon biasa tidak dapat memakai pola ini karena setiap baris diproses sendiri-sendiri. Untuk setiap
+baris, dicari baris data latih lain (bukan baris itu sendiri) yang kemungkinan satu grup dengan aturan
+berikut:
+\begin{itemize}
+	\item tanggal kedatangan, jumlah malam akhir pekan, jumlah malam hari kerja, dan kanal pemesanan
+	sama persis;
+	\item selisih \texttt{days\_before\_arrival} paling banyak 10 hari;
+	\item selisih harga per malam paling banyak 5\% dari harga yang lebih tinggi di antara keduanya;
+	\item tipe kamar, paket makan, jumlah tamu, \textit{special request}, dan kebutuhan parkir sama,
+	atau kosong di salah satu baris.
+\end{itemize}
+Baris segrup $j$ diberi bobot $w_j = \max(0,\ 1 - |\Delta_j| / 11)$, dengan $\Delta_j$ selisih
+\texttt{days\_before\_arrival}, atau $w_j = 0{,}1$ jika salah satu nilainya kosong. Dari bobot ini
+dibentuk dua fitur. \texttt{sib\_n} adalah jumlah bobot baris segrup, dan \texttt{sib\_te} adalah
+rata-rata label berbobot yang dihaluskan menuju rata-rata label global (\textit{smoothed target
+encoding}) \cite{micci2001targetenc}:
+\begin{equation}
+	\texttt{sib\_te} = \frac{\sum_{j \in G} w_j\, y_j + m \cdot \bar{y}}{\sum_{j \in G} w_j + m}, \qquad m = 1
+	\label{eq:dtl-sibling}
+\end{equation}
+dengan $G$ himpunan baris segrup dan $\bar{y}$ proporsi kelas batal di data latih.
+
+Fitur yang memakai label rawan kebocoran. Karena itu, baris data latih dibagi secara acak ke dalam
+lima \textit{fold} internal, dan \texttt{sib\_te} untuk sebuah baris hanya memakai label baris segrup
+dari \textit{fold} internal lain. Data uji memakai label seluruh data latih, dan \texttt{sib\_n} untuk
+data uji dikali $4/5$ karena acuannya seluruh data latih, bukan empat dari lima \textit{fold}.
+Hasilnya, 39,3\% baris data latih dan 42,1\% baris data uji memiliki minimal satu baris segrup.
+Tabel~\ref{tab:dtl-sibling} menunjukkan bahwa \texttt{sib\_te} memisahkan kelas dengan jelas, dan
+fitur ini menjadi akar pohon final (Subbab~\ref{subsec:dtl-bonus}).
+
+\begin{table}[H]
+	\centering
+	\caption{Proporsi label batal pada data latih menurut nilai \texttt{sib\_te} (\textit{out-of-fold})}
+	\label{tab:dtl-sibling}
+	\begin{tabular}{c r r}
+		\toprule
+		\textbf{Rentang \texttt{sib\_te}} & \textbf{Jumlah baris} & \textbf{Proporsi batal} \\
+		\midrule
+		$(0{,}0;\ 0{,}2]$ & 4.547 & 0,026 \\
+		$(0{,}2;\ 0{,}4]$ & 18.639 & 0,268 \\
+		$(0{,}4;\ 0{,}6]$ & 715 & 0,733 \\
+		$(0{,}6;\ 0{,}8]$ & 1.216 & 0,921 \\
+		$(0{,}8;\ 1{,}0]$ & 2.192 & 0,998 \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\paragraph{Fitur lama menginap.} \texttt{nights} adalah jumlah malam akhir pekan dan malam hari kerja,
+dan \texttt{weekend\_share} adalah proporsi malam akhir pekan terhadap \texttt{nights}. Pohon dengan
+pemecahan sejajar sumbu tidak dapat membentuk jumlah atau rasio dua fitur dalam satu pemecahan,
+sehingga kedua fitur ini disediakan langsung.
+
+\paragraph{\textit{Encoding}.} Tiga fitur kategorikal (\texttt{meal\_package},
+\texttt{room\_category}, dan \texttt{booking\_channel}) di-\textit{one-hot}, sehingga setiap kategori
+menjadi kolom biner dan pohon memecahnya dengan ambang 0,5. Kelas \texttt{DTL} sebenarnya dapat
+memecah kategori mentah satu cabang per kategori. \textit{One-hot} dipakai agar matriks fitur sama
+untuk \texttt{DTL}, \textit{scikit-learn}, dan PCA. Kolom data uji disamakan dengan kolom data latih,
+dan kategori yang tidak ada di data latih menjadi nol di semua kolom \textit{one-hot}-nya.
+
+Setelah semua langkah di atas, model menerima 46 fitur numerik: 14 fitur numerik asli, 3 fitur
+tanggal, 9 penanda kekosongan, 2 fitur grup pemesanan, 2 fitur lama menginap, dan 16 kolom
+\textit{one-hot}.
 
 \subsubsection{Normalisasi dan Standarisasi}
-\todo{Tidak diperlukan karena \textit{split} berbasis \textit{threshold} tidak terpengaruh skala. Tulis alasannya singkat.}
+
+Fitur tidak dinormalisasi. Pemecahan pohon hanya bergantung pada urutan nilai terhadap ambang,
+sehingga transformasi monoton seperti standarisasi atau \textit{min-max} tidak mengubah pohon yang
+terbentuk. Standarisasi hanya dipakai sebelum PCA pada Subbab~\ref{subsec:dtl-dimred}, karena PCA
+peka terhadap skala.
 
 \subsubsection{Penanganan \textit{Imbalanced Data}}
-\todo{Misalnya \textit{class weight}, \textit{threshold} probabilitas daun, atau Laplace \textit{correction}.}
+
+Kelas batal mencakup 32,75\% data latih (8.944 dari 27.309 baris). Distribusi ini tidak seimbang,
+tetapi tidak ekstrem. Tidak dilakukan \textit{resampling}, karena efek utamanya pada pohon adalah
+menggeser proporsi kelas di setiap daun, dan pergeseran yang sama dapat diperoleh langsung dengan
+menggeser \textit{threshold}. Ketidakseimbangan ditangani di sisi keputusan: evaluasi memakai Macro F1
+sehingga kelas batal berbobot sama dengan kelas mayoritas, dan \textit{threshold} 0,4 dipakai alih-alih
+0,5 (Subbab~\ref{subsec:dtl-validasi}). Pembobotan kelas (\texttt{class\_weight}) tersedia di
+implementasi, tetapi hanya dipakai untuk \textit{cost-sensitive classification}
+(Subbab~\ref{sec:cost-sensitive}), karena di sana tujuannya biaya, bukan Macro F1.
 
 \subsubsection{\textit{Feature Selection}}
-\todo{Pohon melakukan seleksi fitur implisit, tetapi fitur ber-kardinalitas tinggi dapat memicu \textit{overfitting}. Laporkan \textit{ablation study} jika ada. Sebutkan fitur akhir yang dipakai.}
+\label{subsec:dtl-fs}
+
+Setiap fitur diberi skor berupa \textit{information gain} terbaiknya (dengan ambang terbaik) pada
+bagian latih setiap \textit{fold}, lalu fitur diurutkan menurut skor tersebut. Lima fitur dengan rata-rata
+\textit{gain} tertinggi adalah \texttt{sib\_te} (0,199), \texttt{days\_before\_arrival} (0,113),
+\texttt{special\_requests} (0,043), \texttt{arr\_ord} (0,041), dan \texttt{arrival\_year} (0,026).
+Peringkat dihitung ulang di setiap \textit{fold}, sehingga label \textit{fold} validasi tidak ikut
+menentukan fitur yang dipilih. Tabel~\ref{tab:dtl-fs} menunjukkan hasilnya.
+
+\begin{table}[H]
+	\centering
+	\caption{Pengaruh \textit{feature selection} dan PCA pada model final (5-\textit{fold}, \textit{seed} 42, \textit{threshold} 0,4)}
+	\label{tab:dtl-fs}
+	\begin{tabular}{l c c c}
+		\toprule
+		\textbf{Himpunan fitur} & \textbf{Macro F1} & \textbf{Rata-rata daun} & \textbf{Waktu (s)} \\
+		\midrule
+		Semua fitur (46) & $0{,}8692 \pm 0{,}0030$ & 65,6 & 22,2 \\
+		30 fitur teratas & $0{,}8697 \pm 0{,}0036$ & 64,2 & 15,3 \\
+		20 fitur teratas & $0{,}8677 \pm 0{,}0034$ & 72,2 & 12,1 \\
+		12 fitur teratas & $0{,}8426 \pm 0{,}0029$ & 103,0 & 15,4 \\
+		PCA 95\% variansi & $0{,}7804 \pm 0{,}0034$ & 304,8 & 89,1 \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+Membuang fitur tidak memberi kenaikan yang berarti. Tiga puluh fitur teratas hanya naik 0,0005, jauh
+di bawah simpangan baku antar-\textit{fold} (0,003), sedangkan 12 fitur teratas turun 0,027. Pohon
+sudah memilih fitur sendiri di setiap simpul, sehingga fitur yang lemah sendirian tetap dapat dipakai
+di simpul yang lebih dalam ketika berinteraksi dengan fitur lain. Model final memakai semua 46 fitur.
 
 \subsubsection{\textit{Dimensionality Reduction}}
-\todo{Umumnya merugikan DTL karena komponen PCA sulit dipecah dengan \textit{split} sejajar sumbu dan menghilangkan interpretabilitas. Laporkan hasil percobaannya.}
+\label{subsec:dtl-dimred}
+
+PCA diuji dengan mempertahankan komponen yang mencakup 95\% variansi. Sebelum PCA, fitur
+distandarisasi, dan tiga fitur yang sangat miring ditransformasi dahulu (akar kuadrat untuk
+\texttt{days\_before\_arrival}, logit untuk \texttt{sib\_te}, dan $\log(1+x)$ untuk \texttt{sib\_n}).
+Hasilnya pada Tabel~\ref{tab:dtl-fs}: Macro F1 turun dari 0,8692 menjadi 0,7804, pohon membesar dari
+sekitar 66 menjadi 305 daun, dan waktunya empat kali lebih lama.
+
+Penurunan ini sesuai dengan cara kerja pohon. Pemecahan pohon sejajar sumbu fitur, sedangkan setiap
+komponen PCA adalah kombinasi linear semua fitur. Aturan sederhana seperti ``\texttt{sib\_te}
+$\le 0{,}47$'' tidak lagi dapat dinyatakan dengan satu pemecahan, sehingga pohon memerlukan banyak
+pemecahan bertingkat untuk mendekatinya. Selain itu, arti setiap simpul hilang. PCA tidak dipakai pada
+model final.

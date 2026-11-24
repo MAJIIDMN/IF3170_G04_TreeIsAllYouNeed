@@ -2,23 +2,150 @@
 \label{subsec:svm-validasi}
 
 \subsubsection{Skema Validasi}
-\todo{Skema validasi untuk SVM (\textit{stratified k-fold} atau \textit{train-test split}), nilai $k$/rasio, dan \textit{seed}. Jika sama dengan kerangka umum (Subbab~\ref{sec:kerangka-umum}), cukup rujuk dan jelaskan perbedaannya saja, misalnya \textit{subsampling} karena waktu komputasi.}
+Validasi SVM memakai tiga lapis, karena waktu pelatihan SVM membatasi seberapa banyak model dapat dilatih. Kerangka umum validasi dijelaskan pada Subbab~\ref{sec:kerangka-umum}; di sini hanya dijelaskan perbedaannya.
+\begin{enumerate}
+	\item \textbf{\textit{Hold-out} 20\%.} Data latih bersih (27.309 baris) dibagi secara \textit{stratified} dengan \textit{seed} 42 menjadi data pengembangan (21.847 baris, proporsi batal 0,3275) dan \textit{hold-out} (5.462 baris). \textit{Hold-out} dipakai untuk perbandingan dengan \textit{scikit-learn}, matriks konfusi, analisis kesalahan, dan \textit{cost-sensitive}.
+	\item \textbf{CV 3-\textit{fold} pada notebook.} Pemilihan kernel dan $C$ memakai \texttt{StratifiedKFold} (3 \textit{fold}, diacak, \textit{seed} 42) pada data pengembangan. Agar cepat, SVM \textit{from scratch} dilatih dengan 3.000 baris acak dari tiap \textit{fold} latih (\texttt{tol} $10^{-2}$) dan dinilai pada seluruh \textit{fold} validasi. Fitur, standardisasi, dan bobot AGOP dihitung ulang dari bagian latih tiap \textit{fold} (Subbab~\ref{subsec:svm-preprocessing}).
+	\item \textbf{CV 5-\textit{fold} dengan 7 \textit{seed} pada model terbaik.} Konfigurasi Laplacian dipilih dan dikonfirmasi dengan \textit{stratified} 5-\textit{fold} pada seluruh data latih bersih, dengan Macro F1 dihitung pada gabungan prediksi \textit{out-of-fold}. Tiga \textit{seed} (42, 1, dan 7) dipakai memilih konfigurasi, dan empat \textit{seed} (11, 22, 33, dan 2026) hanya untuk konfirmasi. Fitur dan bobot dihitung ulang di setiap \textit{fold}. Skema ini dijalankan terpisah dari notebook dengan implementasi SMO yang setara (\texttt{numba}, \texttt{float32}, \texttt{tol} $10^{-2}$) agar 35 pelatihan pada $\approx$21.800 baris selesai dalam waktu wajar.
+\end{enumerate}
+Pembandingnya adalah pohon keputusan C4.5 \textit{from scratch} (Bagian~\ref{sec:dtl}) yang dilatih pada 46 fitur yang sama dengan SVM, termasuk bobot Jaccard pada fitur saudara, dan dievaluasi pada protokol 5-\textit{fold} dan 7 \textit{seed} yang sama. Pohon ini hanya pembanding dan berbeda dari pohon \textit{submission}, yang tidak memakai bobot Jaccard.
+
+\paragraph{Keterbatasan skema.} (i) Tiga \textit{seed} pemilihan dan empat \textit{seed} konfirmasi memakai data latih yang sama dan hanya membagi \textit{fold} berbeda, sehingga konfirmasi mengurangi tetapi tidak menghilangkan optimisme akibat pemilihan konfigurasi. (ii) \textit{Hold-out} tidak dipakai oleh CV 3-\textit{fold}, tetapi termasuk dalam data latih yang dipakai CV 5-\textit{fold} untuk memilih $C$, skala, dan fitur Laplacian, sehingga skornya bukan estimasi yang sepenuhnya independen. Satu-satunya data independen adalah skor Kaggle (Bagian~\ref{sec:kaggle}). (iii) CV memakai implementasi SMO setara dan bukan kelas \texttt{SVM} pada \texttt{svm.py}; toleransi (0,01 terhadap 0,001) dan presisi (\texttt{float32} terhadap \texttt{float64}) berbeda dengan model \textit{submission}, sehingga skor CV adalah estimasi untuk konfigurasi, bukan untuk berkas model yang dikirim. (iv) CV 3-\textit{fold} memakai 3.000 baris latih, jauh lebih sedikit daripada pelatihan akhir, sehingga $C$ terbaiknya belum tentu terbaik untuk data penuh.
 
 \subsubsection{\textit{Hyperparameter Tuning}}
-\todo{Ruang pencarian (kernel, $C$, $\gamma$, \textit{degree}, \texttt{coef0}, ukuran sampel latih (karena kompleksitas $O(n^2)$)), metode pencarian, dan hasilnya. Sertakan tabel atau grafik skor CV terhadap hiperparameter.}
+Ruang pencarian dan hasilnya dirangkum pada Tabel~\ref{tab:svm-tuning}. Untuk kernel yang diwajibkan hanya $C$ yang dicari secara \textit{grid} ($0{,}1;\ 0{,}5;\ 2;\ 8$). $\gamma$ memakai \texttt{"scale"} (sekitar $1/46$ pada fitur terstandardisasi), \textit{degree} tetap 3, dan \texttt{coef0} tetap 1. Ini berarti $\gamma$, \textit{degree}, dan \texttt{coef0} tidak di-\textit{tuning}; kedua kernel nonlinear wajib karenanya mungkin sedikit di bawah potensinya. Untuk kernel Laplacian, skala jarak $L = 1/\gamma$ dipilih dengan CV 5-\textit{fold} (Tabel~\ref{tab:svm-ablasi}).
 
 \begin{table}[H]
 	\centering
 	\caption{Hasil \textit{tuning} hiperparameter SVM}
 	\label{tab:svm-tuning}
+	\small
+	\resizebox{\textwidth}{!}{%
 	\begin{tabular}{l l c}
 		\toprule
 		\textbf{Hiperparameter} & \textbf{Ruang pencarian} & \textbf{Terbaik} \\
 		\midrule
-		\todo{} & & \\
+		$C$, kernel \textit{linear} & 0,1; 0,5; 2; 8 (CV 3-\textit{fold}) & 8 \\
+		$C$, kernel \textit{polynomial} & 0,1; 0,5; 2; 8 (CV 3-\textit{fold}) & 0,5 \\
+		$C$, kernel \textit{Gaussian} & 0,1; 0,5; 2; 8 (CV 3-\textit{fold}) & 2 \\
+		$C$, kernel Laplacian (tanpa dan dengan bobot fitur) & 0,1; 0,5; 2; 8 (CV 3-\textit{fold}); 1; 2; 4 (CV 5-\textit{fold}) & 2 \\
+		$\gamma$ \textit{polynomial}, \textit{Gaussian} & \texttt{"scale"} (tetap) & -- \\
+		\textit{degree}, \texttt{coef0} \textit{polynomial} & 3 dan 1 (tetap) & -- \\
+		Skala Laplacian $L = 1/\gamma$ & 10; 20; 35 (CV 5-\textit{fold}) & 20 ($\gamma = 0{,}05$) \\
+		Pangkat bobot AGOP (pada RMS gradien) & 0,35; 0,5; 0,7 (CV 5-\textit{fold}) & 0,5 \\
+		Putaran AGOP & 2; 4 (CV 5-\textit{fold}) & 2 \\
+		Ambang keputusan & tidak di-\textit{tuning} (bawaan) & 0 \\
+		\bottomrule
+	\end{tabular}}
+\end{table}
+
+\paragraph{Pemilihan kernel dan $C$ (CV 3-\textit{fold}).} Tabel~\ref{tab:svm-tuning-cv} memuat Macro F1 rata-rata tiga \textit{fold}, dan Gambar~\ref{fig:svm-tuning} menggambarkannya. Baris ``Gaussian + PCA'' memakai komponen PCA 95\% variansi (Subbab~\ref{subsec:svm-preprocessing}), dan ``Laplacian + bobot fitur'' adalah kernel Laplacian pada fitur yang dikalikan bobot AGOP.
+
+\begin{table}[H]
+	\centering
+	\caption{Macro F1 CV 3-\textit{fold} (3.000 baris latih per \textit{fold}) menurut kernel dan $C$. Terbaik per kernel dicetak tebal; simpangan baku antar-\textit{fold} terbaik dalam kurung.}
+	\label{tab:svm-tuning-cv}
+	\small
+	\begin{tabular}{l c c c c}
+		\toprule
+		\textbf{Kernel} & $C = 0{,}1$ & $C = 0{,}5$ & $C = 2$ & $C = 8$ \\
+		\midrule
+		\textit{Linear} & 0,8220 & 0,8232 & 0,8234 & \textbf{0,8235} (0,0036) \\
+		\textit{Polynomial} & 0,8071 & \textbf{0,8178} (0,0016) & 0,8158 & 0,8052 \\
+		\textit{Gaussian} & 0,7000 & 0,8009 & \textbf{0,8161} (0,0045) & 0,8120 \\
+		\textit{Gaussian} + PCA & 0,7016 & 0,7979 & \textbf{0,8144} (0,0049) & 0,8124 \\
+		Laplacian & 0,7235 & 0,8174 & \textbf{0,8384} (0,0048) & 0,8292 \\
+		Laplacian + bobot fitur & 0,7828 & 0,8411 & \textbf{0,8499} (0,0028) & 0,8384 \\
 		\bottomrule
 	\end{tabular}
 \end{table}
 
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.85\textwidth]{svm_tuning.png}
+	\caption{Pengaruh $C$ pada Macro F1 CV 3-\textit{fold} untuk setiap kernel (skala logaritmik pada sumbu $C$)}
+	\label{fig:svm-tuning}
+\end{figure}
+
+\paragraph{Analisis.}
+\begin{itemize}
+	\item \textbf{Kernel Laplacian unggul pada semua $C \ge 0{,}5$.} Pada $C = 2$, Laplacian (0,8384) lebih tinggi 0,0223 daripada \textit{Gaussian} (0,8161), 0,0206 daripada \textit{polynomial} pada $C$ terbaiknya, dan 0,0149 daripada \textit{linear}. Selisih sebesar ini jauh di atas simpangan baku antar-\textit{fold} (0,0016 sampai 0,0049).
+	\item \textbf{Bobot fitur menaikkan Laplacian di semua $C$.} Pada $C = 2$ naik 0,0115 (0,8384 menjadi 0,8499), dan pada $C = 0{,}1$ naik 0,0593 karena bobot juga mengatur skala efektif jarak. Kenaikan ini jauh lebih besar daripada simpangan baku antar-\textit{fold} (0,0028).
+	\item \textbf{$C$ kecil menyebabkan \textit{underfitting}.} Pada $C = 0{,}1$, \textit{Gaussian} dan Laplacian turun ke 0,70 dan 0,72, karena pelanggaran margin hampir tidak dihukum sehingga model terlalu sederhana.
+	\item \textbf{$C$ besar mulai \textit{overfit}.} Untuk \textit{polynomial}, \textit{Gaussian}, dan Laplacian, skor turun lagi pada $C = 8$ (mis. Laplacian 0,8384 menjadi 0,8292). Kernel \textit{linear} hampir tidak peka terhadap $C$ (0,8220 sampai 0,8235) karena kapasitasnya terbatas.
+	\item \textbf{PCA tidak membantu.} \textit{Gaussian} dengan PCA lebih rendah pada dua dari empat $C$, termasuk $C = 2$ yang terbaik (0,8144 terhadap 0,8161), dan hanya sedikit lebih tinggi pada dua lainnya (selisih paling besar 0,0016), sehingga PCA tidak dipakai.
+	\item \textbf{Keterbatasan.} Pemilihan memakai 3.000 baris latih dengan \texttt{tol} $10^{-2}$. Selisih di sekitar optimum, misalnya 0,8161 terhadap 0,8120 pada \textit{Gaussian}, lebih kecil daripada keragaman antar-\textit{fold} dan tidak boleh dibaca sebagai peringkat pasti.
+\end{itemize}
+
+\paragraph{Pemilihan konfigurasi Laplacian (CV 5-\textit{fold}).} Setelah kernel Laplacian dengan bobot terpilih, konfigurasinya dirinci dengan CV 5-\textit{fold} pada seluruh data latih. Tabel~\ref{tab:svm-ablasi} adalah rata-rata Macro F1 tiga \textit{seed} (42, 1, 7). Percobaan ini dijalankan dengan 46 fitur dikurangi tiga (\texttt{arrival\_year}, \texttt{weekend\_share}, \texttt{nights}) dan ditambah tiga fitur turunan saudara (\texttt{ev1}, \texttt{ev0}, \texttt{has}). Belakangan ditemukan bahwa 46 fitur apa adanya setara (0,8708), sehingga versi sederhana yang dipakai pada model akhir.
+
+\begin{table}[H]
+	\centering
+	\caption{Ablation konfigurasi Laplacian (CV 5-\textit{fold}, Macro F1 rata-rata \textit{seed} 42, 1, 7). Nilai yang dipakai dicetak tebal. Untuk ``Bentuk jarak lain'', $u$ adalah selisih mutlak berbobot satu fitur, hasilnya dijumlahkan atas semua fitur, skala $L$ disesuaikan agar rata-rata jaraknya setara, dan $C = 2$.}
+	\label{tab:svm-ablasi}
+	\small
+	\begin{tabularx}{\textwidth}{l Y c}
+		\toprule
+		\textbf{Faktor} & \textbf{Nilai} & \textbf{Macro F1} \\
+		\midrule
+		$C$ & 1 & 0,8691 \\
+		& \textbf{2} & \textbf{0,8707} \\
+		& 4 & 0,8705 \\
+		\midrule
+		Skala $L$ & 10 & 0,8697 \\
+		& \textbf{20} & \textbf{0,8707} \\
+		& 35 & 0,8689 \\
+		\midrule
+		Pangkat bobot & 0,35 & 0,8700 \\
+		& \textbf{0,5} & \textbf{0,8707} \\
+		& 0,7 & 0,8703 \\
+		\midrule
+		Putaran AGOP & \textbf{2} & \textbf{0,8707} \\
+		& 4 & 0,8708 \\
+		\midrule
+		Bentuk jarak lain & jenuh $u/(1 + 0{,}5u)$ & 0,8697 \\
+		& jenuh $u/(1 + 0{,}15u)$ & 0,8705 \\
+		& akar $\sqrt{u}$ & 0,8693 \\
+		& $\log(1 + 0{,}5u)$ & 0,8706 \\
+		& campuran dua skala & 0,8695 \\
+		\midrule
+		Fitur & \textbf{46 fitur dasar} & \textbf{0,8708} \\
+		& 46 fitur + \texttt{ev}, \texttt{has} & 0,8707 \\
+		& transformasi \textit{rank} pada tanggal & 0,8704 \\
+		& transformasi log pada \textit{lead time} dan tarif & 0,8700 \\
+		\bottomrule
+	\end{tabularx}
+\end{table}
+
+Kesimpulannya optimum landai: sebagian besar varian berselisih kurang dari 0,001 dari yang terbaik. Per \textit{seed}, $C = 1$ memberi 0,8701; 0,8689; 0,8684, $C = 2$ memberi 0,8719; 0,8705; 0,8697, dan $C = 4$ memberi 0,8717; 0,8705; 0,8693. $C = 2$ unggul atau sama pada ketiga \textit{seed} terhadap $C = 1$, dan setara dengan $C = 4$ (selisih $\le 0{,}0004$), sehingga dipilih yang lebih kecil. Putaran AGOP keempat hanya menaikkan 0,0001, sehingga dua putaran yang lebih murah dipakai. Bentuk jarak yang diubah (jenuh, akar, log) tidak ada yang melampaui jarak L1 biasa.
+
+\paragraph{Hasil CV 5-\textit{fold} dengan 7 \textit{seed}.} Tabel~\ref{tab:svm-seed} memuat Macro F1 gabungan \textit{out-of-fold} model terbaik tiap \textit{seed}.
+
+\begin{table}[H]
+	\centering
+	\caption{Macro F1 \textit{out-of-fold} CV 5-\textit{fold} model terbaik (kernel Laplacian berbobot, $C = 2$) menurut \textit{seed}}
+	\label{tab:svm-seed}
+	\small
+	\begin{tabular}{l c c c c c c c}
+		\toprule
+		\textit{Seed} & 42 & 1 & 7 & 11 & 22 & 33 & 2026 \\
+		\midrule
+		Peran & \multicolumn{3}{c}{pemilihan} & \multicolumn{4}{c}{konfirmasi} \\
+		Macro F1 & 0,8716 & 0,8703 & 0,8705 & 0,8693 & 0,8702 & 0,8702 & 0,8698 \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+Rata-rata 7 \textit{seed} 0,8703 (simpangan baku sampel 0,0007; rentang 0,8693 sampai 0,8716). Rata-rata tiga \textit{seed} pemilihan 0,8708 dan rata-rata empat \textit{seed} konfirmasi 0,8699, sehingga optimisme akibat pemilihan konfigurasi sekitar 0,001. Pohon keputusan pembanding mencapai 0,8685 pada 7 \textit{seed}. SVM lebih tinggi pada 27 dari 35 \textit{fold}. Selisih rata-rata hasil \textit{bootstrap} baris (400 kali) adalah $+0{,}0018$ dengan selang kepercayaan 95\% $[-0{,}0002;\ +0{,}0036]$. Selang ini mencakup nol, sehingga keunggulan SVM terhadap pohon pembanding tidak signifikan secara statistik pada data ini.
+
 \subsubsection{Model Final}
-\todo{Konfigurasi final SVM, skor CV (rata-rata $\pm$ simpangan baku), dan lokasi model tersimpan di \texttt{output/}.}
+Konfigurasi final adalah SVM \textit{from scratch} dengan kernel Laplacian $K(a, b) = \exp(-\lVert W(a-b)\rVert_1/20)$ ($\gamma = 0{,}05$), $C = 2$, \texttt{tol} $10^{-3}$, ambang keputusan 0, dan 46 fitur terstandardisasi yang dikalikan bobot $W$ (Tabel~\ref{tab:svm-bobot}). Hasil CV-nya adalah Macro F1 \textit{out-of-fold} 0,8703 (rata-rata 7 \textit{seed}, simpangan baku antar-\textit{seed} 0,0007) dan 0,8699 pada empat \textit{seed} konfirmasi. Untuk \textit{submission}, fitur, standardisasi, dan bobot dihitung dari seluruh 27.309 baris latih, model dilatih pada seluruh baris tersebut (22.302 iterasi SMO, 8.662 \textit{support vector} atau 31,7\% dari baris latih, sekitar 257 detik), dan data uji hanya ditransformasi. Model memprediksi 29,8\% pesanan uji batal (0,2984). Skor publik Kaggle 0,87464 (peringkat 2 pada papan publik saat dikirim); papan publik hanya memakai sekitar 30\% data uji, dan peringkat akhir memakai 70\% sisanya.
+
+Model yang dilatih pada seluruh data pengembangan (21.847 baris) memberi Macro F1 \textit{hold-out} 0,8649 dan akurasi 0,8836 dengan 7.244 \textit{support vector} (sekitar 50 detik). Skor ini bukan estimasi independen (keterbatasan ii di atas). Model akhir, hasil prediksi, dan hasil tuning tersimpan di \nolinkurl{output/svm/}:
+\begin{itemize}
+	\item \texttt{svm\_model.pkl}: model \textit{submission} (3,3 MB);
+	\item \texttt{submission.csv}: berkas \textit{submission};
+	\item \texttt{svm\_tuning.csv}, \texttt{svm\_comparison.csv}, \texttt{svm\_cost\_sensitive.csv}: Tabel~\ref{tab:svm-tuning-cv}, Tabel~\ref{tab:svm-hasil}, dan Tabel~\ref{tab:svm-cost}.
+\end{itemize}
+
+\paragraph{Reproduktibilitas.} Notebook \nolinkurl{src/kaggle/svm_notebook.ipynb} dibangun dari skrip \nolinkurl{src/kaggle/build_svm.py}. Semua keacakan memakai \textit{seed} tetap (pembagian data 42; pusat Nystr\"om 0; baris gradien 1; kelompok saudara 0), dan SMO sendiri deterministik. Berkas \texttt{submission.csv} identik byte demi byte pada dua lingkungan (NumPy 2.4.6 dengan pandas 3.0.3, dan NumPy 2.5.4 dengan pandas 3.1.1) pada satu komputer macOS, dengan selisih nilai keputusan antar-lingkungan paling besar $2{,}6 \times 10^{-13}$. Pengujian di komputer lain, sistem operasi lain, atau pustaka BLAS lain tidak dilakukan, sehingga kesamaan bit pada kondisi itu tidak dijamin (hanya kesamaan secara numerik yang diharapkan).

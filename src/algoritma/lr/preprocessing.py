@@ -1,8 +1,4 @@
-"""
-Referensi:
-- E. Ferdian, "Data Preparation," IF3170, Edunex ITB, 2026 (Materi09): imputasi, encoding,
-    standardisasi, preprocessing dipelajari dari data latih saja.
-"""
+# Sumber: E. Ferdian, "Data Preparation," IF3170, Edunex ITB, 2026 (Materi09).
 import numpy as np
 import pandas as pd
 
@@ -19,7 +15,7 @@ FEATURES = COUNT_COLS + CONT_COLS + BIN_COLS + DATE_COLS + CAT_COLS
 MISSING = "kosong"
 RARE = "lainnya"
 
-# Statistical Learning, 2nd ed., Springer, 2009, Sec. 5.1; E. Ferdian, "Data Preparation" (Materi09).
+# Sumber: T. Hastie, R. Tibshirani, J. Friedman, The Elements of Statistical Learning, 2nd ed., Springer, 2009, Sec. 5.1.
 LEAD_BINS = [-1, 7, 30, 90, 180, np.inf]
 
 def load_data(data_dir):
