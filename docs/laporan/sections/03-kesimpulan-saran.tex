@@ -1,13 +1,53 @@
 \section{Kesimpulan}
 \label{sec:kesimpulan}
 
-\todo{Rangkum: (1) kelima algoritma berhasil diimplementasikan \textit{from scratch};
-(2) seberapa dekat hasilnya dengan \textit{scikit-learn}; (3) model terbaik dan skornya;
-(4) dampak tahap \textit{preprocessing} yang paling berpengaruh; (5) temuan \textit{cost-sensitive}.}
+Berdasarkan implementasi dan eksperimen pada tugas ini, kesimpulan yang dapat ditarik adalah sebagai
+berikut.
+
+\begin{enumerate}
+	\item Kelima algoritma, yaitu KNN, DTL (C4.5), \textit{Logistic Regression} dengan regularisasi L1,
+	L2, dan \textit{Elastic Net}, SVM dengan kernel \textit{linear}, \textit{polynomial}, dan
+	\textit{Gaussian}, serta \textit{Naive Bayes}, berhasil diimplementasikan \textit{from scratch}.
+	Setiap model dapat disimpan dan dimuat kembali.
+	\item Pada protokol pembanding yang sama, KNN, \textit{Logistic Regression}, SVM, dan \textit{Naive
+	Bayes} \textit{from scratch} menghasilkan Macro F1 yang sama dengan \textit{scikit-learn} sampai
+	empat desimal, dengan selisih terbesar 0,0003. DTL C4.5 \textit{from scratch} lebih tinggi daripada
+	konfigurasi \texttt{DecisionTreeClassifier} terbaik (0,8692 berbanding 0,8642) karena memakai
+	\textit{gain ratio}, pemecahan kategorikal multicabang, penanganan nilai kosong dengan bobot
+	fraksional, dan \textit{pruning}.
+	\item Model terbaik adalah SVM dengan kernel Laplacian dan bobot fitur, dengan Macro F1 validasi
+	silang 0,8703 dan skor \textit{public} Kaggle 0,87464 (peringkat 2 pada \textit{public
+	leaderboard}). DTL berada di urutan kedua dengan 0,8670 dan 0,87393.
+	\item Tahap \textit{preprocessing} yang paling berpengaruh adalah pembentukan fitur ``saudara'', yaitu
+	informasi dari pemesanan lain yang mirip pada data latih. Fitur \texttt{sib\_te} menjadi pemecahan
+	akar pohon DTL, dan keunggulan SVM atas pohon pembanding seluruhnya berasal dari baris yang memiliki
+	saudara. Sebaliknya, PCA tidak membantu SVM sehingga tidak dipakai pada model akhir.
+	\item Dengan asumsi FP dua kali lebih mahal daripada FN, penanganan yang tepat adalah mengurangi
+	prediksi batal: menaikkan \textit{threshold} atau memberi bobot lebih besar pada kelas tidak batal.
+	Pada DTL, pembobotan kelas 2 : 1 menurunkan total biaya OOF dari 4.286 menjadi 4.124, sedangkan
+	pada KNN \textit{threshold} $2/3$ menurunkan biaya \textit{hold-out} sebesar 8,87\%. Pada kedua
+	model, Macro F1 turun sebagai gantinya, sehingga model untuk penginapan sebaiknya dipilih berdasarkan
+	biaya, bukan hanya Macro F1.
+\end{enumerate}
 
 \section{Saran}
 \label{sec:saran}
 
-\todo{Saran pengembangan, misalnya \textit{feature engineering} lanjutan, optimasi komputasi
-KNN/SVM untuk data besar, atau eksplorasi struktur \textit{Bayesian network} selain
-\textit{naive}.}
+Beberapa hal yang dapat dikembangkan lebih lanjut adalah sebagai berikut.
+
+\begin{enumerate}
+	\item Kesalahan terbanyak terjadi pada baris tanpa saudara di data latih (Macro F1 sekitar 0,81,
+	dibandingkan sekitar 0,94 pada baris dengan saudara). \textit{Feature engineering} lanjutan untuk
+	baris tersebut, misalnya fitur dari riwayat pelanggan atau pola musiman, kemungkinan memberi
+	kenaikan yang lebih besar daripada \textit{tuning} model.
+	\item SVM dan KNN mahal secara komputasi sehingga pemilihan konfigurasi SVM dilakukan pada sampel
+	3.000 sampai 6.000 baris. Teknik \textit{shrinking} seperti pada LIBSVM, aproksimasi kernel
+	(misalnya metode Nyström), atau struktur indeks tetangga (misalnya KD-tree) dapat memungkinkan
+	pemilihan konfigurasi pada seluruh data.
+	\item TAN sudah lebih baik daripada \textit{Naive Bayes}, tetapi setiap fitur hanya boleh memiliki
+	satu \textit{parent} selain kelas. Struktur \textit{Bayesian network} yang lebih umum, misalnya hasil
+	pencarian struktur berbasis skor, dapat dieksplorasi.
+	\item Validasi \textit{cost-sensitive} sebaiknya memakai biaya nyata dari penginapan, karena rasio
+	2 : 1 pada tugas ini adalah asumsi. \textit{Threshold} juga perlu dikalibrasi ulang jika rasio
+	pembatalan pada data baru berubah.
+\end{enumerate}
