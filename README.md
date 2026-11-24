@@ -18,10 +18,12 @@ Setiap submisi berasal dari satu model *from scratch* tanpa *ensemble*.
 
 | Model | Notebook | Berkas submisi | CV Macro F1 | *Public score* |
 | --- | --- | --- | --- | --- |
-| SVM kernel Laplacian | [`svm_notebook.ipynb`](src/kaggle/svm_notebook.ipynb) | [`output/svm/submission.csv`](output/svm/submission.csv) | 0,8703 | 0,87464 |
+| SVM kernel yang dipelajari | [`svm_kaggle_notebook.ipynb`](src/kaggle/svm_kaggle_notebook.ipynb) | [`output/svm/submission.csv`](output/svm/submission.csv) | 0,8750 | 0,87912 |
+| SVM kernel Laplacian | [`svm_notebook.ipynb`](src/kaggle/svm_notebook.ipynb) | [`output/svm/submission_laplacian.csv`](output/svm/submission_laplacian.csv) | 0,8703 | 0,87464 |
 | DTL C4.5 | [`dtl_notebook.ipynb`](src/kaggle/dtl_notebook.ipynb) | [`output/dtl/submission.csv`](output/dtl/submission.csv) | 0,8672 | 0,87393 |
 
-CV adalah rata-rata tujuh *seed* untuk SVM dan sepuluh *seed* untuk DTL. Analisis lengkap ada di
+CV adalah rata-rata tujuh *seed* untuk SVM Laplacian dan sepuluh *seed* untuk DTL. SVM kernel yang
+dipelajari baru diukur pada satu *seed* (42), dan di *seed* itu SVM Laplacian mendapat 0,8716. Analisis lengkap ada di
 laporan ([`docs/laporan/`](docs/laporan)).
 
 ## Isi implementasi
@@ -31,7 +33,7 @@ laporan ([`docs/laporan/`](docs/laporan)).
 | KNN | [`src/algoritma/knn/`](src/algoritma/knn) | Klasifikasi tetangga terdekat dengan `predict_proba` |
 | DTL | [`src/algoritma/dtl/`](src/algoritma/dtl) | C4.5: atribut numerik dan kategorikal, *missing value*, *pruning*, gambar pohon *top-N* |
 | Logistic Regression | [`src/algoritma/lr/`](src/algoritma/lr) | Regularisasi L1, L2, dan Elastic Net; video kontur *log-loss* |
-| SVM | [`src/algoritma/svm/`](src/algoritma/svm) | Kernel *linear*, *polynomial*, Gaussian (RBF), dan Laplacian |
+| SVM | [`src/algoritma/svm/`](src/algoritma/svm) | Kernel *linear*, *polynomial*, Gaussian (RBF), dan Laplacian; L2-SVM dengan kernel yang dipelajari |
 | Naive Bayes | [`src/algoritma/nb/`](src/algoritma/nb) | Naive Bayes campuran (Gaussian dan kategorikal) serta Tree-Augmented Naive Bayes |
 
 Setiap model dapat disimpan dan dimuat ulang. DTL, Logistic Regression, SVM, dan Naive Bayes
