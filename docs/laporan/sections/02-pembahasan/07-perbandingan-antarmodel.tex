@@ -1,37 +1,77 @@
 \section{Perbandingan Antarmodel}
 \label{sec:perbandingan}
 
-\todo{Rangkum kinerja terbaik setiap algoritma pada protokol validasi yang sama.}
+Tabel~\ref{tab:rangkuman} merangkum konfigurasi akhir setiap algoritma. Skema validasi kelima
+algoritma tidak sepenuhnya sama (Subbab~\ref{sec:kerangka-umum}), sehingga kolom skor validasi
+menyebutkan skemanya. Skor Kaggle adalah pembanding yang paling setara karena semua model dinilai
+pada data uji yang sama, tetapi hanya tersedia untuk model yang disubmisi.
 
 \begin{table}[H]
 	\centering
-	\caption{Rangkuman kinerja seluruh model}
+	\caption{Rangkuman konfigurasi akhir setiap algoritma}
 	\label{tab:rangkuman}
-	\begin{tabular}{l c c c c}
+	\begin{tabularx}{\textwidth}{Y l c c}
 		\toprule
-		\textbf{Model} & \textbf{CV Macro F1 (scratch)} & \textbf{CV Macro F1 (sklearn)} & \textbf{Kaggle} & \textbf{Waktu latih (s)} \\
+		\textbf{Model} & \textbf{Skema validasi} & \textbf{Macro F1} & \textbf{Kaggle} \\
 		\midrule
-		KNN & & & & \\
-		DTL (C4.5) & 0,8692 & 0,8642 & 0,87393 & 5,4 \\
-		\textit{Logistic Regression} & & & & \\
-		SVM & & & & \\
-		\textit{Naive Bayes} & & & & \\
+		KNN ($k = 7$, Manhattan) & CV 5-\textit{fold}, \textit{development} & 0,8213 & -- \\
+		DTL (C4.5, \textit{pruning}) & CV 5-\textit{fold}, 10 \textit{seed} & 0,8670 & 0,87393 \\
+		\textit{Logistic Regression} (tanpa penalti, IRLS-CD) & CV 5-\textit{fold}, OOF & 0,7824 & -- \\
+		SVM (Laplacian + bobot fitur) & CV 5-\textit{fold}, 7 \textit{seed} & 0,8703 & 0,87464 \\
+		\textit{Naive Bayes} & CV 5-\textit{fold}, 4 \textit{seed} & 0,7810 & 0,79404 \\
+		TAN & CV 5-\textit{fold}, 4 \textit{seed} & 0,8094 & 0,80986 \\
 		\bottomrule
-	\end{tabular}
+	\end{tabularx}
 \end{table}
 
-Pada baris DTL, kedua kolom CV adalah rata-rata Macro F1 per \textit{fold} pada \textit{stratified}
-5-\textit{fold} dengan \textit{seed} 42, 46 fitur, dan \textit{threshold} 0,4
-(Tabel~\ref{tab:dtl-hasil}). Kolom \textit{scikit-learn} adalah konfigurasi
-\texttt{DecisionTreeClassifier} terbaik. Rata-rata sepuluh \textit{seed} untuk DTL \textit{from
-scratch} adalah 0,8670 (Subbab~\ref{subsec:dtl-validasi}). Waktu latih adalah waktu \texttt{DTL.fit}
-pada seluruh data latih, tanpa pembangunan fitur.
+Untuk skema dengan beberapa \textit{seed}, Macro F1 adalah rata-ratanya. Tanda ``--'' berarti skor
+Kaggle model tersebut tidak tercatat di repositori.
+
+Perbandingan dengan \textit{scikit-learn} dilakukan per algoritma pada protokol yang sama untuk kedua
+implementasi (Gambar~\ref{fig:rangkuman}). Untuk setiap algoritma, pasangan batang pada gambar
+berasal dari data, fitur, dan parameter yang sama, sehingga selisihnya hanya berasal dari
+implementasi. Antaralgoritma, angkanya tidak dapat dibandingkan langsung karena protokolnya berbeda.
 
 \begin{figure}[H]
 	\centering
-	\placeholdergambar{Diagram batang \textit{macro F1} per model, \textit{scratch} vs \textit{scikit-learn}}
-	\caption{Perbandingan \textit{macro F1} seluruh model}
+	\includegraphics[width=\textwidth]{perbandingan/macro_f1_scratch_sklearn.png}
+	\caption{Macro F1 \textit{from scratch} dan \textit{scikit-learn} pada protokol pembanding setiap
+	algoritma: KNN (Tabel~\ref{tab:knn-hasil}), DTL (Tabel~\ref{tab:dtl-hasil}),
+	\textit{Logistic Regression} tanpa penalti (Tabel~\ref{tab:lr-hasil}), SVM
+	(Tabel~\ref{tab:svm-hasil}), dan \textit{Naive Bayes} kategorikal (Tabel~\ref{tab:nb-hasil})}
 	\label{fig:rangkuman}
 \end{figure}
 
-\todo{Analisis: model terbaik dan alasannya (kecocokan bias induktif dengan karakteristik data), \textit{trade-off} kinerja dan waktu, serta model yang dipilih untuk submisi Kaggle.}
+\subsection{Analisis}
+
+\paragraph{Kesesuaian dengan \textit{scikit-learn}.} Pada KNN, \textit{Logistic Regression}, SVM, dan
+\textit{Naive Bayes}, Macro F1 implementasi \textit{from scratch} sama dengan \textit{scikit-learn}
+sampai empat desimal pada protokol pembandingnya. Selisih terbesar adalah 0,0003, yaitu pada
+\textit{Logistic Regression} L1 dan SVM kernel \textit{linear}. Kesamaan ini menunjukkan bahwa
+implementasinya benar, bukan bahwa salah satu lebih akurat. DTL adalah satu-satunya algoritma yang
+berbeda dengan sengaja: implementasi C4.5 \textit{from scratch} memakai \textit{gain ratio}, pemecahan
+multicabang untuk atribut kategorikal, bobot fraksional untuk nilai kosong, dan \textit{pruning}, yang
+tidak tersedia pada \texttt{DecisionTreeClassifier}. Hasilnya 0,8692 berbanding 0,8642 untuk
+konfigurasi \textit{scikit-learn} terbaik.
+
+\paragraph{Model terbaik.} SVM dengan kernel Laplacian dan bobot fitur memperoleh skor tertinggi pada
+validasi silang (0,8703) dan Kaggle (0,87464), diikuti DTL (0,8670 dan 0,87393). Keduanya memakai
+fitur yang sama dari \nolinkurl{booking_features.py}, termasuk fitur ``saudara'' yang menangkap
+pemesanan rombongan. Kedua model juga dapat memodelkan interaksi antarfitur yang tidak linear: SVM
+melalui kernel dan DTL melalui percabangan. Sebaliknya, \textit{Logistic Regression} (0,7824) hanya
+membentuk batas keputusan linear pada ruang fiturnya, dan \textit{Naive Bayes} (0,7810) menganggap
+fitur saling independen, padahal banyak fitur pada data ini saling berkaitan. TAN menaikkan
+\textit{Naive Bayes} menjadi 0,8094 karena setiap fitur boleh bergantung pada satu fitur lain.
+KNN (0,8213) berada di antara kedua kelompok tersebut. Model ini dapat menangkap pola lokal, tetapi
+semua fitur diperlakukan setara dalam perhitungan jarak.
+
+\paragraph{\textit{Trade-off} kinerja dan waktu.} Model yang paling akurat juga paling mahal. Pelatihan
+SVM membutuhkan matriks kernel dan ratusan ribu iterasi SMO pada kernel tertentu, sehingga pemilihan
+kernel harus dilakukan pada sampel 3.000 sampai 6.000 baris. KNN tidak memiliki tahap pelatihan,
+tetapi setiap prediksi menghitung jarak ke seluruh data latih. DTL dilatih dalam sekitar 5 detik pada
+seluruh data latih dan menghasilkan pohon yang dapat dibaca (Subbab~\ref{subsec:dtl-bonus}).
+\textit{Naive Bayes} paling cepat (beberapa milidetik), tetapi skornya paling rendah.
+
+\paragraph{Pilihan submisi.} Submisi utama Kaggle adalah SVM Laplacian karena skornya tertinggi pada
+validasi silang dan Kaggle, dengan DTL sebagai submisi cadangan (Bagian~\ref{sec:kaggle}). Kedua
+submisi berasal dari satu model \textit{from scratch} tanpa \textit{ensemble}.
