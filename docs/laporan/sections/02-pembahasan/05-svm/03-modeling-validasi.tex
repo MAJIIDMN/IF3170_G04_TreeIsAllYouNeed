@@ -2,11 +2,12 @@
 \label{subsec:svm-validasi}
 
 \subsubsection{Skema Validasi}
-Validasi SVM memakai tiga lapis, karena waktu pelatihan SVM membatasi seberapa banyak model dapat dilatih. Kerangka umum validasi dijelaskan pada Subbab~\ref{sec:kerangka-umum}; di sini hanya dijelaskan perbedaannya.
+Validasi SVM tahap pertama (Laplacian) memakai tiga lapis, karena waktu pelatihan SVM membatasi seberapa banyak model dapat dilatih. Model \textit{submission} memakai satu lapis tambahan (lapis 4). Kerangka umum validasi dijelaskan pada Subbab~\ref{sec:kerangka-umum}; di sini hanya dijelaskan perbedaannya.
 \begin{enumerate}
 	\item \textbf{\textit{Hold-out} 20\%.} Data latih bersih (27.309 baris) dibagi secara \textit{stratified} dengan \textit{seed} 42 menjadi data pengembangan (21.847 baris, proporsi batal 0,3275) dan \textit{hold-out} (5.462 baris). \textit{Hold-out} dipakai untuk perbandingan dengan \textit{scikit-learn}, matriks konfusi, analisis kesalahan, dan \textit{cost-sensitive}.
 	\item \textbf{CV 3-\textit{fold} pada notebook.} Pemilihan kernel dan $C$ memakai \texttt{StratifiedKFold} (3 \textit{fold}, diacak, \textit{seed} 42) pada data pengembangan. Agar cepat, SVM \textit{from scratch} dilatih dengan 3.000 baris acak dari tiap \textit{fold} latih (\texttt{tol} $10^{-2}$) dan dinilai pada seluruh \textit{fold} validasi. Fitur, standardisasi, dan bobot AGOP dihitung ulang dari bagian latih tiap \textit{fold} (Subbab~\ref{subsec:svm-preprocessing}).
 	\item \textbf{CV 5-\textit{fold} dengan 7 \textit{seed} pada model terbaik.} Konfigurasi Laplacian dipilih dan dikonfirmasi dengan \textit{stratified} 5-\textit{fold} pada seluruh data latih bersih, dengan Macro F1 dihitung pada gabungan prediksi \textit{out-of-fold}. Tiga \textit{seed} (42, 1, dan 7) dipakai memilih konfigurasi, dan empat \textit{seed} (11, 22, 33, dan 2026) hanya untuk konfirmasi. Fitur dan bobot dihitung ulang di setiap \textit{fold}. Skema ini dijalankan terpisah dari notebook dengan implementasi SMO yang setara (\texttt{numba}, \texttt{float32}, \texttt{tol} $10^{-2}$) agar 35 pelatihan pada $\approx$21.800 baris selesai dalam waktu wajar.
+	\item \textbf{CV 5-\textit{fold}, \textit{seed} 42, model \textit{submission}.} Model dengan kernel yang dipelajari dinilai dengan \textit{stratified} 5-\textit{fold} pada seluruh data latih bersih dan \textit{seed} 42 yang sama dengan SVM Laplacian, dengan Macro F1 dihitung pada gabungan prediksi \textit{out-of-fold}. Fitur, kode termometer, bobot kernel, campuran, dan $\lambda$ dihitung ulang di setiap \textit{fold} hanya dari bagian latihnya. Ambang keputusan dipilih dari prediksi \textit{out-of-fold} yang sama. Selisih terhadap SVM Laplacian diberi selang \textit{bootstrap} 95\%. Hanya \textit{seed} 42 yang dilaporkan untuk model ini.
 \end{enumerate}
 Pembandingnya adalah pohon keputusan C4.5 \textit{from scratch} (Bagian~\ref{sec:dtl}) yang dilatih pada 46 fitur yang sama dengan SVM, termasuk bobot Jaccard pada fitur saudara, dan dievaluasi pada protokol 5-\textit{fold} dan 7 \textit{seed} yang sama. Pohon ini hanya pembanding dan berbeda dari pohon \textit{submission}, yang tidak memakai bobot Jaccard.
 
@@ -34,7 +35,8 @@ Ruang pencarian dan hasilnya dirangkum pada Tabel~\ref{tab:svm-tuning}. Untuk ke
 		Skala Laplacian $L = 1/\gamma$ & 10; 20; 35 (CV 5-\textit{fold}) & 20 ($\gamma = 0{,}05$) \\
 		Pangkat bobot AGOP (pada RMS gradien) & 0,35; 0,5; 0,7 (CV 5-\textit{fold}) & 0,5 \\
 		Putaran AGOP & 2; 4 (CV 5-\textit{fold}) & 2 \\
-		Ambang keputusan & tidak di-\textit{tuning} (bawaan) & 0 \\
+		Ambang keputusan, SVM Laplacian & tidak di-\textit{tuning} (bawaan) & 0 \\
+			Ambang keputusan, model \textit{submission} & dari prediksi \textit{out-of-fold} & \SVMBaruAmbang{} \\
 		\bottomrule
 	\end{tabular}}
 \end{table}
@@ -139,13 +141,47 @@ Kesimpulannya optimum landai: sebagian besar varian berselisih kurang dari 0,001
 Rata-rata 7 \textit{seed} 0,8703 (simpangan baku sampel 0,0007; rentang 0,8693 sampai 0,8716). Rata-rata tiga \textit{seed} pemilihan 0,8708 dan rata-rata empat \textit{seed} konfirmasi 0,8699, sehingga optimisme akibat pemilihan konfigurasi sekitar 0,001. Pohon keputusan pembanding mencapai 0,8685 pada 7 \textit{seed}. SVM lebih tinggi pada 27 dari 35 \textit{fold}. Selisih rata-rata hasil \textit{bootstrap} baris (400 kali) adalah $+0{,}0018$ dengan selang kepercayaan 95\% $[-0{,}0002;\ +0{,}0036]$. Selang ini mencakup nol, sehingga keunggulan SVM terhadap pohon pembanding tidak signifikan secara statistik pada data ini.
 
 \subsubsection{Model Final}
-Konfigurasi final adalah SVM \textit{from scratch} dengan kernel Laplacian $K(a, b) = \exp(-\lVert W(a-b)\rVert_1/20)$ ($\gamma = 0{,}05$), $C = 2$, \texttt{tol} $10^{-3}$, ambang keputusan 0, dan 46 fitur terstandardisasi yang dikalikan bobot $W$ (Tabel~\ref{tab:svm-bobot}). Hasil CV-nya adalah Macro F1 \textit{out-of-fold} 0,8703 (rata-rata 7 \textit{seed}, simpangan baku antar-\textit{seed} 0,0007) dan 0,8699 pada empat \textit{seed} konfirmasi. Untuk \textit{submission}, fitur, standardisasi, dan bobot dihitung dari seluruh 27.309 baris latih, model dilatih pada seluruh baris tersebut (22.302 iterasi SMO, 8.662 \textit{support vector} atau 31,7\% dari baris latih, sekitar 257 detik), dan data uji hanya ditransformasi. Model memprediksi 29,8\% pesanan uji batal (0,2984). Skor publik Kaggle 0,87464 (peringkat 2 pada papan publik saat dikirim); papan publik hanya memakai sekitar 30\% data uji, dan peringkat akhir memakai 70\% sisanya.
+\label{subsubsec:svm-final}
+\paragraph{Model \textit{submission}.} Model final adalah satu SVM tunggal: 46 fitur yang sama dengan model Laplacian, kode termometer (sekitar \SVMBaruJumlahBit{} bit), kernel Hamming berbobot dengan dua komponen yang bobot, campuran, dan $\lambda$-nya dipelajari dengan gradien galat \textit{holdout} (Subbab~\ref{subsubsec:svm-kernel-belajar}), dan L2-SVM yang dilatih dengan Newton dan \textit{conjugate gradient} (Subbab~\ref{subsubsec:svm-l2svm}). Ambang keputusannya \SVMBaruAmbang{}. Tidak ada \textit{ensemble}, data eksternal, dan data uji untuk pelatihan. Untuk \textit{submission}, seluruh langkah dijalankan pada 27.309 baris latih bersih dan data uji hanya ditransformasi. Model akhir memiliki \SVMBaruJumlahSV{} \textit{support vector}, yaitu baris dengan $\beta_i \ne 0$ (baris yang melanggar margin pada iterasi terakhir). Tabel~\ref{tab:svm-model-baru} membandingkan model ini dengan tahap sebelumnya pada protokol CV 5-\textit{fold} \textit{seed} 42 yang sama.
 
-Model yang dilatih pada seluruh data pengembangan (21.847 baris) memberi Macro F1 \textit{hold-out} 0,8649 dan akurasi 0,8836 dengan 7.244 \textit{support vector} (sekitar 50 detik). Skor ini bukan estimasi independen (keterbatasan ii di atas). Model akhir, hasil prediksi, dan hasil tuning tersimpan di \nolinkurl{output/svm/}:
+\begin{table}[H]
+	\centering
+	\caption{Macro F1 \textit{out-of-fold} CV 5-\textit{fold}, \textit{seed} 42, dan skor publik Kaggle. Bobot kernel dipelajari ulang di tiap \textit{fold}. Selisih adalah terhadap SVM Laplacian dengan selang \textit{bootstrap} 95\%. Ambang model \textit{submission} dipilih dari prediksi \textit{out-of-fold} yang sama dengan skor yang dilaporkan. LightGBM adalah pembanding pada fitur yang sama dan tidak dipakai pada \textit{submission}.}
+	\label{tab:svm-model-baru}
+	\small
+	\resizebox{\textwidth}{!}{%
+	\begin{tabular}{l c c c c}
+		\toprule
+		\textbf{Model} & \textbf{Macro F1 CV} & \textbf{Ambang} & \textbf{Selisih (selang 95\%)} & \textbf{Skor publik} \\
+		\midrule
+		SVM Laplacian + AGOP + SMO & \SVMLamaCV{} & 0 & -- & \SVMLamaPublik{} \\
+		Kernel dipelajari, \textit{least-squares} & \SVMLSCV{} & \SVMLSAmbang{} & \SVMLSSelisih{} [\SVMLSSelisihBawah{}; \SVMLSSelisihAtas{}] & \SVMLSPublik{} \\
+		Kernel dipelajari, L2-SVM (\textit{submission}) & \SVMBaruCV{} & \SVMBaruAmbang{} & \SVMBaruSelisih{} [\SVMBaruSelisihBawah{}; \SVMBaruSelisihAtas{}] & \SVMBaruPublik{} \\
+		\midrule
+		LightGBM (pembanding) & \SVMLightGBMCV{} & -- & -- & -- \\
+		\bottomrule
+	\end{tabular}}
+\end{table}
+
+\paragraph{Analisis.}
 \begin{itemize}
-	\item \texttt{svm\_model.pkl}: model \textit{submission} (3,3 MB);
-	\item \texttt{submission.csv}: berkas \textit{submission};
+	\item \textbf{Kernel yang dipelajari menaikkan CV.} Versi \textit{least-squares} mencapai \SVMLSCV{} terhadap \SVMLamaCV{}, selisih \SVMLSSelisih{} dengan selang \textit{bootstrap} 95\% yang tidak mencakup nol ([\SVMLSSelisihBawah{}; \SVMLSSelisihAtas{}]). Skor publik Kaggle naik dari \SVMLamaPublik{} menjadi \SVMLSPublik{}. Arah kenaikan sama pada CV dan papan publik.
+	\item \textbf{Versi L2-SVM.} Macro F1 CV \SVMBaruCV{} (selisih \SVMBaruSelisih{}, selang [\SVMBaruSelisihBawah{}; \SVMBaruSelisihAtas{}]) dan skor publik \SVMBaruPublik{}. Alasan memilih \textit{slack} kuadrat dibanding \textit{hinge} pada kernel yang sama ada pada Subbab~\ref{subsubsec:svm-l2svm}.
+	\item \textbf{Terhadap LightGBM.} LightGBM pada 46 fitur yang sama mencapai \SVMLightGBMCV{}. Versi \textit{least-squares} (\SVMLSCV{}) lebih rendah 0,0017 dari angka itu, sehingga selisih SVM dengan model berbasis pohon pada fitur ini kecil. LightGBM hanya pembanding dan tidak dipakai pada \textit{submission}.
+	\item \textbf{Ambang.} Ambang \SVMBaruAmbang{} dipilih dari prediksi \textit{out-of-fold} yang sama dengan Macro F1 yang dilaporkan, sehingga skornya sedikit optimistis. Kurva Macro F1 terhadap ambang datar dari \SVMBaruDatarBawah{} sampai \SVMBaruDatarAtas{}, sehingga pilihan titik di dalam rentang itu hanya sedikit memengaruhi skor, dan optimisme itu kecil.
+\end{itemize}
+
+\paragraph{Keterbatasan model \textit{submission}.} (i) Hanya satu \textit{seed} (42), yang juga salah satu \textit{seed} pemilihan konfigurasi Laplacian, sehingga angkanya tidak sebanding dengan rata-rata 7 \textit{seed} dan tidak dibandingkan dengan pohon keputusan pembanding. (ii) Selang \textit{bootstrap} mengambil ulang baris pada satu pembagian \textit{fold} dan tidak menangkap keragaman antar-\textit{seed} dan antar-pembagian. (iii) Skor publik memakai sekitar 30\% data uji. (iv) Kernel dipelajari dengan galat kuadrat \textit{kernel ridge} (Persamaan~\eqref{eq:svm-holdout}), bukan dengan galat \textit{slack} kuadrat yang dipakai SVM akhir, dan $\lambda$ yang dipakai \texttt{L2SVM} adalah $\lambda$ hasil pembelajaran itu, tanpa pencarian ulang untuk \textit{slack} kuadrat. (v) Hiperparameter pembelajaran kernel (Tabel~\ref{tab:svm-konstanta-baru}) tidak dicari dengan \textit{grid} pada laporan ini. (vi) Perbandingan \textit{hinge} dan \textit{slack} kuadrat (Subbab~\ref{subsubsec:svm-l2svm}) hanya pada satu \textit{fold}.
+
+\paragraph{Tahap pertama: SVM Laplacian.}
+Konfigurasi akhir tahap pertama adalah SVM \textit{from scratch} dengan kernel Laplacian $K(a, b) = \exp(-\lVert W(a-b)\rVert_1/20)$ ($\gamma = 0{,}05$), $C = 2$, \texttt{tol} $10^{-3}$, ambang keputusan 0, dan 46 fitur terstandardisasi yang dikalikan bobot $W$ (Tabel~\ref{tab:svm-bobot}). Hasil CV-nya adalah Macro F1 \textit{out-of-fold} 0,8703 (rata-rata 7 \textit{seed}, simpangan baku antar-\textit{seed} 0,0007) dan 0,8699 pada empat \textit{seed} konfirmasi. Untuk \textit{submission} tahap pertama (skor publik \SVMLamaPublik{}), fitur, standardisasi, dan bobot dihitung dari seluruh 27.309 baris latih, model dilatih pada seluruh baris tersebut (22.302 iterasi SMO, 8.662 \textit{support vector} atau 31,7\% dari baris latih, sekitar 257 detik), dan data uji hanya ditransformasi. Model Laplacian memprediksi 29,8\% pesanan uji batal (0,2984). Skor publik Kaggle \SVMLamaPublik{} (peringkat 2 pada papan publik saat dikirim); papan publik hanya memakai sekitar 30\% data uji, dan peringkat akhir memakai 70\% sisanya.
+
+Model yang dilatih pada seluruh data pengembangan (21.847 baris) memberi Macro F1 \textit{hold-out} 0,8649 dan akurasi 0,8836 dengan 7.244 \textit{support vector} (sekitar 50 detik). Skor ini bukan estimasi independen (keterbatasan ii di atas). Model akhir tahap pertama, hasil prediksi, dan hasil tuning tersimpan di \nolinkurl{output/svm/}:
+\begin{itemize}
+	\item \texttt{svm\_model.pkl}: model Laplacian (3,3 MB), tahap pertama;
+	\item \texttt{svm\_kernel\_model.pkl} dan \texttt{kernel\_weights.npz}: model \textit{submission} dan bobot kernel yang dipelajari;
+	\item \texttt{submission.csv}: berkas \textit{submission} (ditulis oleh notebook model \textit{submission});
 	\item \texttt{svm\_tuning.csv}, \texttt{svm\_comparison.csv}, \texttt{svm\_cost\_sensitive.csv}: Tabel~\ref{tab:svm-tuning-cv}, Tabel~\ref{tab:svm-hasil}, dan Tabel~\ref{tab:svm-cost}.
 \end{itemize}
 
-\paragraph{Reproduktibilitas.} Notebook \nolinkurl{src/kaggle/svm_notebook.ipynb} dibangun dari skrip \nolinkurl{src/kaggle/build_svm.py}. Semua keacakan memakai \textit{seed} tetap (pembagian data 42; pusat Nystr\"om 0; baris gradien 1; kelompok saudara 0), dan SMO sendiri deterministik. Berkas \texttt{submission.csv} identik byte demi byte pada dua lingkungan (NumPy 2.4.6 dengan pandas 3.0.3, dan NumPy 2.5.4 dengan pandas 3.1.1) pada satu komputer macOS, dengan selisih nilai keputusan antar-lingkungan paling besar $2{,}6 \times 10^{-13}$. Pengujian di komputer lain, sistem operasi lain, atau pustaka BLAS lain tidak dilakukan, sehingga kesamaan bit pada kondisi itu tidak dijamin (hanya kesamaan secara numerik yang diharapkan).
+\paragraph{Reproduktibilitas.} Model \textit{submission} dibangun oleh notebook \nolinkurl{src/kaggle/svm_kaggle_notebook.ipynb} dari skrip \nolinkurl{src/kaggle/build_svm_kaggle.py}. Pembelajaran kernel memakai generator ber-\textit{seed} tetap untuk derau bobot awal (0) dan untuk sampel tiap langkah (0), dan \textit{conjugate gradient} serta iterasi Newton deterministik. Karena pembulatan \textit{float32} pada BLAS dapat berbeda antar-mesin, notebook menyimpan bobot hasil pembelajaran ke \nolinkurl{output/svm/kernel_weights.npz} dan memakai berkas itu pada pelatihan akhir, sehingga \textit{submission} tidak bergantung pada pembelajaran ulang. Kesamaan hasil antar-lingkungan untuk model \textit{submission} belum diuji. Untuk tahap pertama, notebook \nolinkurl{src/kaggle/svm_notebook.ipynb} dibangun dari skrip \nolinkurl{src/kaggle/build_svm.py}. Semua keacakan memakai \textit{seed} tetap (pembagian data 42; pusat Nystr\"om 0; baris gradien 1; kelompok saudara 0), dan SMO sendiri deterministik. Berkas \texttt{submission.csv} identik byte demi byte pada dua lingkungan (NumPy 2.4.6 dengan pandas 3.0.3, dan NumPy 2.5.4 dengan pandas 3.1.1) pada satu komputer macOS, dengan selisih nilai keputusan antar-lingkungan paling besar $2{,}6 \times 10^{-13}$. Pengujian di komputer lain, sistem operasi lain, atau pustaka BLAS lain tidak dilakukan, sehingga kesamaan bit pada kondisi itu tidak dijamin (hanya kesamaan secara numerik yang diharapkan).

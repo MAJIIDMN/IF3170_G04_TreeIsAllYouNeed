@@ -11,14 +11,14 @@ Tabel~\ref{tab:rekap-bonus} merangkum seluruh bonus yang dikerjakan beserta subb
 		\toprule
 		\textbf{Bonus} & \textbf{Keterangan} & \textbf{Subbab} \\
 		\midrule
-		Kaggle & Peringkat 2 pada \textit{public leaderboard} (skor 0,87464, SVM Laplacian) & \ref{sec:kaggle} \\
+		Kaggle & Skor \textit{public leaderboard} 0,87912 (SVM dengan kernel yang dipelajari) & \ref{sec:kaggle} \\
 		DTL & Gambar percabangan pohon dengan parameter \textit{top-N} (\texttt{DTL.plot}) & \ref{subsec:dtl-bonus} \\
 		\textit{Logistic Regression} & Video kontur \textit{log-loss} dan lintasan $(\theta_0, \theta_1)$ & \ref{subsubsec:lr-video} \\
 		SVM & Gambar bidang pemisah, \textit{margin}, dan \textit{support vector} per kernel & \ref{subsubsec:svm-bidang} \\
 		\textit{Naive Bayes} & Graf \textit{Bayesian network} untuk NB dan TAN & \ref{subsec:nb-bonus} \\
 		Optimasi DTL & \textit{Pessimistic pruning} C4.5 dan \textit{cost-complexity pruning} & \ref{subsec:dtl-bonus} \\
 		Optimasi LR & IRLS dengan \textit{coordinate descent} (IRLS-CD) & \ref{subsubsec:lr-optimasi} \\
-		Optimasi SVM & SMO dengan pemilihan pasangan orde kedua dan \textit{cache} kernel, kernel Laplacian, serta bobot fitur AGOP & \ref{subsubsec:svm-optimasi} \\
+		Optimasi SVM & SMO dengan pemilihan pasangan orde kedua dan \textit{cache} kernel, kernel Laplacian, bobot fitur AGOP, pembelajaran kernel dengan gradien \textit{holdout}, serta Newton untuk L2-SVM & \ref{subsubsec:svm-optimasi} \\
 		Optimasi NB & \textit{Tree-Augmented Naive Bayes} (TAN) & \ref{subsec:nb-bonus} \\
 		\textit{Cost-sensitive} & Analisis dengan FP $2\times$ lebih mahal daripada FN pada DTL (\textit{threshold moving} dan pembobotan kelas), KNN, SVM, dan NB & \ref{sec:cost-sensitive}, \ref{subsec:knn-bonus}, \ref{subsubsec:svm-cost}, \ref{subsec:nb-bonus} \\
 		\bottomrule
